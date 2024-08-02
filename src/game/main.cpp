@@ -111,13 +111,13 @@ int main(int argc, char* argv[]) {
     while(g::video.window.isOpen()) {
         g::input.prepEvents();
 
-    	sf::Event event;
-    	while(g::video.window.pollEvent(event)) {
-    		g::input.processEvent(event);
-    	}
+        sf::Event event;
+        while(g::video.window.pollEvent(event)) {
+            g::input.processEvent(event);
+        }
 
-    	if(g::input.windowClose)
-    		g::video.window.close();
+        if(g::input.windowClose)
+            g::video.window.close();
 
         g::video.window.clear();
 
@@ -162,12 +162,11 @@ int main(int argc, char* argv[]) {
     	p2.getNextState(gameFrame);
 
         gameFrame ++;
-
+        
     	p1.draw(gameFrame);
     	p2.draw(gameFrame);
 
     	g::video.window.display();
-
     }
 
 	return 0;

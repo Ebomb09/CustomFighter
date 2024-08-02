@@ -95,6 +95,7 @@ struct Player {
 	struct State {
 		int health;
 		int stun;
+		int hitStop;
 		int hitKeyFrame;
 		int side;
 		Vector2 position;

@@ -1,4 +1,4 @@
-#include <iostream>
+#include <cmath>
 
 #include "core/input_interpreter.h"
 #include "core/math.h"
@@ -10,6 +10,7 @@ Player::Player() {
     State& state = getState(0);
     state.health = 100;
     state.stun = 0;
+    state.hitStop = 0;
     state.moveIndex = Move::Stand;
     state.moveFrame = 0;
     state.config = &config;
@@ -54,6 +55,13 @@ void Player::draw(int gameFrame) {
 
         if(look > -PI * 3/4.f && look <= 0)
             look = -PI * 3/4.f;
+    }
+
+    // HitStop shake
+    if(state.hitStop < 0) {
+
+        for(int i = 0; i < pose.jointCount; i ++) 
+            pose.joints[i].x += std::sin(state.hitStop) * 2;
     }
 
     pose.draw(getClothes(), look);
@@ -121,6 +129,34 @@ Player::State& Player::getNextState(int gameFrame) {
     // Get last frame to compute next
     State state = getState(gameFrame);
     State opState = opponent->getState(gameFrame);
+
+    // Hitstop
+    if(state.hitStop > 0)
+        state.hitStop --;
+
+    if(state.hitStop < 0)
+        state.hitStop ++;
+
+    if(gameFrame > 0) {
+        int diff1 = getState(gameFrame - 1).health - state.health;
+        int diff2 = opponent->getState(gameFrame - 1).health - opState.health;        
+
+        if(diff1 > 0 || diff2 > 0) {
+            state.hitStop = std::max(diff1, diff2);
+
+            // If this player is damaged signal with a negative hitStop
+            if(diff1 > 0)
+                state.hitStop = -state.hitStop;
+        }
+    }
+
+    // Exit early if in HitStop
+    if(state.hitStop != 0) {
+
+        // Return a reference to our completion
+        getState(gameFrame + 1) = state;
+        return getState(gameFrame + 1);
+    }
 
     // Increment frames
     state.moveFrame ++;

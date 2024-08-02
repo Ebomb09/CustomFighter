@@ -62,12 +62,25 @@ void Player::draw(int gameFrame) {
 void Player::readInput(int gameFrame) {
     State& state = getState(gameFrame);
 
-    // Get inputs via config and interpreter
-    for(int i = Button::Up; i <= Button::Right; i ++) 
-        state.button[i] = g::input.keyHeld[config.button[i]];
+    // Reset buttons
+    for(int i = 0; i < Button::Total; i ++)
+        state.button[i] = false;
 
-    for(int i = Button::A; i <= Button::Taunt; i ++)
-        state.button[i] = g::input.keyPressed[config.button[i]];
+    // Any attack button is pressed then retrigger all held attack buttons
+    for(int i = Button::A; i <= Button::Taunt; i ++) {
+
+        if(g::input.keyPressed[config.button[i]]) {
+
+            for(int j = Button::A; j <= Button::Taunt; j ++) 
+                state.button[j] = g::input.keyHeld[config.button[j]];   
+
+            break;
+        }
+    }
+
+    // Get inputs via config and interpreter
+    for(int i = Button::Up; i <= Button::Right; i ++)
+        state.button[i] = g::input.keyHeld[config.button[i]];
 }
 
 Player::State& Player::getState(int gameFrame, bool copy) {
@@ -153,7 +166,7 @@ Player::State& Player::getNextState(int gameFrame) {
                     if(block) {
 
                         // Push back
-                        state.velocity.x = hit.impulse.x * opState.side;
+                        state.velocity.x = hit.force.x;
 
                         if(state.inMove(Move::Stand) || state.inMove(Move::StandBlock)){
                             state.setMove(Move::StandBlock);
@@ -166,12 +179,12 @@ Player::State& Player::getNextState(int gameFrame) {
 
                     }else{
                         state.health -= hit.damage;
-                        state.velocity = hit.impulse * Vector2(opState.side, 1);
+                        state.velocity = hit.force;
 
                         if(hit.knockdown) {
                             state.setMove(Move::KnockDown);
 
-                        }else if(state.position.y > 0){
+                        }else if(state.position.y > 0 || state.velocity.y > 0){
                             state.setMove(Move::JumpCombo);
 
                         }else if(state.inMove(Move::Crouch) || state.inMove(Move::CrouchBlock) || state.inMove(Move::CrouchCombo)){
@@ -207,7 +220,7 @@ Player::State& Player::getNextState(int gameFrame) {
     // Special Move Check
     {
         string motion = "";
-        for(int i = 0; i < 10; i ++) {
+        for(int i = 0; i < 30; i ++) {
 
             if(gameFrame - i < 0)
                 break;
@@ -237,6 +250,32 @@ Player::State& Player::getNextState(int gameFrame) {
 
             if(!good[0] && !good[1] && !good[2])
                 continue;
+
+            // Check if the last motion matches between the strings
+            string lastMotion[2] {"", ""};
+            string lastButton[2] {motion.substr(0), str.substr(0)};
+
+            for(int j = motion.size() - 1; j >= 0; j --) {
+
+                if(motion[j] >= '0' && motion[j] <= '9'){
+                    lastMotion[0] = motion[j];
+                    lastButton[0] = motion.substr(j+1);
+                    break;
+                }
+            }
+
+            for(int j = str.size() - 1; j >= 0; j --) {
+                
+                if(str[j] >= '0' && str[j] <= '9'){
+                    lastMotion[1] = str[j];
+                    lastButton[1] = str.substr(j+1);
+                    break;
+                }
+            }
+
+            if(!((lastMotion[0] == lastMotion[1] || lastMotion[1] == "") && lastButton[0] == lastButton[1])) {
+                continue;
+            }
 
             // Scan the motion strings for matching inputs
             while(u < str.size() && v < motion.size()) {
@@ -278,6 +317,7 @@ Player::State& Player::getNextState(int gameFrame) {
     }
 
     // Movement
+    state.velocity += state.getFrame().impulse;
     state.position += state.velocity;
 
     if(state.position.y <= 0) {
@@ -298,7 +338,7 @@ Player::State& Player::getNextState(int gameFrame) {
         state.velocity.y -= 0.25;
     }
 
-    if(state.inMove(Move::Jump) && state.position.y <= 0) {
+    if(state.inMove(Move::Jump) && state.position.y <= 0 && state.doneMove()) {
         state.setMove(Move::Stand);
     }
 
@@ -307,18 +347,45 @@ Player::State& Player::getNextState(int gameFrame) {
         // If on ground look in direction of opponent
         state.side = (state.position.x < opState.position.x) ? 1 : -1;
 
+        // Reset to grounded
+        state.velocity = {0, 0};
+
+        // Standing
         if(state.getSOCD().y == 0) {
-            state.setMove(Move::Stand, true);
-            state.velocity.x = state.getSOCD().x * 2;
 
+            if(state.getSOCD().x == state.side){
+                state.setMove(Move::WalkForwards, true);
+
+            }else if(state.getSOCD().x == -state.side){
+                state.setMove(Move::WalkBackwards, true);
+
+            }else {
+                state.setMove(Move::Stand, true);
+            }
+
+        // Jumping
         }else if(state.getSOCD().y > 0) {
-            state.setMove(Move::Jump);
-            state.velocity.y = 6;
-            state.velocity.x = state.getSOCD().x * 2;
 
+            if(state.getSOCD().x == state.side){
+                state.setMove(Move::JumpForwards);
+
+            }else if(state.getSOCD().x == -state.side){
+                state.setMove(Move::JumpBackwards);
+
+            }else {
+                state.setMove(Move::Jump);
+            }
+
+        // Crouching
         }else if(state.getSOCD().y < 0) {
             state.setMove(Move::Crouch, true);
         }      
+    }
+
+    // Collision checks
+    if((state.position - opState.position).getDistance() < 25) {
+        int side = (state.position.x < opState.position.x) ? 1 : -1;
+        state.position.x = opState.position.x + 25 * -side;
     }
 
     // Return a reference to our completion
@@ -334,21 +401,41 @@ string Player::State::getMotion() {
     out += ('5' + (int)socd.x + (int)socd.y * 3);
 
     if(button[Button::A])
-        out += 'A';
+        out += (out.size() == 1) ? "A" : "+A";
+
     if(button[Button::B])
-        out += 'B';
+        out += (out.size() == 1) ? "B" : "+B";
+
     if(button[Button::C])
-        out += 'C';
+        out += (out.size() == 1) ? "C" : "+C";
+
     if(button[Button::D])
-        out += 'D';
+        out += (out.size() == 1) ? "D" : "+D";
+
     if(button[Button::Taunt])
-        out += 'P';
+        out += (out.size() == 1) ? "P" : "+P";
 
     return out;
 }
 
 bool Player::State::inMove(int move) {
-    return moveIndex == move;
+    int current = moveIndex;
+
+    // Some moves are synonyms for each other
+    switch(current) {
+
+    case Move::WalkForwards:
+    case Move::WalkBackwards:
+        current = Move::Stand;
+        break;
+
+    case Move::JumpForwards:
+    case Move::JumpBackwards:
+        current = Move::Jump;
+        break;
+    }
+
+    return current == move;
 }
 
 void Player::State::setMove(int move, bool loop) {
@@ -389,53 +476,52 @@ int Player::State::getKeyFrame() {
 Frame Player::State::getFrame() {
     Animation* anim = g::save.getAnimation(config->move[moveIndex]);
 
-    if(anim)
-        return anim->getFrame(moveFrame);
-    else
-        return Frame();
+    Frame frame;
+
+    if(anim) {
+        frame = anim->getFrame(moveFrame);
+
+        // Correct directional attributes of the frame
+        frame.impulse.x *= side;
+
+        for(auto& box : frame.hitBoxes) {
+
+            if(side == -1)
+                box.x = -box.x - box.w;
+
+            box.x += position.x;
+            box.y += position.y;
+
+            box.force.x *= side;            
+        }
+
+        for(auto& box : frame.hurtBoxes) {
+
+            if(side == -1)
+                box.x = -box.x - box.w;
+
+            box.x += position.x;
+            box.y += position.y;        
+        }
+
+        for(int i = 0; i < frame.pose.jointCount; i ++) {
+            frame.pose.joints[i].x *= side;
+            frame.pose.joints[i] += position;
+        }
+    }
+    return frame;
 }
 
 Skeleton Player::State::getSkeleton() {
-    Frame frame = getFrame();
-    Skeleton pose = frame.pose;
-
-    for(int i = 0; i < pose.jointCount; i ++) {
-        pose.joints[i].x *= side;
-        pose.joints[i] += position;
-    }
-    return pose;
+    return getFrame().pose;
 }
 
 vector<HitBox> Player::State::getHitBoxes() {
-    vector<HitBox> boxes;
-
-    for(HitBox box : getFrame().hitBoxes) {
-
-        if(side == -1) 
-            box.x = -box.x - box.w;
-
-        box.x += position.x;
-        box.y += position.y;
-
-        boxes.push_back(box);
-    }
-    return boxes;
+    return getFrame().hitBoxes;
 }
 
 vector<HurtBox> Player::State::getHurtBoxes() {
-    vector<HurtBox> boxes;
-
-    for(HurtBox box : getFrame().hurtBoxes) {
-
-        if(side == -1) 
-            box.x = -box.x - box.w;
-
-        box.x += position.x;
-        box.y += position.y;
-
-        boxes.push_back(box);
-    }
-    return boxes;   
+    return getFrame().hurtBoxes;   
 }
 
 vector<Clothing*> Player::getClothes() {

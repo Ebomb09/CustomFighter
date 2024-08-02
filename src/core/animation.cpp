@@ -19,6 +19,7 @@ Frame& Frame::operator=(const Frame& copy) {
     duration = copy.duration;
     hitBoxes = copy.hitBoxes;
     hurtBoxes = copy.hurtBoxes;
+    impulse = copy.impulse;
     return *this; 
 }
 
@@ -26,7 +27,8 @@ Frame& Frame::operator=(Frame&& move) {
     pose = std::move(move.pose); 
     duration = std::move(move.duration);
     hitBoxes = std::move(move.hitBoxes);
-    hurtBoxes = std::move(move.hurtBoxes);    
+    hurtBoxes = std::move(move.hurtBoxes);   
+    impulse = std::move(move.impulse); 
     return *this; 
 }
 
@@ -81,6 +83,7 @@ Frame Animation::getFrame(float t) {
             frame.pose = poseA;
             frame.hitBoxes = keyFrames[i].hitBoxes;
             frame.hurtBoxes = keyFrames[i].hurtBoxes;
+            frame.impulse = keyFrames[i].impulse;
             break;
         }
 
@@ -118,6 +121,9 @@ void Animation::saveToFile(std::string fileName) {
         // Duration
         json["keyFrames"][i]["duration"] = keyFrames[i].duration;
 
+        json["keyFrames"][i]["impulse"]["x"] = keyFrames[i].impulse.x;
+        json["keyFrames"][i]["impulse"]["y"] = keyFrames[i].impulse.y;
+
         json["keyFrames"][i]["joints"] = nlohmann::json::array();
 
         for(int j = 0; j < keyFrames[i].pose.jointCount; j ++) {
@@ -138,8 +144,8 @@ void Animation::saveToFile(std::string fileName) {
             node["hitStun"] = keyFrames[i].hitBoxes[j].hitStun;
             node["blockStun"] = keyFrames[i].hitBoxes[j].blockStun;
             node["knockdown"] = keyFrames[i].hitBoxes[j].knockdown;
-            node["impulse"]["x"] = keyFrames[i].hitBoxes[j].impulse.x;
-            node["impulse"]["y"] = keyFrames[i].hitBoxes[j].impulse.y;            
+            node["force"]["x"] = keyFrames[i].hitBoxes[j].force.x;
+            node["force"]["y"] = keyFrames[i].hitBoxes[j].force.y;            
         } 
 
         json["keyFrames"][i]["hurtBoxes"] = nlohmann::json::array();   
@@ -177,7 +183,14 @@ void Animation::loadFromFile(std::string fileName) {
 
     for(int i = 0; i < keyFramesAr.size(); i ++) {
         Frame newFrame;
-        newFrame.duration = keyFramesAr[i]["duration"];
+
+        if(keyFramesAr[i]["duration"].is_number_integer())
+            newFrame.duration = keyFramesAr[i]["duration"];
+
+        if(keyFramesAr[i]["impulse"].is_object()) {
+            newFrame.impulse.x = keyFramesAr[i]["impulse"]["x"];
+            newFrame.impulse.y = keyFramesAr[i]["impulse"]["y"];
+        }
 
         auto& jointAr = keyFramesAr[i]["joints"];
         auto& hitBoxAr = keyFramesAr[i]["hitBoxes"];
@@ -219,13 +232,13 @@ void Animation::loadFromFile(std::string fileName) {
             if(hitBoxAr[j]["knockdown"].is_boolean())    
                 add.knockdown = hitBoxAr[j]["knockdown"];
 
-            if(hitBoxAr[j]["impulse"].is_object()) {
+            if(hitBoxAr[j]["force"].is_object()) {
 
-                if(hitBoxAr[j]["impulse"]["x"].is_number_float())
-                    add.impulse.x = hitBoxAr[j]["impulse"]["x"];
+                if(hitBoxAr[j]["force"]["x"].is_number_float())
+                    add.force.x = hitBoxAr[j]["force"]["x"];
 
-                if(hitBoxAr[j]["impulse"]["y"].is_number_float())                
-                    add.impulse.y = hitBoxAr[j]["impulse"]["y"];            
+                if(hitBoxAr[j]["force"]["y"].is_number_float())                
+                    add.force.y = hitBoxAr[j]["force"]["y"];            
             }
             
             newFrame.hitBoxes.push_back(add);

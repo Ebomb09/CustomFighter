@@ -51,15 +51,41 @@ int main(int argc, char* argv[]) {
     p1.config.move[Move::StandBlock] = "standBlock";
     p1.config.move[Move::StandCombo] = "standCombo";
 
+    p1.config.move[Move::WalkBackwards] = "walkBackwards";
+    p1.config.move[Move::WalkForwards] = "walkForwards";
+
     p1.config.move[Move::Crouch] = "crouch";
     p1.config.move[Move::CrouchBlock] = "crouchBlock";
     p1.config.move[Move::CrouchCombo] = "crouchCombo";
 
     p1.config.move[Move::Jump] = "jump";
+    p1.config.move[Move::JumpForwards] = "jumpForwards";
+    p1.config.move[Move::JumpBackwards] = "jumpBackwards";
+
     p1.config.move[Move::JumpCombo] = "jumpCombo";
 
     p1.config.move[Move::KnockDown] = "knockdown";
     p1.config.move[Move::GetUp] = "getup";   
+
+    p1.config.move[Move::Custom00] = "punch";
+    p1.config.motion[Move::Custom00] = "A";
+
+    p1.config.move[Move::Custom01] = "doubleKick";
+    p1.config.motion[Move::Custom01] = "4B";
+
+    p1.config.move[Move::Custom02] = "highPunch";
+    p1.config.motion[Move::Custom02] = "623C";
+
+    p1.config.move[Move::Custom03] = "ankleKick";
+    p1.config.motion[Move::Custom03] = "1B";
+
+    p1.config.move[Move::Custom04] = "lowDoublePunch";
+    p1.config.motion[Move::Custom04] = "C";
+
+    p1.config.move[Move::Custom05] = "crouchKick";
+    p1.config.motion[Move::Custom05] = "D";
+
+    p2 = p1;
 
     p2.config.button[Button::Left] = sf::Keyboard::Left;
     p2.config.button[Button::Right] = sf::Keyboard::Right;
@@ -70,24 +96,6 @@ int main(int argc, char* argv[]) {
     p2.config.button[Button::C] = sf::Keyboard::Numpad5; 
     p2.config.button[Button::D] = sf::Keyboard::Numpad6; 
     p2.config.button[Button::Taunt] = sf::Keyboard::Enter;
-
-    p2.config.move[Move::Custom00] = "punch";
-    p2.config.motion[Move::Custom00] = "A";
-
-    p2.config.move[Move::Custom01] = "doubleKick";
-    p2.config.motion[Move::Custom01] = "4B";
-
-    p2.config.move[Move::Custom02] = "highPunch";
-    p2.config.motion[Move::Custom02] = "623C";
-
-    p2.config.move[Move::Custom03] = "ankleKick";
-    p2.config.motion[Move::Custom03] = "1B";
-
-    p2.config.move[Move::Custom04] = "lowDoublePunch";
-    p2.config.motion[Move::Custom04] = "C";
-
-    p2.config.move[Move::Custom05] = "crouchKick";
-    p2.config.motion[Move::Custom05] = "D";
 
     p1.opponent = &p2;
     p2.opponent = &p1;

@@ -30,15 +30,21 @@ namespace Button {
 namespace Move {
 	enum {
 		// Inherent Stances
-		Stand,
-		Jump,
 		Crouch,
+
+		Stand,
+		WalkForwards,
+		WalkBackwards,
+
+		Jump,
+		JumpForwards,
+		JumpBackwards,
 
 		StandBlock,
 		CrouchBlock,
 
-		StandCombo,
 		CrouchCombo,
+		StandCombo,
 		JumpCombo,		
 
 		KnockDown,

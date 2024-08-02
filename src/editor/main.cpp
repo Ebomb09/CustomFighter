@@ -19,7 +19,7 @@ int main() {
         while(g::video.window.pollEvent(event)){
             ImGui::SFML::ProcessEvent(event);
 
-            if(!ImGui::IsAnyItemHovered())
+            if(!ImGui::GetIO().WantCaptureKeyboard && !ImGui::GetIO().WantCaptureMouse)
                 g::input.processEvent(event);
         }
 
@@ -85,16 +85,17 @@ int main() {
 
         ImGui::SameLine();
         if(ImGui::Button("+Add")) {
-            Skeleton src;
+            Frame src;
 
-            if(editor.keyFrame >= 0) 
-                src = editor.anim.getKeyFrame(editor.keyFrame).pose;
+            if(editor.keyFrame >= 0)
+                src = editor.getKeyFrame();
 
-            editor.anim.insertKeyFrame(editor.keyFrame + 1, Frame(src, 1)); 
+            editor.anim.insertKeyFrame(editor.keyFrame + 1, src); 
             editor.keyFrame ++;         
         }
 
         if(editor.keyFrame >= 0) {
+            
             if(ImGui::ArrowButton("LeftFrame", ImGuiDir_Left) && editor.keyFrame > 0) {
                 editor.anim.swapKeyFrame(editor.keyFrame, editor.keyFrame-1);
                 editor.keyFrame --;
@@ -211,10 +212,14 @@ int main() {
         if(editor.keyFrame >= 0) {  
             Frame& keyFrame = editor.getKeyFrame();    
 
-            ImGui::SeparatorText("Requirements");
+            ImGui::SeparatorText("Animation");
             ImGui::Checkbox("inCrouch", &editor.anim.inCrouch);
             ImGui::Checkbox("inStand", &editor.anim.inStand);
             ImGui::Checkbox("inJump", &editor.anim.inJump);
+
+            ImGui::SeparatorText("Key Frame");
+            ImGui::InputFloat("Impulse X", &keyFrame.impulse.x);
+            ImGui::InputFloat("Impulse Y", &keyFrame.impulse.y);  
 
             ImGui::SeparatorText("Selection");
 
@@ -260,8 +265,8 @@ int main() {
                     ImGui::InputInt("Hit Stun", &editor.getHitBoxes()[editor.selected].hitStun);
                     ImGui::InputInt("Block Stun", &editor.getHitBoxes()[editor.selected].blockStun);
                     ImGui::Checkbox("Knockdown", &editor.getHitBoxes()[editor.selected].knockdown);
-                    ImGui::InputFloat("Impulse X", &editor.getHitBoxes()[editor.selected].impulse.x);     
-                    ImGui::InputFloat("Impulse Y", &editor.getHitBoxes()[editor.selected].impulse.y);                                      
+                    ImGui::InputFloat("Force X", &editor.getHitBoxes()[editor.selected].force.x);     
+                    ImGui::InputFloat("Force Y", &editor.getHitBoxes()[editor.selected].force.y);                                      
                 }
             } 
 

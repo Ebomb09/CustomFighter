@@ -48,7 +48,7 @@ struct HurtBox : Rectangle {
 };
 
 struct HitBox : Rectangle {
-	Vector2 impulse;
+	Vector2 force;
 	int damage = 0;
 	int hitStun = 0;
 	int blockStun = 0;

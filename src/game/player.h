@@ -4,28 +4,12 @@
 #include <vector>
 #include <string>
 
-#include "core/render_instance.h"
 #include "core/skeleton.h"
 #include "core/clothing.h"
 #include "core/animation.h"
 
 using std::vector;
 using std::string;
-
-namespace Button {
-	enum {
-		Up,
-		Down,
-		Left,
-		Right,
-		A,
-		B,
-		C,
-		D,
-		Taunt,
-		Total
-	};
-};
 
 namespace Move {
 	enum {
@@ -81,53 +65,67 @@ namespace Move {
 	};
 };
 
+struct Button {
+	int 			Up				= 0;
+	int 			Down			= 0;
+	int 			Left			= 0;
+	int 			Right			= 0;
+	int 			A				= 0;
+	int 			B				= 0;
+	int 			C				= 0;
+	int 			D				= 0;
+	int 			Taunt			= 0;
+
+	static const int History = 30; 
+};
+
 struct Player {
 
-	Player* opponent;
-
 	struct Config {
-		vector<string> clothes;
-		string move[Move::Total];
-		string motion[Move::Total];
-		int button[Button::Total];
-	} config;
+		vector<string> 	clothes;
+		string 			move			[Move::Total];
+		string 			motion			[Move::Total];
+		Button 			button;
+		Player*			opponent		= NULL;
+
+	}config;
 
 	struct State {
-		int health;
-		int stun;
-		int hitStop;
-		int hitKeyFrame;
-		int side;
-		Vector2 position;
-		Vector2 velocity;
-		int moveIndex;
-		int moveFrame;
-		bool button[Button::Total];
+		int 			health			= 100;
+		int				accDamage		= 0;
+		int 			stun			= 0;
+		int 			hitStop			= 0;
+		int 			hitKeyFrame		= -1;
+		int 			side			= 1;
+		Vector2 		position		= {0, 0};
+		Vector2 		velocity		= {0, 0};
+		int 			moveIndex		= Move::Stand;
+		int 			moveFrame		= 0;
+		Button		 	button			[30];
 
-		Config* config = NULL;
+	}state;
 
-		Vector2 getSOCD();
-		string getMotion();
-		bool inMove(int move);
-		void setMove(int move, bool loop = false);
-		bool doneMove();
-		int getKeyFrame();
-		Frame getFrame();
-		Skeleton getSkeleton();
-		vector<HitBox> getHitBoxes();
-		vector<HurtBox> getHurtBoxes();
-	};
+	Button readInput();
+	void advanceFrame(Button in);
+	void draw();
 
-	vector<State> history;
+	void dealDamage(int dmg);
 
-	Player();
+	Vector2 getSOCD(int index = 0);
+	string getMotion(int index = 0);
 
-	void readInput(int gameFrame);
-	State& getState(int gameFrame, bool copy = false);	
-	State& getNextState(int gameFrame);
-	void draw(int gameFrame);
+	bool inMove(int move);
+	void setMove(int move, bool loop = false);
+	bool doneMove();
 
-	vector<Clothing*> getClothes();
+	int getKeyFrame();
+	Frame getFrame();
+	
+	Skeleton getSkeleton();
+	vector<HitBox> getHitBoxes();
+	vector<HurtBox> getHurtBoxes();	
+
+	vector<Clothing*> getClothes();	
 };
 
 #endif

@@ -1,36 +1,16 @@
 #include <cmath>
 
+#include "core/render_instance.h"
 #include "core/input_interpreter.h"
 #include "core/math.h"
 #include "core/save.h"
 
 #include "player.h"
 
-Player::Player() {
-    State& state = getState(0);
-    state.health = 100;
-    state.stun = 0;
-    state.hitStop = 0;
-    state.moveIndex = Move::Stand;
-    state.moveFrame = 0;
-    state.config = &config;
+void Player::draw() {
 
-    config.clothes.push_back("realistic");
-    config.clothes.push_back("shirt");
-
-    for(int i = 0; i < Button::Total; i ++)
-        config.button[i] = 0;
-
-    for(int i = 0; i < Button::Total; i ++) 
-        state.button[i] = false;
-}
-
-void Player::draw(int gameFrame) {
-    State& state = getState(gameFrame);
-    State& opState = opponent->getState(gameFrame);
-
-    Skeleton pose = state.getSkeleton();
-    Skeleton opPose = opState.getSkeleton();
+    Skeleton pose = getSkeleton();
+    Skeleton opPose = config.opponent->getSkeleton();
 
     for(int i = 0; i < pose.jointCount; i ++) {
         pose.joints[i] = g::video.camera.getScreen(pose.joints[i]);
@@ -67,68 +47,43 @@ void Player::draw(int gameFrame) {
     pose.draw(getClothes(), look);
 }
 
-void Player::readInput(int gameFrame) {
-    State& state = getState(gameFrame);
+Button Player::readInput() {
+    Button out;
 
-    // Reset buttons
-    for(int i = 0; i < Button::Total; i ++)
-        state.button[i] = false;
+    out.A           = g::input.keyPressed[config.button.A];
+    out.B           = g::input.keyPressed[config.button.B];        
+    out.C           = g::input.keyPressed[config.button.C];
+    out.D           = g::input.keyPressed[config.button.D];   
+    out.Taunt       = g::input.keyPressed[config.button.Taunt];   
 
     // Any attack button is pressed then retrigger all held attack buttons
-    for(int i = Button::A; i <= Button::Taunt; i ++) {
-
-        if(g::input.keyPressed[config.button[i]]) {
-
-            for(int j = Button::A; j <= Button::Taunt; j ++) 
-                state.button[j] = g::input.keyHeld[config.button[j]];   
-
-            break;
-        }
+    if(out.A || out.B || out.C || out.D || out.Taunt) {
+        out.A           = g::input.keyHeld[config.button.A];
+        out.B           = g::input.keyHeld[config.button.B];        
+        out.C           = g::input.keyHeld[config.button.C];
+        out.D           = g::input.keyHeld[config.button.D];   
+        out.Taunt       = g::input.keyHeld[config.button.Taunt];          
     }
 
-    // Get inputs via config and interpreter
-    for(int i = Button::Up; i <= Button::Right; i ++)
-        state.button[i] = g::input.keyHeld[config.button[i]];
+    // Movement keys always held down
+    out.Up = g::input.keyHeld[config.button.Up];
+    out.Down = g::input.keyHeld[config.button.Down];        
+    out.Left = g::input.keyHeld[config.button.Left];
+    out.Right = g::input.keyHeld[config.button.Right];    
+
+    return out;
 }
 
-Player::State& Player::getState(int gameFrame, bool copy) {
+void Player::advanceFrame(Button in) {
 
-    if(gameFrame >= history.size()) {
-
-        if(gameFrame != 0) {
-
-            for(int i = history.size(); i <= gameFrame; i ++) {
-                State state = history[i - 1];
-
-                for(int j = 0; j < Button::Total; j ++)
-                    state.button[j] = false;
-
-                history.push_back(state);
-            }
-
-        // Default State push
-        }else {
-            history.push_back(State());
-        }
+    // Add input to the button history
+    for(int i = Button::History - 1; i > 0; i --) {
+        state.button[i] = state.button[i - 1];
     }
+    state.button[0] = in;   
 
-    // Copy over everything except the buttons
-    if(copy && gameFrame != 0) {
-        State temp = getState(gameFrame);
-        history[gameFrame] = history[gameFrame-1];
-
-        for(int i = 0; i < Button::Total; i ++)
-            history[gameFrame].button[i] = temp.button[i];
-    }
-
-    return history[gameFrame];
-}
-
-Player::State& Player::getNextState(int gameFrame) {
-
-    // Get last frame to compute next
-    State state = getState(gameFrame);
-    State opState = opponent->getState(gameFrame);
+    // Shortcut to the config
+    Player* op = config.opponent;
 
     // Hitstop
     if(state.hitStop > 0)
@@ -137,26 +92,22 @@ Player::State& Player::getNextState(int gameFrame) {
     if(state.hitStop < 0)
         state.hitStop ++;
 
-    if(gameFrame > 0) {
-        int diff1 = getState(gameFrame - 1).health - state.health;
-        int diff2 = opponent->getState(gameFrame - 1).health - opState.health;        
+    // Check if taken any damage and set the HitStop
+    int dmg1 = state.accDamage;
+    int dmg2 = op->state.accDamage;        
 
-        if(diff1 > 0 || diff2 > 0) {
-            state.hitStop = std::max(diff1, diff2);
+    if(dmg1 > 0 || dmg2 > 0) {
+        state.hitStop = std::max(dmg1, dmg2);
 
-            // If this player is damaged signal with a negative hitStop
-            if(diff1 > 0)
-                state.hitStop = -state.hitStop;
-        }
+        // If this player is damaged signal with a negative hitStop
+        if(dmg1 > 0)
+            state.hitStop = -state.hitStop;
     }
+    state.accDamage = 0;
 
     // Exit early if in HitStop
-    if(state.hitStop != 0) {
-
-        // Return a reference to our completion
-        getState(gameFrame + 1) = state;
-        return getState(gameFrame + 1);
-    }
+    if(state.hitStop != 0) 
+        return;
 
     // Increment frames
     state.moveFrame ++;
@@ -165,36 +116,32 @@ Player::State& Player::getNextState(int gameFrame) {
         state.stun --;
 
     // Damage, only be hit once per keyframe
-    if(gameFrame > 0) { 
-        State opLastState = opponent->getState(gameFrame - 1);
+    // Opponent doing a new move can reset the hitKeyFrame
+    if(op->getKeyFrame() != state.hitKeyFrame)
+        state.hitKeyFrame = -1;
 
-        // Opponent doing a new move can reset the hitKeyFrame
-        if(opState.moveIndex != opLastState.moveIndex)
-            state.hitKeyFrame = -1;
-    }
-
-    bool damageValid = (state.hitKeyFrame != opState.getKeyFrame());
+    bool damageValid = (state.hitKeyFrame != op->getKeyFrame());
 
     if(damageValid) {
 
         // Check HurtBox <-> HitBox collisions, for only one match
         bool found = false;
 
-        for(auto& hurt : state.getHurtBoxes()) {
-            for(auto& hit : opState.getHitBoxes()) {
+        for(auto& hurt : getHurtBoxes()) {
+            for(auto& hit : op->getHitBoxes()) {
 
                 if(Real::rectangleInRectangle(hurt, hit)) {
 
                     // Set what keyframe you were hit on
-                    state.hitKeyFrame = opState.getKeyFrame();        
+                    state.hitKeyFrame = op->getKeyFrame();        
 
                     // Block if input in the opposite direction of opponent           
                     bool block = false;
 
-                    if(state.inMove(Move::Stand) || state.inMove(Move::StandBlock) ||
-                        state.inMove(Move::Crouch) || state.inMove(Move::CrouchBlock)) {
+                    if(inMove(Move::Stand) || inMove(Move::StandBlock) ||
+                        inMove(Move::Crouch) || inMove(Move::CrouchBlock)) {
 
-                        if((state.side == 1 && state.getSOCD().x < 0) || (state.side == -1 && state.getSOCD().x > 0)) {
+                        if((state.side == 1 && getSOCD().x < 0) || (state.side == -1 && getSOCD().x > 0)) {
                             block = true;
                         }
                     }
@@ -204,31 +151,31 @@ Player::State& Player::getNextState(int gameFrame) {
                         // Push back
                         state.velocity.x = hit.force.x;
 
-                        if(state.inMove(Move::Stand) || state.inMove(Move::StandBlock)){
-                            state.setMove(Move::StandBlock);
+                        if(inMove(Move::Stand) || inMove(Move::StandBlock)){
+                            setMove(Move::StandBlock);
                             state.stun = hit.blockStun;
                         
                         }else{
-                            state.setMove(Move::CrouchBlock);
+                            setMove(Move::CrouchBlock);
                             state.stun = hit.blockStun;
                         }
 
                     }else{
-                        state.health -= hit.damage;
+                        dealDamage(hit.damage);
                         state.velocity = hit.force;
 
                         if(hit.knockdown) {
-                            state.setMove(Move::KnockDown);
+                            setMove(Move::KnockDown);
 
                         }else if(state.position.y > 0 || state.velocity.y > 0){
-                            state.setMove(Move::JumpCombo);
+                            setMove(Move::JumpCombo);
 
-                        }else if(state.inMove(Move::Crouch) || state.inMove(Move::CrouchBlock) || state.inMove(Move::CrouchCombo)){
-                            state.setMove(Move::CrouchCombo);
+                        }else if(inMove(Move::Crouch) || inMove(Move::CrouchBlock) || inMove(Move::CrouchCombo)){
+                            setMove(Move::CrouchCombo);
                             state.stun = hit.hitStun;
 
                         }else{
-                            state.setMove(Move::StandCombo);
+                            setMove(Move::StandCombo);
                             state.stun = hit.hitStun;
                         }
                     }
@@ -244,25 +191,20 @@ Player::State& Player::getNextState(int gameFrame) {
     }
 
     // Hit/Block Stun finish
-    if((state.inMove(Move::StandCombo) || state.inMove(Move::StandBlock)) && state.stun == 0) 
-        state.setMove(Move::Stand);
+    if((inMove(Move::StandCombo) || inMove(Move::StandBlock)) && state.stun == 0) 
+        setMove(Move::Stand);
 
-    if((state.inMove(Move::CrouchCombo) || state.inMove(Move::CrouchBlock)) && state.stun == 0) 
-        state.setMove(Move::Crouch);
+    if((inMove(Move::CrouchCombo) || inMove(Move::CrouchBlock)) && state.stun == 0) 
+        setMove(Move::Crouch);
 
-    if(state.inMove(Move::GetUp) && state.doneMove())
-        state.setMove(Move::Stand);
+    if(inMove(Move::GetUp) && doneMove())
+        setMove(Move::Stand);
 
     // Special Move Check
     {
         string motion = "";
-        for(int i = 0; i < 30; i ++) {
-
-            if(gameFrame - i < 0)
-                break;
-
-            motion = getState(gameFrame - i).getMotion() + motion;
-        }
+        for(int i = 0; i < 30; i ++) 
+            motion = getMotion(i) + motion;
 
         int best = -1;
 
@@ -279,9 +221,9 @@ Player::State& Player::getNextState(int gameFrame) {
                 continue;
 
             bool good[] = {
-                anim->inCrouch && state.inMove(Move::Crouch),
-                anim->inStand && state.inMove(Move::Stand),
-                anim->inJump && state.inMove(Move::Jump)
+                anim->inCrouch && inMove(Move::Crouch),
+                anim->inStand && inMove(Move::Stand),
+                anim->inJump && inMove(Move::Jump)
             };
 
             if(!good[0] && !good[1] && !good[2])
@@ -342,18 +284,18 @@ Player::State& Player::getNextState(int gameFrame) {
         }
 
         if(best != -1)
-            state.setMove(best);
+            setMove(best);
     }
 
     // Custom move finish
-    if(state.moveIndex >= Move::Custom00 && state.moveIndex < Move::Total && state.doneMove()) {
+    if(state.moveIndex >= Move::Custom00 && state.moveIndex < Move::Total && doneMove()) {
 
         if(state.position.y <= 0)
-            state.setMove(Move::Stand);
+            setMove(Move::Stand);
     }
 
     // Movement
-    state.velocity += state.getFrame().impulse;
+    state.velocity += getFrame().impulse;
     state.position += state.velocity;
 
     if(state.position.y <= 0) {
@@ -364,98 +306,103 @@ Player::State& Player::getNextState(int gameFrame) {
         if(std::abs(state.velocity.x) < 0.25)
             state.velocity.x = 0;
 
-        if((state.inMove(Move::JumpCombo) || state.inMove(Move::KnockDown)))
-            state.setMove(Move::GetUp);
+        if((inMove(Move::JumpCombo) || inMove(Move::KnockDown)))
+            setMove(Move::GetUp);
 
-        if(state.inMove(Move::Stand) || state.inMove(Move::Crouch))
+        if(inMove(Move::Stand) || inMove(Move::Crouch))
             state.velocity.x = 0;
 
     }else{
         state.velocity.y -= 0.25;
     }
 
-    if(state.inMove(Move::Jump) && state.position.y <= 0 && state.doneMove()) {
-        state.setMove(Move::Stand);
+    if(inMove(Move::Jump) && state.position.y <= 0 && doneMove()) {
+        setMove(Move::Stand);
     }
 
-    if(state.inMove(Move::Stand) || state.inMove(Move::Crouch)) {
+    if(inMove(Move::Stand) || inMove(Move::Crouch)) {
 
         // If on ground look in direction of opponent
-        state.side = (state.position.x < opState.position.x) ? 1 : -1;
+        state.side = (state.position.x < op->state.position.x) ? 1 : -1;
 
         // Reset to grounded
         state.velocity = {0, 0};
 
         // Standing
-        if(state.getSOCD().y == 0) {
+        if(getSOCD().y == 0) {
 
-            if(state.getSOCD().x == state.side){
-                state.setMove(Move::WalkForwards, true);
+            if(getSOCD().x == state.side){
+                setMove(Move::WalkForwards, true);
 
-            }else if(state.getSOCD().x == -state.side){
-                state.setMove(Move::WalkBackwards, true);
+            }else if(getSOCD().x == -state.side){
+                setMove(Move::WalkBackwards, true);
 
             }else {
-                state.setMove(Move::Stand, true);
+                setMove(Move::Stand, true);
             }
 
         // Jumping
-        }else if(state.getSOCD().y > 0) {
+        }else if(getSOCD().y > 0) {
 
-            if(state.getSOCD().x == state.side){
-                state.setMove(Move::JumpForwards);
+            if(getSOCD().x == state.side){
+                setMove(Move::JumpForwards);
 
-            }else if(state.getSOCD().x == -state.side){
-                state.setMove(Move::JumpBackwards);
+            }else if(getSOCD().x == -state.side){
+                setMove(Move::JumpBackwards);
 
             }else {
-                state.setMove(Move::Jump);
+                setMove(Move::Jump);
             }
 
         // Crouching
-        }else if(state.getSOCD().y < 0) {
-            state.setMove(Move::Crouch, true);
+        }else if(getSOCD().y < 0) {
+            setMove(Move::Crouch, true);
         }      
     }
 
     // Collision checks
-    if((state.position - opState.position).getDistance() < 25) {
-        int side = (state.position.x < opState.position.x) ? 1 : -1;
-        state.position.x = opState.position.x + 25 * -side;
+    if((state.position - op->state.position).getDistance() < 25) {
+        int side = (state.position.x < op->state.position.x) ? 1 : -1;
+        state.position.x = op->state.position.x + 25 * -side;
     }
-
-    // Return a reference to our completion
-    getState(gameFrame + 1) = state;
-    return getState(gameFrame + 1);
 }
 
-string Player::State::getMotion() {
+void Player::dealDamage(int dmg) {
+    state.health -= dmg;
+    state.accDamage += dmg;
+
+    if(state.health < 0)
+        state.health = 0;
+}
+
+string Player::getMotion(int index) {
     string out = "";
-    Vector2 socd = getSOCD();
-    socd.x *= side;
+
+    Vector2 socd = getSOCD(index);
+    socd.x *= state.side;
 
     out += ('5' + (int)socd.x + (int)socd.y * 3);
 
-    if(button[Button::A])
+    if(state.button[index].A)
         out += (out.size() == 1) ? "A" : "+A";
 
-    if(button[Button::B])
+    if(state.button[index].B)
         out += (out.size() == 1) ? "B" : "+B";
 
-    if(button[Button::C])
+    if(state.button[index].C)
         out += (out.size() == 1) ? "C" : "+C";
 
-    if(button[Button::D])
+    if(state.button[index].D)
         out += (out.size() == 1) ? "D" : "+D";
 
-    if(button[Button::Taunt])
+    if(state.button[index].Taunt)
         out += (out.size() == 1) ? "P" : "+P";
 
     return out;
 }
 
-bool Player::State::inMove(int move) {
-    int current = moveIndex;
+bool Player::inMove(int move) {
+    int current = state.moveIndex;
 
     // Some moves are synonyms for each other
     switch(current) {
@@ -474,34 +421,34 @@ bool Player::State::inMove(int move) {
     return current == move;
 }
 
-void Player::State::setMove(int move, bool loop) {
+void Player::setMove(int move, bool loop) {
 
-    if(moveIndex != move) {
-        moveIndex = move;
-        moveFrame = 0;
+    if(state.moveIndex != move) {
+        state.moveIndex = move;
+        state.moveFrame = 0;
 
     }else if(loop) {
-        Animation* anim = g::save.getAnimation(config->move[moveIndex]);
+        Animation* anim = g::save.getAnimation(config.move[state.moveIndex]);
 
-        if(moveFrame >= anim->getFrameCount())
-            moveFrame = 0;
+        if(state.moveFrame >= anim->getFrameCount())
+            state.moveFrame = 0;
     }
 }
 
-bool Player::State::doneMove() {
-    Animation* anim = g::save.getAnimation(config->move[moveIndex]);
-    return (moveFrame >= anim->getFrameCount());
+bool Player::doneMove() {
+    Animation* anim = g::save.getAnimation(config.move[state.moveIndex]);
+    return (state.moveFrame >= anim->getFrameCount());
 }
 
-int Player::State::getKeyFrame() {
-    Animation* anim = g::save.getAnimation(config->move[moveIndex]);
+int Player::getKeyFrame() {
+    Animation* anim = g::save.getAnimation(config.move[state.moveIndex]);
 
     int key = 0;
     int time = 0;
 
     for(int i = 0; i < anim->keyFrames.size(); i ++) {
 
-        if(moveFrame >= time)
+        if(state.moveFrame >= time)
             key = i;
 
         time += anim->keyFrames[i].duration;
@@ -509,54 +456,54 @@ int Player::State::getKeyFrame() {
     return key;
 }
 
-Frame Player::State::getFrame() {
-    Animation* anim = g::save.getAnimation(config->move[moveIndex]);
+Frame Player::getFrame() {
+    Animation* anim = g::save.getAnimation(config.move[state.moveIndex]);
 
     Frame frame;
 
     if(anim) {
-        frame = anim->getFrame(moveFrame);
+        frame = anim->getFrame(state.moveFrame);
 
         // Correct directional attributes of the frame
-        frame.impulse.x *= side;
+        frame.impulse.x *= state.side;
 
         for(auto& box : frame.hitBoxes) {
 
-            if(side == -1)
+            if(state.side == -1)
                 box.x = -box.x - box.w;
 
-            box.x += position.x;
-            box.y += position.y;
+            box.x += state.position.x;
+            box.y += state.position.y;
 
-            box.force.x *= side;            
+            box.force.x *= state.side;            
         }
 
         for(auto& box : frame.hurtBoxes) {
 
-            if(side == -1)
+            if(state.side == -1)
                 box.x = -box.x - box.w;
 
-            box.x += position.x;
-            box.y += position.y;        
+            box.x += state.position.x;
+            box.y += state.position.y;        
         }
 
         for(int i = 0; i < frame.pose.jointCount; i ++) {
-            frame.pose.joints[i].x *= side;
-            frame.pose.joints[i] += position;
+            frame.pose.joints[i].x *= state.side;
+            frame.pose.joints[i] += state.position;
         }
     }
     return frame;
 }
 
-Skeleton Player::State::getSkeleton() {
+Skeleton Player::getSkeleton() {
     return getFrame().pose;
 }
 
-vector<HitBox> Player::State::getHitBoxes() {
+vector<HitBox> Player::getHitBoxes() {
     return getFrame().hitBoxes;
 }
 
-vector<HurtBox> Player::State::getHurtBoxes() {
+vector<HurtBox> Player::getHurtBoxes() {
     return getFrame().hurtBoxes;   
 }
 
@@ -569,19 +516,19 @@ vector<Clothing*> Player::getClothes() {
     return out;
 }
 
-Vector2 Player::State::getSOCD() {
+Vector2 Player::getSOCD(int index) {
     Vector2 mov;
 
-    if(button[Button::Right])
+    if(state.button[index].Right)
         mov.x += 1;
 
-    if(button[Button::Left])
+    if(state.button[index].Left)
         mov.x -= 1;
 
-    if(button[Button::Up])
+    if(state.button[index].Up)
         mov.y += 1;
 
-    if(button[Button::Down])
+    if(state.button[index].Down)
         mov.y -= 1;
 
     return mov;

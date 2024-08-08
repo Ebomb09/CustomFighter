@@ -13,6 +13,8 @@ set(Core
 	src/core/skeleton.cpp
 	src/core/animation.cpp
 	src/core/math.cpp
+	src/core/player.cpp
+	src/core/net_tools.cpp
 	)
 
 set(ImGui
@@ -31,12 +33,32 @@ set(IncludeDirs
 	ext/SFML-2.6.1/include 
 	ext/imgui ext/nativefiledialog-extended-1.2.0/src/include
 	ext/nlohmann
+	ext/curl-8.9.1_1-win64-mingw/include
+	ext/ggpo-master/src/include	
+	ext/sockpp-master/include/
 	)
 
 set(LibraryDirs
 
 	ext/SFML-2.6.1/lib 
 	ext/nativefiledialog-extended-1.2.0/build/src
+	ext/curl-8.9.1_1-win64-mingw/lib	
+	ext/ggpo-master/build/lib/x64/Debug
+	ext/sockpp-master/build	
+	)
+
+set(LinkLibrary
+
+	sfml-graphics 
+	sfml-window 
+	sfml-audio 
+	sfml-system 
+	opengl32 
+	nfd
+	curl
+	ws2_32
+	sockpp
+	GGPO
 	)
 
 add_executable(Editor
@@ -50,14 +72,16 @@ add_executable(Editor
 target_compile_features(Editor PUBLIC cxx_std_17)
 target_include_directories(Editor PUBLIC ${IncludeDirs})
 target_link_directories(Editor PUBLIC ${LibraryDirs})
-target_link_libraries(Editor PUBLIC sfml-graphics sfml-window sfml-audio sfml-system opengl32 nfd)
+target_link_libraries(Editor PUBLIC ${LinkLibrary})
 
 
 
 add_executable(Game
 	src/game/main.cpp
-	src/game/player.cpp
-	
+	src/game/lobby.cpp	
+	src/game/local_game.cpp	
+	src/game/net_game.cpp
+
 	${Core}
 	${ImGui}
 	)
@@ -66,4 +90,4 @@ add_executable(Game
 target_compile_features(Game PUBLIC cxx_std_17)
 target_include_directories(Game PUBLIC ${IncludeDirs})
 target_link_directories(Game PUBLIC ${LibraryDirs})
-target_link_libraries(Game PUBLIC sfml-graphics sfml-window sfml-audio sfml-system opengl32 nfd)
+target_link_libraries(Game PUBLIC sfml-graphics ${LinkLibrary})

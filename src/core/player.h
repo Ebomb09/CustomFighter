@@ -4,9 +4,11 @@
 #include <vector>
 #include <string>
 
-#include "core/skeleton.h"
-#include "core/clothing.h"
-#include "core/animation.h"
+#include "skeleton.h"
+#include "clothing.h"
+#include "animation.h"
+
+#include "button.h"
 
 using std::vector;
 using std::string;
@@ -65,48 +67,41 @@ namespace Move {
 	};
 };
 
-struct Button {
-	int 			Up				= 0;
-	int 			Down			= 0;
-	int 			Left			= 0;
-	int 			Right			= 0;
-	int 			A				= 0;
-	int 			B				= 0;
-	int 			C				= 0;
-	int 			D				= 0;
-	int 			Taunt			= 0;
-
-	static const int History = 30; 
-};
-
 struct Player {
 
-	struct Config {
-		vector<string> 	clothes;
-		string 			move			[Move::Total];
-		string 			motion			[Move::Total];
-		Button 			button;
-		Player*			opponent		= NULL;
+	int id = 0;
+	int local_id = -1;
 
+	struct Config {
+		vector<string>	clothes;
+		string 			moves			[Move::Total];
+		string 			motions			[Move::Total];
+
+		void loadFromText(string str);
+		string saveToText();
+		void loadFromFile(std::string fileName);
+		void saveToFile(std::string fileName);
 	}config;
 
 	struct State {
-		int 			health			= 100;
+		int 			target			= 0;
+		int				health			= 100;
 		int				accDamage		= 0;
-		int 			stun			= 0;
-		int 			hitStop			= 0;
-		int 			hitKeyFrame		= -1;
-		int 			side			= 1;
-		Vector2 		position		= {0, 0};
-		Vector2 		velocity		= {0, 0};
-		int 			moveIndex		= Move::Stand;
-		int 			moveFrame		= 0;
-		Button		 	button			[30];
+		int				stun			= 0;
+		int				hitStop			= 0;
+		int				hitKeyFrame		= -1;
+		int				side			= 1;
+		Vector2			position		= {0, 0};
+		Vector2			velocity		= {0, 0};
+		int				moveIndex		= Move::Stand;
+		int				moveFrame		= 0;
+		float 			look			= 0;
+		Button::Flag	button			[Button::History];
 
 	}state;
 
-	Button readInput();
-	void advanceFrame(Button in);
+	Button::Flag readInput();
+	void advanceFrame(Button::Flag in, vector<Player> others);
 	void draw();
 
 	void dealDamage(int dmg);

@@ -1,41 +1,19 @@
+#include <fstream>
 #include <cmath>
+#include <json.hpp>
 
-#include "core/render_instance.h"
-#include "core/input_interpreter.h"
-#include "core/math.h"
-#include "core/save.h"
-
+#include "render_instance.h"
+#include "input_interpreter.h"
+#include "save.h"
+#include "math.h"
+#include "save.h"
 #include "player.h"
 
 void Player::draw() {
-
     Skeleton pose = getSkeleton();
-    Skeleton opPose = config.opponent->getSkeleton();
 
-    for(int i = 0; i < pose.jointCount; i ++) {
+    for(int i = 0; i < pose.jointCount; i ++) 
         pose.joints[i] = g::video.camera.getScreen(pose.joints[i]);
-        opPose.joints[i] = g::video.camera.getScreen(opPose.joints[i]);
-    }
-
-    float look = (opPose.head - pose.head).getAngle();
-
-    // Clamp look to side, no 180 degree head turns
-    if(state.side == 1) {
-
-        if(look > PI * 1/4.f)
-            look = PI * 1/4.f;
-
-        if(look < -PI * 1/4.f)
-            look = -PI * 1/4.f;
-
-    }else {
-
-        if(look < PI * 3/4.f && look >= 0)
-            look = PI * 3/4.f;
-
-        if(look > -PI * 3/4.f && look <= 0)
-            look = -PI * 3/4.f;
-    }
 
     // HitStop shake
     if(state.hitStop < 0) {
@@ -44,46 +22,51 @@ void Player::draw() {
             pose.joints[i].x += std::sin(state.hitStop) * 2;
     }
 
-    pose.draw(getClothes(), look);
+    pose.draw(getClothes(), state.look);
 }
 
-Button Player::readInput() {
-    Button out;
+Button::Flag Player::readInput() {
+    Button::Flag out;
 
-    out.A           = g::input.keyPressed[config.button.A];
-    out.B           = g::input.keyPressed[config.button.B];        
-    out.C           = g::input.keyPressed[config.button.C];
-    out.D           = g::input.keyPressed[config.button.D];   
-    out.Taunt       = g::input.keyPressed[config.button.Taunt];   
+    // Get the local save button config
+    if(local_id == -1)
+        return out;
+
+    Button::Config buttonConfig = g::save.getButtonConfig(local_id);
+
+    out.A       = g::input.keyPressed[buttonConfig.A];
+    out.B       = g::input.keyPressed[buttonConfig.B];
+    out.C       = g::input.keyPressed[buttonConfig.C];
+    out.D       = g::input.keyPressed[buttonConfig.D];   
+    out.Taunt   = g::input.keyPressed[buttonConfig.Taunt];   
 
     // Any attack button is pressed then retrigger all held attack buttons
     if(out.A || out.B || out.C || out.D || out.Taunt) {
-        out.A           = g::input.keyHeld[config.button.A];
-        out.B           = g::input.keyHeld[config.button.B];        
-        out.C           = g::input.keyHeld[config.button.C];
-        out.D           = g::input.keyHeld[config.button.D];   
-        out.Taunt       = g::input.keyHeld[config.button.Taunt];          
+        out.A       = g::input.keyHeld[buttonConfig.A];
+        out.B       = g::input.keyHeld[buttonConfig.B];        
+        out.C       = g::input.keyHeld[buttonConfig.C];
+        out.D       = g::input.keyHeld[buttonConfig.D];   
+        out.Taunt   = g::input.keyHeld[buttonConfig.Taunt];         
     }
 
     // Movement keys always held down
-    out.Up = g::input.keyHeld[config.button.Up];
-    out.Down = g::input.keyHeld[config.button.Down];        
-    out.Left = g::input.keyHeld[config.button.Left];
-    out.Right = g::input.keyHeld[config.button.Right];    
+    out.Up      = g::input.keyHeld[buttonConfig.Up];
+    out.Down    = g::input.keyHeld[buttonConfig.Down];
+    out.Left    = g::input.keyHeld[buttonConfig.Left];
+    out.Right   = g::input.keyHeld[buttonConfig.Right];
 
     return out;
 }
 
-void Player::advanceFrame(Button in) {
+void Player::advanceFrame(Button::Flag in, vector<Player> others) {
+
+    Player& opponent = others[state.target];
 
     // Add input to the button history
     for(int i = Button::History - 1; i > 0; i --) {
         state.button[i] = state.button[i - 1];
     }
     state.button[0] = in;   
-
-    // Shortcut to the config
-    Player* op = config.opponent;
 
     // Hitstop
     if(state.hitStop > 0)
@@ -94,7 +77,7 @@ void Player::advanceFrame(Button in) {
 
     // Check if taken any damage and set the HitStop
     int dmg1 = state.accDamage;
-    int dmg2 = op->state.accDamage;        
+    int dmg2 = opponent.state.accDamage;
 
     if(dmg1 > 0 || dmg2 > 0) {
         state.hitStop = std::max(dmg1, dmg2);
@@ -117,10 +100,10 @@ void Player::advanceFrame(Button in) {
 
     // Damage, only be hit once per keyframe
     // Opponent doing a new move can reset the hitKeyFrame
-    if(op->getKeyFrame() != state.hitKeyFrame)
+    if(opponent.getKeyFrame() != state.hitKeyFrame)
         state.hitKeyFrame = -1;
 
-    bool damageValid = (state.hitKeyFrame != op->getKeyFrame());
+    bool damageValid = (state.hitKeyFrame != opponent.getKeyFrame());
 
     if(damageValid) {
 
@@ -128,12 +111,12 @@ void Player::advanceFrame(Button in) {
         bool found = false;
 
         for(auto& hurt : getHurtBoxes()) {
-            for(auto& hit : op->getHitBoxes()) {
+            for(auto& hit : opponent.getHitBoxes()) {
 
                 if(Real::rectangleInRectangle(hurt, hit)) {
 
                     // Set what keyframe you were hit on
-                    state.hitKeyFrame = op->getKeyFrame();        
+                    state.hitKeyFrame = opponent.getKeyFrame();        
 
                     // Block if input in the opposite direction of opponent           
                     bool block = false;
@@ -209,13 +192,13 @@ void Player::advanceFrame(Button in) {
         int best = -1;
 
         for(int i = Move::Custom00; i < Move::Total; i ++) {
-            string str = config.motion[i];
+            string str = config.motions[i];
             int u = 0;
             int v = 0;
             bool match = false;
 
             // Check if in the required stance
-            Animation* anim = g::save.getAnimation(config.move[i]);
+            Animation* anim = g::save.getAnimation(config.moves[i]);
 
             if(!anim)
                 continue;
@@ -278,7 +261,7 @@ void Player::advanceFrame(Button in) {
                 if(best == -1)
                     best = i;
 
-                else if(config.motion[i].size() > config.motion[best].size()) 
+                else if(config.motions[i].size() > config.motions[best].size()) 
                     best = i;
             }
         }
@@ -323,7 +306,7 @@ void Player::advanceFrame(Button in) {
     if(inMove(Move::Stand) || inMove(Move::Crouch)) {
 
         // If on ground look in direction of opponent
-        state.side = (state.position.x < op->state.position.x) ? 1 : -1;
+        state.side = (state.position.x < opponent.state.position.x) ? 1 : -1;
 
         // Reset to grounded
         state.velocity = {0, 0};
@@ -361,10 +344,34 @@ void Player::advanceFrame(Button in) {
     }
 
     // Collision checks
-    if((state.position - op->state.position).getDistance() < 25) {
-        int side = (state.position.x < op->state.position.x) ? 1 : -1;
-        state.position.x = op->state.position.x + 25 * -side;
+    if((state.position - opponent.state.position).getDistance() < 25) {
+        state.position.x = opponent.state.position.x + 25 * opponent.state.side;
     }
+
+    // Clamp look to side, no 180 degree head turns
+    if(state.target != -1) {
+        Skeleton myPose = getSkeleton();
+        Skeleton opPose = others[state.target].getSkeleton();
+
+        state.look = (opPose.head - myPose.head).getAngle();
+
+        if(state.side == 1) {
+            
+            if(state.look > PI * 1/4.f)
+                state.look = PI * 1/4.f;
+
+            if(state.look < -PI * 1/4.f)
+                state.look = -PI * 1/4.f;
+
+        }else {
+
+            if(state.look < PI * 3/4.f && state.look >= 0)
+                state.look = PI * 3/4.f;
+
+            if(state.look > -PI * 3/4.f && state.look <= 0)
+                state.look = -PI * 3/4.f;
+        }   
+    } 
 }
 
 void Player::dealDamage(int dmg) {
@@ -428,7 +435,7 @@ void Player::setMove(int move, bool loop) {
         state.moveFrame = 0;
 
     }else if(loop) {
-        Animation* anim = g::save.getAnimation(config.move[state.moveIndex]);
+        Animation* anim = g::save.getAnimation(config.moves[state.moveIndex]);
 
         if(state.moveFrame >= anim->getFrameCount())
             state.moveFrame = 0;
@@ -436,12 +443,12 @@ void Player::setMove(int move, bool loop) {
 }
 
 bool Player::doneMove() {
-    Animation* anim = g::save.getAnimation(config.move[state.moveIndex]);
+    Animation* anim = g::save.getAnimation(config.moves[state.moveIndex]);
     return (state.moveFrame >= anim->getFrameCount());
 }
 
 int Player::getKeyFrame() {
-    Animation* anim = g::save.getAnimation(config.move[state.moveIndex]);
+    Animation* anim = g::save.getAnimation(config.moves[state.moveIndex]);
 
     int key = 0;
     int time = 0;
@@ -457,7 +464,7 @@ int Player::getKeyFrame() {
 }
 
 Frame Player::getFrame() {
-    Animation* anim = g::save.getAnimation(config.move[state.moveIndex]);
+    Animation* anim = g::save.getAnimation(config.moves[state.moveIndex]);
 
     Frame frame;
 
@@ -532,4 +539,69 @@ Vector2 Player::getSOCD(int index) {
         mov.y -= 1;
 
     return mov;
+}
+
+void Player::Config::loadFromText(string str) {
+    nlohmann::json json;
+
+    try {
+        json = nlohmann::json::parse(str);
+
+    }catch(nlohmann::json::exception e) {
+        return;
+    }
+
+    if(json["clothes"].is_array()) {
+        clothes.clear();
+
+        for(int i = 0; i < json["clothes"].size(); i ++) 
+            clothes.push_back(json["clothes"][i]);
+    }
+
+    if(json["moves"].is_array()) {
+
+        for(int i = 0; i < json["moves"].size(); i ++) 
+            moves[i] = json["moves"][i];
+    }
+
+    if(json["motions"].is_array()) {
+
+        for(int i = 0; i < json["motions"].size(); i ++) 
+            motions[i] = json["motions"][i];   
+    }       
+}
+
+string Player::Config::saveToText() {
+    nlohmann::json json;
+    json["clothes"] = clothes;
+    json["moves"] = moves;   
+    json["motions"] = motions;     
+
+    return json.dump();
+}
+
+void Player::Config::loadFromFile(std::string path) {
+    std::fstream file(path, std::fstream::in);
+
+    if(!file.good()) {
+        file.close();
+        return;
+    }
+
+    std::stringstream stream;
+    stream << file.rdbuf();
+    string str = stream.str();
+    loadFromText(str);  
+}
+
+void Player::Config::saveToFile(string path) {
+    std::fstream file(path, std::fstream::out | std::fstream::trunc);
+
+    if(!file.good()) {
+        file.close();
+        return;
+    }
+
+    file << saveToText();
+    file.close();   
 }

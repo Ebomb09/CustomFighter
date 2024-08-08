@@ -173,7 +173,14 @@ void Animation::loadFromFile(std::string fileName) {
         return;
     }
 
-    nlohmann::json json = nlohmann::json::parse(file);
+    nlohmann::json json;
+
+    try {
+        json = nlohmann::json::parse(file);
+
+    }catch(nlohmann::json::exception e) {
+        return;
+    }
 
     inCrouch = json["inCrouch"];
     inStand = json["inStand"];    

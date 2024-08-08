@@ -1,6 +1,57 @@
 #include "save.h"
 
-SaveManager g::save = SaveManager("data");
+#include <cstdlib>
+#include <fstream>
+#include <json.hpp>
+#include <curl/curl.h>
+
+SaveManager g::save = SaveManager();
+
+size_t write_callbackz(char *ptr, size_t size, size_t nmemb, void *userdata) {
+    string* write_data = (string*)userdata; 
+    *write_data += string(ptr, nmemb);
+    return nmemb;
+}
+
+SaveManager::SaveManager() {
+	std::srand(std::time(0));
+
+	// Load all clothing
+	for(auto& entry : std::filesystem::directory_iterator("data/clothing"))
+		getClothing(entry);
+
+	for(auto& entry : std::filesystem::directory_iterator("data/moves"))
+		getAnimation(entry);	
+
+	loadButtonConfig(0);
+	loadButtonConfig(1);
+
+	loadPlayerConfig(0);
+	loadPlayerConfig(1);	
+
+	loadServerList();
+
+	// Get network address
+	port = 50000 + std::rand() % 1000;
+
+    CURL* curl = curl_easy_init();
+    if(curl) {
+        string write_data = "";
+        curl_easy_setopt(curl, CURLOPT_URL, "https://api.ipify.org/");	
+
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, false);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, false);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYSTATUS, false);
+
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callbackz);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &write_data);
+
+        if(curl_easy_perform(curl) == CURLE_OK) {
+        	ip = write_data;
+        }
+        curl_easy_cleanup(curl);
+    }
+}
 
 SaveManager::~SaveManager() {
 
@@ -11,17 +62,7 @@ SaveManager::~SaveManager() {
 		delete it.second;
 
 	for(auto& it : animations)
-		delete it.second;	
-}
-
-SaveManager::SaveManager(std::filesystem::path path) {
-
-	// Load all clothing
-	for(auto& entry : std::filesystem::directory_iterator(path/"clothing"))
-		getClothing(entry);
-
-	for(auto& entry : std::filesystem::directory_iterator(path/"moves"))
-		getAnimation(entry);	
+		delete it.second;
 }
 
 sf::Texture* SaveManager::getTexture(std::filesystem::path path) {
@@ -81,4 +122,110 @@ Animation* SaveManager::getAnimation(std::filesystem::path path) {
 	}
 
 	return ptr;	
+}
+
+void SaveManager::loadButtonConfig(int index) {
+	std::fstream file("save/inputPlayer" + std::to_string(index) + ".json", std::fstream::in);
+
+	if(!file.good()) {
+		file.close();
+
+		if(index == 0) {
+			buttonConfig[index].Up 		= sf::Keyboard::W;
+			buttonConfig[index].Down 	= sf::Keyboard::S;
+			buttonConfig[index].Left 	= sf::Keyboard::A;
+			buttonConfig[index].Right 	= sf::Keyboard::D;
+			buttonConfig[index].A 		= sf::Keyboard::U;
+			buttonConfig[index].B 		= sf::Keyboard::J;
+			buttonConfig[index].C 		= sf::Keyboard::I;
+			buttonConfig[index].D 		= sf::Keyboard::O;
+			buttonConfig[index].Taunt 	= sf::Keyboard::Semicolon;		
+		}
+
+		if(index == 1) {
+			buttonConfig[index].Up 		= sf::Keyboard::Up;
+			buttonConfig[index].Down 	= sf::Keyboard::Down;
+			buttonConfig[index].Left 	= sf::Keyboard::Left;
+			buttonConfig[index].Right 	= sf::Keyboard::Right;
+			buttonConfig[index].A 		= sf::Keyboard::Numpad4;
+			buttonConfig[index].B 		= sf::Keyboard::Numpad1;
+			buttonConfig[index].C 		= sf::Keyboard::Numpad5;
+			buttonConfig[index].D 		= sf::Keyboard::Numpad6;
+			buttonConfig[index].Taunt 	= sf::Keyboard::Enter;
+		}
+
+		return;
+	}
+
+	nlohmann::json json = nlohmann::json::parse(file);
+	buttonConfig[index].Up 		= json["Up"];
+	buttonConfig[index].Down 	= json["Down"];
+	buttonConfig[index].Left 	= json["Left"];
+	buttonConfig[index].Right 	= json["Right"];
+	buttonConfig[index].A 		= json["A"];
+	buttonConfig[index].B 		= json["B"];
+	buttonConfig[index].C 		= json["C"];
+	buttonConfig[index].D 		= json["D"];
+	buttonConfig[index].Taunt 	= json["Taunt"];
+
+	file.close();
+	return;
+}
+
+void SaveManager::saveButtonConfig(int index, Button::Config config) {
+	std::fstream file("save/inputPlayer" + std::to_string(index) + ".json", std::fstream::out);
+
+	nlohmann::json json;
+	json["Up"] 		= buttonConfig[index].Up;
+	json["Down"] 	= buttonConfig[index].Down; 
+	json["Left"] 	= buttonConfig[index].Left; 
+	json["Right"] 	= buttonConfig[index].Right;
+	json["A"] 		= buttonConfig[index].A; 	
+	json["B"] 		= buttonConfig[index].B; 	
+	json["C"] 		= buttonConfig[index].C; 	
+	json["D"] 		= buttonConfig[index].D; 	
+	json["Taunt"] 	= buttonConfig[index].Taunt;
+
+	file.close();
+}
+
+Button::Config SaveManager::getButtonConfig(int index) {
+	return buttonConfig[index];
+}
+
+void SaveManager::loadPlayerConfig(int index) {
+	std::string path = "save/player" + std::to_string(index) + ".json";
+	playerConfig[index].loadFromFile(path);
+}
+
+void SaveManager::savePlayerConfig(int index, Player::Config config) {
+	std::string path = "save/player" + std::to_string(index) + ".json";
+	playerConfig[index] = config;
+	playerConfig[index].saveToFile(path);
+}
+
+Player::Config SaveManager::getPlayerConfig(int index) {	
+	return playerConfig[index];
+}
+
+void SaveManager::loadServerList() {
+	std::fstream file("save/serverList", std::fstream::in);
+
+	if(!file.good()) {
+		file.close();
+		return;
+	}
+
+	std::string line;
+	do{
+		std::getline(file, line);
+		serverList.push_back(line);
+
+	}while(!file.eof());
+
+	file.close();
+}
+
+string SaveManager::getNetworkAddress() {
+	return ip + ":" + std::to_string(port);
 }

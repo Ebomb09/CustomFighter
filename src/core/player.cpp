@@ -60,8 +60,6 @@ Button::Flag Player::readInput() {
 
 void Player::advanceFrame(Button::Flag in, vector<Player> others) {
 
-    Player& opponent = others[state.target];
-
     // Add input to the button history
     for(int i = Button::History - 1; i > 0; i --) {
         state.button[i] = state.button[i - 1];
@@ -76,14 +74,16 @@ void Player::advanceFrame(Button::Flag in, vector<Player> others) {
         state.hitStop ++;
 
     // Check if taken any damage and set the HitStop
-    int dmg1 = state.accDamage;
-    int dmg2 = opponent.state.accDamage;
+    int dmg = 0;
 
-    if(dmg1 > 0 || dmg2 > 0) {
-        state.hitStop = std::max(dmg1, dmg2);
+    for(Player& other : others) 
+        dmg = std::max(dmg, other.state.accDamage);
+
+    if(dmg > 0) {
+        state.hitStop = dmg;
 
         // If this player is damaged signal with a negative hitStop
-        if(dmg1 > 0)
+        if(state.accDamage > 0)
             state.hitStop = -state.hitStop;
     }
     state.accDamage = 0;
@@ -100,10 +100,10 @@ void Player::advanceFrame(Button::Flag in, vector<Player> others) {
 
     // Damage, only be hit once per keyframe
     // Opponent doing a new move can reset the hitKeyFrame
-    if(opponent.getKeyFrame() != state.hitKeyFrame)
+    if(state.target != -1 && others[state.target].getKeyFrame() != state.hitKeyFrame)
         state.hitKeyFrame = -1;
 
-    bool damageValid = (state.hitKeyFrame != opponent.getKeyFrame());
+    bool damageValid = (state.target != -1 && state.hitKeyFrame != others[state.target].getKeyFrame());
 
     if(damageValid) {
 
@@ -111,12 +111,12 @@ void Player::advanceFrame(Button::Flag in, vector<Player> others) {
         bool found = false;
 
         for(auto& hurt : getHurtBoxes()) {
-            for(auto& hit : opponent.getHitBoxes()) {
+            for(auto& hit : others[state.target].getHitBoxes()) {
 
                 if(Real::rectangleInRectangle(hurt, hit)) {
 
                     // Set what keyframe you were hit on
-                    state.hitKeyFrame = opponent.getKeyFrame();        
+                    state.hitKeyFrame = others[state.target].getKeyFrame();        
 
                     // Block if input in the opposite direction of opponent           
                     bool block = false;
@@ -306,7 +306,8 @@ void Player::advanceFrame(Button::Flag in, vector<Player> others) {
     if(inMove(Move::Stand) || inMove(Move::Crouch)) {
 
         // If on ground look in direction of opponent
-        state.side = (state.position.x < opponent.state.position.x) ? 1 : -1;
+        if(state.target != -1)
+            state.side = (state.position.x < others[state.target].state.position.x) ? 1 : -1;
 
         // Reset to grounded
         state.velocity = {0, 0};
@@ -344,8 +345,8 @@ void Player::advanceFrame(Button::Flag in, vector<Player> others) {
     }
 
     // Collision checks
-    if((state.position - opponent.state.position).getDistance() < 25) {
-        state.position.x = opponent.state.position.x + 25 * opponent.state.side;
+    if(state.target != -1 && (state.position - others[state.target].state.position).getDistance() < 25) {
+        state.position.x = others[state.target].state.position.x + 25 * others[state.target].state.side;
     }
 
     // Clamp look to side, no 180 degree head turns

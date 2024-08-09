@@ -84,7 +84,7 @@ struct Player {
 	}config;
 
 	struct State {
-		int 			target			= 0;
+		int 			target			= -1;
 		int				health			= 100;
 		int				accDamage		= 0;
 		int				stun			= 0;

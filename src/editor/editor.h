@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "core/animation.h"
+#include "core/player.h"
 
 struct Editor {
 	std::string fileName = "";
@@ -12,6 +13,8 @@ struct Editor {
 	int keyFrame = -1;
 	int selected = -1;
 	int dragZone = -1;
+	Player player;
+	int timer = 0;
 
 	enum Mode {
 	    Joints,
@@ -29,7 +32,7 @@ struct Editor {
 		int mode = Mode::Joints;
 
 		bool playback = false;
-		float playbackFrame = 0;
+		int playbackSpeed = 1;
 	} settings;
 
 	void update();
@@ -47,6 +50,8 @@ struct Editor {
     void drawModel();
     void drawHitBox();
     void drawHurtBox();
+
+    void resetPlayer();
 
     Skeleton getSkeleton();
     std::vector<Rectangle*> getBoxes();

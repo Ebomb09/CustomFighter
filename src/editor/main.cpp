@@ -196,11 +196,11 @@ int main() {
             }  
 
             if(ImGui::BeginMenu("Playback")) {
-                ImGui::Checkbox("Play", &editor.settings.playback);
 
-                if(editor.settings.playback)
-                    ImGui::SliderFloat("Frame", &editor.settings.playbackFrame, 0, (float)editor.anim.getFrameCount());
-
+                if(ImGui::Checkbox("Play", &editor.settings.playback)) {
+                    editor.resetPlayer();
+                }
+                ImGui::SliderInt("Playback Speed", &editor.settings.playbackSpeed, 1, 10, "Every %d frame(s)");
                 ImGui::EndMenu();
             }
             ImGui::EndMainMenuBar();

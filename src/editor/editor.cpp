@@ -1,5 +1,6 @@
 #include <SFML/Graphics.hpp>
 #include <cmath>
+#include <iostream>
 
 #include "core/input_interpreter.h"
 #include "core/render_instance.h"
@@ -8,6 +9,10 @@
 #include "editor.h"
 
 void Editor::drawGrid() {
+
+    if(!settings.drawGrid)
+        return;
+
     sf::Vertex l[2];
     float sX = std::floor(g::video.camera.x / 32) * 32;
     float sY = std::floor(g::video.camera.y / 32) * 32;
@@ -48,7 +53,12 @@ void Editor::drawModel() {
 	if(!settings.drawModel)
 		return;
 
-    Skeleton copy = getSkeleton();
+    Skeleton copy;
+
+    if(settings.playback)
+        copy = player.getSkeleton();
+    else
+        copy = getSkeleton();
 
     for(int i = 0; i < copy.jointCount; i ++)
         copy.joints[i] = g::video.camera.getScreen(copy.joints[i]);
@@ -68,7 +78,12 @@ void Editor::drawSkeleton() {
     if(keyFrame < 0)
         return;
 
-	Skeleton copy = getSkeleton();
+    Skeleton copy;
+
+    if(settings.playback)
+        copy = player.getSkeleton();
+    else
+        copy = getSkeleton();
 
     for(int i = 0; i < copy.boneCount; i ++) {
         Bone& b = copy.bones[i];
@@ -91,7 +106,14 @@ void Editor::drawHitBox() {
     if(keyFrame < 0)
         return;
 
-    for(auto& box : getHitBoxes()) {
+    vector<HitBox> copy;
+
+    if(settings.playback)
+        copy = player.getHitBoxes();
+    else
+        copy = getHitBoxes();
+
+    for(auto& box : copy) {
         sf::RectangleShape rect = g::video.camera.getScreen(box);
         rect.setFillColor({252, 62, 45, 50});
         rect.setOutlineThickness(1);
@@ -108,7 +130,14 @@ void Editor::drawHurtBox() {
     if(keyFrame < 0)
         return;
 
-    for(auto& box : getHurtBoxes()) {
+    vector<HurtBox> copy;
+
+    if(settings.playback)
+        copy = player.getHurtBoxes();
+    else
+        copy = getHurtBoxes();
+
+    for(auto& box : copy) {
         sf::RectangleShape rect = g::video.camera.getScreen(box);
         rect.setFillColor({252, 218, 45, 50});
         rect.setOutlineThickness(1);
@@ -117,10 +146,17 @@ void Editor::drawHurtBox() {
     }                
 } 
 
-Skeleton Editor::getSkeleton() {
+void Editor::resetPlayer() {
+    timer = 0;
+    player.state.position = {0, 0};
 
-	if(settings.playback)
-		return anim.getFrame(settings.playbackFrame).pose;
+    // Set player to test and address in the save
+    g::save.animations["test"] = &anim;
+    player.config.moves[Move::Custom00] = "test";
+    player.setMove(Move::Custom00);
+}
+
+Skeleton Editor::getSkeleton() {
 
 	if(keyFrame >= 0)
 		return getKeyFrame().pose;
@@ -166,6 +202,7 @@ void Editor::update() {
     drawHitBox();
     drawHurtBox();
 
+    // Editting modes
     if(keyFrame >= 0) {
 
         switch(settings.mode) {
@@ -179,6 +216,18 @@ void Editor::update() {
             selectRectangle();
             break;
         }        
+    }
+
+    // Player simulation
+    timer ++;
+
+    if(settings.playback && timer >= settings.playbackSpeed) {
+        timer = 0;
+
+        player.advanceFrame(Button::Flag(), {player});
+
+        if(player.inMove(Move::Stand))
+            resetPlayer();
     }
 }
 

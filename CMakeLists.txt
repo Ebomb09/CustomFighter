@@ -24,6 +24,7 @@ set(ImGui
 	ext/imgui/imgui_draw.cpp
 	ext/imgui/imgui_tables.cpp	
 	ext/imgui/imgui_widgets.cpp
+	ext/imgui/imgui_stdlib.cpp
 	ext/imgui/imgui-SFML.cpp
 	)
 
@@ -81,6 +82,7 @@ add_executable(Game
 	src/game/lobby.cpp	
 	src/game/local_game.cpp	
 	src/game/net_game.cpp
+	src/game/character_select.cpp
 
 	${Core}
 	${ImGui}

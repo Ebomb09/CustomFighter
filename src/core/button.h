@@ -1,7 +1,10 @@
 #ifndef GAME_PLAYER_BUTTON_LAYOUT_H
 #define GAME_PLAYER_BUTTON_LAYOUT_H
 
-struct Button {
+#include <string>
+
+namespace Button {
+
 	enum {
 		Up, 
 		Down, 
@@ -12,9 +15,23 @@ struct Button {
 		C, 	
 		D, 	
 		Taunt,
-		Total,
-		History = 30
+		Total
 	};
+
+	const std::string String[] = {
+		"Up", 
+		"Down", 
+		"Left", 
+		"Right",
+		"A", 	
+		"B", 	
+		"C", 	
+		"D", 	
+		"Taunt",
+		"Total"
+	};
+
+	const int History = 30;
 
 	union Config {
 		struct {

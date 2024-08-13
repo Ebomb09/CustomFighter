@@ -1,15 +1,18 @@
 #ifndef GAME_ANIMATION_KEY_FRAME_H
 #define GAME_ANIMATION_KEY_FRAME_H
 
-#include <vector>
-
 #include "math.h"
 #include "skeleton.h"
+#include "move.h"
+
+#include <vector>
+#include <string>
 
 struct Frame {
     int duration;
     Skeleton pose;
     Vector2 impulse;
+    std::string cancel;
 
     std::vector<HitBox> hitBoxes;
     std::vector<HurtBox> hurtBoxes;
@@ -24,9 +27,12 @@ struct Frame {
 };
 
 struct Animation {
-    bool inCrouch = false;
-    bool inStand = false;
-    bool inJump = false;
+
+    // Organizational
+    bool category[MoveCategory::Total];
+
+    // Leading animations can be cancelled from
+    bool from[Move::Total];
 
     std::vector<Frame> keyFrames;
 

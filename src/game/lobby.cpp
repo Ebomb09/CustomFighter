@@ -102,7 +102,7 @@ bool Lobby::run(Room& room) {
                     // Password
                     ImGui::TableSetColumnIndex(2);
                     string password = roomList[i].value("password", " ");
-                    ImGui::InputText(("##Password" + std::to_string(i)).c_str(), password.data(), password.size());
+                    ImGui::InputText(("##Password" + std::to_string(i)).c_str(), &password);
                     roomList[i]["password"] = password;
 
                     // Attempt room

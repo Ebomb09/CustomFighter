@@ -29,10 +29,10 @@ Button::Flag Player::readInput() {
     Button::Flag out;
 
     // Get the local save button config
-    if(local_id == -1)
+    if(seatIndex == -1)
         return out;
 
-    Button::Config buttonConfig = g::save.getButtonConfig(local_id);
+    Button::Config buttonConfig = g::save.getButtonConfig(seatIndex);
 
     out.A       = g::input.keyPressed[buttonConfig.A];
     out.B       = g::input.keyPressed[buttonConfig.B];
@@ -203,13 +203,18 @@ void Player::advanceFrame(Button::Flag in, vector<Player> others) {
             if(!anim)
                 continue;
 
-            bool good[] = {
-                anim->inCrouch && inMove(Move::Crouch),
-                anim->inStand && inMove(Move::Stand),
-                anim->inJump && inMove(Move::Jump)
-            };
+            bool good = false;
 
-            if(!good[0] && !good[1] && !good[2])
+            // Animation can be done from Move
+            if(anim->from[state.moveIndex]) {
+                good = true;
+
+            // Animation can be done from explicit cancel
+            }else if(config.moves[i] == getFrame().cancel && getFrame().cancel.size() > 0) {
+                good = true;
+            }
+
+            if(!good)
                 continue;
 
             // Check if the last motion matches between the strings
@@ -266,8 +271,11 @@ void Player::advanceFrame(Button::Flag in, vector<Player> others) {
             }
         }
 
-        if(best != -1)
+        // Force reset of the moveFrame, so cancels into the same move work
+        if(best != -1) {
+            state.moveFrame = 0;
             setMove(best);
+        }
     }
 
     // Custom move finish

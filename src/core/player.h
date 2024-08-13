@@ -7,70 +7,17 @@
 #include "skeleton.h"
 #include "clothing.h"
 #include "animation.h"
+#include "move.h"
 
 #include "button.h"
 
 using std::vector;
 using std::string;
 
-namespace Move {
-	enum {
-		// Inherent Stances
-		Crouch,
-
-		Stand,
-		WalkForwards,
-		WalkBackwards,
-
-		Jump,
-		JumpForwards,
-		JumpBackwards,
-
-		StandBlock,
-		CrouchBlock,
-
-		CrouchCombo,
-		StandCombo,
-		JumpCombo,		
-
-		KnockDown,
-		GetUp,
-
-		// Custom Moves
-		Custom00,
-		Custom01,
-		Custom02,
-		Custom03,
-		Custom04,
-		Custom05,
-		Custom06,
-		Custom07,
-		Custom08,
-		Custom09,
-		Custom10,
-		Custom11,
-		Custom12,
-		Custom13,
-		Custom14,
-		Custom15,
-		Custom16,
-		Custom17,
-		Custom18,
-		Custom19,
-		Custom20,
-		Custom21,
-		Custom22,
-		Custom23,
-		Custom24,
-
-		Total
-	};
-};
-
 struct Player {
 
-	int id = 0;
-	int local_id = -1;
+	int gameIndex = 0;
+	int seatIndex = -1;
 
 	struct Config {
 		vector<string>	clothes;

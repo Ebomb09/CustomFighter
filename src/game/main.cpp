@@ -1,6 +1,7 @@
 #include "lobby.h"
 #include "local_game.h"
 #include "net_game.h"
+#include "character_select.h"
 
 #include "core/save.h"
 #include "core/render_instance.h"
@@ -13,11 +14,13 @@ int main(int argc, char* argv[]) {
 
     Lobby::Room room;
 
-    //LocalGame::run(g::save.getPlayerConfig(0), g::save.getPlayerConfig(0));
+    //CharacterSelect::run({});
 
-    if(Lobby::run(room)) {
+    LocalGame::run(g::save.getPlayerConfig(0), g::save.getPlayerConfig(0));
+
+    /*if(Lobby::run(room)) {
         NetGame::run(room);
-    }
+    }*/
 
 	return 0;
 }

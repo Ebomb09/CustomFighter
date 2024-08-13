@@ -141,7 +141,7 @@ bool start(Lobby::Room room) {
         // Reset player states
         player[i] = Player();
         player[i].config = room.configs[i];
-        player[i].id = i;
+        player[i].gameIndex = i;
 
         // Hint to GGPO what each player is
         GGPOPlayer hint;
@@ -151,7 +151,7 @@ bool start(Lobby::Room room) {
         // Determine player type from ip:port
         if(room.remotes[i] == "localhost") {
             hint.type = GGPO_PLAYERTYPE_LOCAL;
-            player[i].local_id = 0;
+            player[i].seatIndex = 0;
 
         }else {
             hint.type = GGPO_PLAYERTYPE_REMOTE;
@@ -218,7 +218,7 @@ bool loop() {
         GGPOErrorCode result;
         Button::Flag in[2];
 
-        if(player[0].local_id != -1) {
+        if(player[0].seatIndex != -1) {
             in[0] = player[0].readInput();  
             result = ggpo_add_local_input(ggpo, handle[0], &in[0], sizeof(Button::Flag)); 
         }else {

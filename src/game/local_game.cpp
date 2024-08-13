@@ -30,14 +30,14 @@ void drawHealthBars(Player& p1, Player& p2) {
 bool LocalGame::run(Player::Config p1, Player::Config p2) {
 	Player players[2];
 
-	players[0].id = 0;
-	players[0].local_id = 0;
+	players[0].gameIndex = 0;
+	players[0].seatIndex = 0;
 	players[0].config = p1;
 	players[0].state.target = 1;
 	players[0].state.position.x = -75;
 
-	players[1].id = 1;
-	players[1].local_id = 1;
+	players[1].gameIndex = 1;
+	players[1].seatIndex = 1;
 	players[1].config = p2;	
 	players[1].state.target = 0;
 	players[1].state.position.x = 75;	

@@ -3,6 +3,7 @@
 
 #include <string>
 #include <imgui.h>
+#include <imgui_stdlib.h>
 #include <imgui-SFML.h>
 #include <SFML/Graphics.hpp>
 #include <nfd.h>

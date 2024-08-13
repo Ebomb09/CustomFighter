@@ -2,6 +2,7 @@
 #define GAME_MATH_H
 
 #include <SFML/Graphics.hpp>
+#include <string>
 
 #define PI 3.14159265359
 

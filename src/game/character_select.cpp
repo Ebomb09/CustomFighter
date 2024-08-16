@@ -16,7 +16,9 @@ struct Creator {
         Disregard   = -4,
         Test        = -5,
         MoveList    = -6,
-        Confirm     = -7
+        Confirm     = -7,
+        Costume     = -8,
+        Insert      = -9
     };
 
     enum Mode {
@@ -24,7 +26,9 @@ struct Creator {
         Config,
         Move,
         Animation,
-        Motion
+        Motion,
+        WornClothes,
+        ListClothes
     };
 
     Player dummy        = Player();
@@ -35,9 +39,13 @@ struct Creator {
     int confHover       = 0;
     int moveHover       = 0;
     int animHover       = 0;
+    int wornHover       = 0;
+    int clothHover      = 0;
     int listSelected    = 0;
     int moveSelected    = 0;
+    int wornSelected    = 0;
     string animSave     = "";
+    string wornSave     = "";
     int mode            = Mode::List;
 
     vector<Menu::Option> getListOptions() {
@@ -53,8 +61,13 @@ struct Creator {
         vector<Menu::Option> out;
 
         out.push_back({"Confirm", ID::Confirm});
+        out.push_back({"", ID::Disregard});
+
+        out.push_back({"Costume", ID::Costume});
         out.push_back({"MoveList", ID::MoveList});
         out.push_back({"Test", ID::Test});
+        out.push_back({"", ID::Disregard});
+
         out.push_back({"Save", ID::Save});
         out.push_back({"Cancel", ID::Cancel});
 
@@ -96,6 +109,33 @@ struct Creator {
         return out;
     }
 
+    vector<Menu::Option> getConfigClothes() {
+        vector<Menu::Option> out;    
+        
+        for(int i = 0; i < dummy.config.clothes.size(); i ++) {
+            out.push_back({dummy.config.clothes[i], i});
+        }
+
+        out.push_back({"", ID::Disregard});
+        out.push_back({"ADD", ID::Insert});
+        out.push_back({"BACK", ID::Cancel});
+
+        return out;    
+    }
+
+    vector<Menu::Option> getClothingOptions() {
+        vector<Menu::Option> out;
+        
+        for(auto it = g::save.clothes.begin(); it != g::save.clothes.end(); it ++) {
+            out.push_back({it->first, 0});
+        }
+        out.push_back({"", ID::Disregard});
+        out.push_back({"REMOVE", ID::Delete});
+        out.push_back({"BACK", ID::Cancel});
+
+        return out;    
+    }
+
     void update(int total) {
 
         // Dummy behavior
@@ -110,6 +150,17 @@ struct Creator {
 
             switch(mode) {
 
+            case Creator::Mode::List:
+                dummy.config = g::save.getPlayerConfig(getListOptions()[listHover].id);
+                dummy.setMove(Move::Stand, true);
+                break;
+
+            case Creator::Mode::ListClothes:
+
+                if(getClothingOptions()[clothHover].id >= 0)
+                    dummy.config.clothes[wornSelected] = getClothingOptions()[clothHover].name;
+
+            case Creator::Mode::WornClothes:
             case Creator::Mode::Config:
                 dummy.setMove(Move::Stand, true);
                 break;
@@ -206,10 +257,79 @@ struct Creator {
                 }else if(options[confHover].id == ID::MoveList) {
                     moveHover = 0;
                     mode = Mode::Move;
+
+                }else if(options[confHover].id == ID::Cancel) {
+                    mode = Mode::List;
+
+                }else if(options[confHover].id == ID::Costume) {
+                    mode = Mode::WornClothes;
                 }
 
             }else if(res == Menu::Decline) {
                 mode = Mode::List;
+            }
+
+        }else if(mode == Mode::WornClothes) {
+            auto options = getConfigClothes();
+
+            int res = Menu::List(options, &wornHover, dummy.seatIndex, area);
+
+            if(res == Menu::Accept) {
+
+                if(options[wornHover].id == ID::Insert) {
+                    dummy.config.clothes.push_back("");
+                    wornSelected = dummy.config.clothes.size()-1;
+                    wornSave = "";
+                    mode = Mode::ListClothes;
+
+                }else if(options[wornHover].id == ID::Cancel) {
+                    mode = Mode::Config;
+
+                }else {
+                    wornSelected = options[wornHover].id;
+                    wornSave = dummy.config.clothes[wornSelected];
+                    mode = Mode::ListClothes;
+                }
+
+            }else if(res == Menu::Decline) {
+                mode = Mode::Config;
+            }
+
+        }else if(mode == Mode::ListClothes) {
+            auto options = getClothingOptions();
+
+            int res = Menu::List(options, &clothHover, dummy.seatIndex, area);
+
+            if(res == Menu::Accept) {
+
+                if(options[clothHover].id == ID::Delete) {
+                    dummy.config.clothes.erase(dummy.config.clothes.begin() + wornSelected);
+                    mode = Mode::WornClothes;  
+
+                }else if(options[clothHover].id == ID::Cancel) {
+
+                    // Rollback changes
+                    if(wornSave.size() == 0)
+                        dummy.config.clothes.erase(dummy.config.clothes.begin() + wornSelected);
+                    else
+                        dummy.config.clothes[wornSelected] = wornSave;
+
+                    mode = Mode::WornClothes;
+
+                }else {
+                    dummy.config.clothes[wornSelected] = options[clothHover].name;
+                    mode = Mode::WornClothes;
+                }
+
+            }else if(res == Menu::Decline) {
+
+                // Rollback changes
+                if(wornSave.size() == 0)
+                    dummy.config.clothes.erase(dummy.config.clothes.begin() + wornSelected);
+                else
+                    dummy.config.clothes[wornSelected] = wornSave;
+
+                mode = Mode::WornClothes;
             }
 
         // Draw the movelist selection

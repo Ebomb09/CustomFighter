@@ -106,6 +106,8 @@ namespace Move {
 
 		"Total"
 	};
+
+	int toCategory(int move);
 };
 
 namespace MoveCategory {

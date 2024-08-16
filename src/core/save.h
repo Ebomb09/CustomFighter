@@ -14,11 +14,12 @@
 struct SaveManager {
 
 	std::map<std::string, sf::Texture*> textures;
+	std::map<std::string, sf::Font*> fonts;
 	std::map<std::string, Clothing*> clothes;
 	std::map<std::string, Animation*> animations;
 
-	Button::Config buttonConfig[2];
-	Player::Config playerConfig[2];
+	Button::Config buttonConfig[4];
+	Player::Config playerConfig[30];
 
 	std::vector<std::string> serverList;
 	string ip;
@@ -28,8 +29,13 @@ struct SaveManager {
 	~SaveManager();
 
 	sf::Texture* getTexture(std::filesystem::path path);
+
 	Clothing* getClothing(std::filesystem::path path);
+
 	Animation* getAnimation(std::filesystem::path path);
+	std::vector<Animation*> getAnimationsByFilter(int category);
+
+	sf::Font* getFont(std::filesystem::path path);
 
 	void loadButtonConfig(int index);
 	void saveButtonConfig(int index, Button::Config config);

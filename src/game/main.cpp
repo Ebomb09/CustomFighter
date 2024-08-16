@@ -14,9 +14,9 @@ int main(int argc, char* argv[]) {
 
     Lobby::Room room;
 
-    //CharacterSelect::run({});
+    CharacterSelect::run(2);
 
-    LocalGame::run(g::save.getPlayerConfig(0), g::save.getPlayerConfig(0));
+    //LocalGame::run(g::save.getPlayerConfig(0), g::save.getPlayerConfig(0));
 
     /*if(Lobby::run(room)) {
         NetGame::run(room);

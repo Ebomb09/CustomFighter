@@ -3,8 +3,10 @@
 
 #include "core/player.h"
 
+#include <vector>
+
 namespace CharacterSelect {
-	bool run(Player::Config conf);
+	std::vector<Player::Config> run(int count);
 };
 
 #endif

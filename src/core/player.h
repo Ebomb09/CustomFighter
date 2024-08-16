@@ -68,6 +68,9 @@ struct Player {
 	vector<HurtBox> getHurtBoxes();	
 
 	vector<Clothing*> getClothes();	
+
+	Rectangle getRealBoundingBox();
+	Rectangle getScreenBoundingBox();	
 };
 
 #endif

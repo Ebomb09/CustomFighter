@@ -526,6 +526,9 @@ vector<HurtBox> Player::getHurtBoxes() {
 vector<Clothing*> Player::getClothes() {
     vector<Clothing*> out;
 
+    // Implied clothing... skin
+    out.push_back(g::save.getClothing("realistic"));
+
     for(auto& it : config.clothes)
         out.push_back(g::save.getClothing(it));
 
@@ -613,4 +616,24 @@ void Player::Config::saveToFile(string path) {
 
     file << saveToText();
     file.close();   
+}
+
+Rectangle Player::getRealBoundingBox() {
+    // Get the position of the skeleton
+    Skeleton pose = getSkeleton();
+    Vector2 min;
+    Vector2 max;
+
+    min = {std::min(min.x, 0.f), std::min(min.y, 0.f)};
+    max = {std::max(max.x, 0.f), std::max(max.y, 0.f)};
+
+    for(int i = 0; i < pose.jointCount; i ++) {
+        min = {std::min(min.x, pose.joints[i].x), std::min(min.y, pose.joints[i].y)};
+        max = {std::max(max.x, pose.joints[i].x), std::max(max.y, pose.joints[i].y)};
+    }
+    return {min.x, max.y, max.x - min.x, max.y - min.y};
+}
+
+Rectangle Player::getScreenBoundingBox() {
+    return g::video.camera.getScreen(getRealBoundingBox());
 }

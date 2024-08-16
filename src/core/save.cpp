@@ -21,7 +21,10 @@ SaveManager::SaveManager() {
 		getClothing(entry);
 
 	for(auto& entry : std::filesystem::directory_iterator("data/moves"))
-		getAnimation(entry);	
+		getAnimation(entry);
+
+	for(auto& entry : std::filesystem::directory_iterator("data/fonts"))
+		getFont(entry);
 
 	loadButtonConfig(0);
 	loadButtonConfig(1);
@@ -85,6 +88,26 @@ sf::Texture* SaveManager::getTexture(std::filesystem::path path) {
 	return ptr;
 }
 
+sf::Font* SaveManager::getFont(std::filesystem::path path) {
+	sf::Font* ptr = NULL;
+
+	if(fonts.find(path.string()) == fonts.end()) {
+		ptr = new sf::Font();
+
+		if(ptr->loadFromFile(path.string())) {
+			fonts[path.stem().string()] = ptr;
+
+		}else {
+			delete ptr;
+			ptr = NULL;
+		}
+
+	}else {
+		ptr = fonts[path.string()];
+	}
+	return ptr;
+}
+
 Clothing* SaveManager::getClothing(std::filesystem::path path) {
 	Clothing* ptr = NULL;
 
@@ -122,6 +145,17 @@ Animation* SaveManager::getAnimation(std::filesystem::path path) {
 	}
 
 	return ptr;	
+}
+
+vector<Animation*> SaveManager::getAnimationsByFilter(int category) {
+	vector<Animation*> out;
+
+	for(std::pair<string, Animation*> it : animations) {
+
+		if(it.second->category[category])
+			out.push_back(it.second);
+	}
+	return out;
 }
 
 void SaveManager::loadButtonConfig(int index) {

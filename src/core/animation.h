@@ -28,6 +28,8 @@ struct Frame {
 
 struct Animation {
 
+    std::string name;
+
     // Organizational
     bool category[MoveCategory::Total];
 

@@ -2,6 +2,7 @@
 #include "move.h"
 
 #include <fstream>
+#include <filesystem>
 #include <json.hpp>
 
 Frame::Frame() : pose(), duration(1) {}
@@ -180,6 +181,11 @@ void Animation::loadFromFile(std::string fileName) {
         return;
     }
 
+    // Get the stem name
+    std::filesystem::path path(fileName);
+    name = path.stem().string();
+
+    // Parse json
     nlohmann::json json;
 
     try {

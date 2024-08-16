@@ -155,3 +155,7 @@ Rectangle::operator sf::RectangleShape() {
 	sh.setSize({w, h});
 	return sh;
 }
+
+Rectangle::operator sf::FloatRect() {
+	return sf::FloatRect(x, y, w, h);
+}

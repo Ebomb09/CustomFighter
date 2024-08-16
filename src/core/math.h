@@ -42,6 +42,7 @@ struct Rectangle {
 	float x, y, w, h; 
 
 	operator sf::RectangleShape();
+	operator sf::FloatRect();
 };
 
 struct HurtBox : Rectangle {

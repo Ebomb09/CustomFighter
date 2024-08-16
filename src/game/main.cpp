@@ -14,9 +14,10 @@ int main(int argc, char* argv[]) {
 
     Lobby::Room room;
 
-    CharacterSelect::run(2);
+    vector<Player::Config> confs = CharacterSelect::run(2);
 
-    //LocalGame::run(g::save.getPlayerConfig(0), g::save.getPlayerConfig(0));
+    if(confs.size() == 2) 
+        LocalGame::run(confs);
 
     /*if(Lobby::run(room)) {
         NetGame::run(room);

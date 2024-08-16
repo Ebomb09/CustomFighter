@@ -4,7 +4,7 @@
 #include "core/player.h"
 
 namespace LocalGame {
-	bool run(Player::Config p1, Player::Config p2);
+	bool run(std::vector<Player::Config> configs);
 };
 
 #endif

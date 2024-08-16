@@ -15,8 +15,7 @@ size_t write_callbackz(char *ptr, size_t size, size_t nmemb, void *userdata) {
 
 SaveManager::SaveManager() {
 	std::srand(std::time(0));
-
-	// Load all clothing
+	
 	for(auto& entry : std::filesystem::directory_iterator("data/clothing"))
 		getClothing(entry);
 
@@ -26,11 +25,11 @@ SaveManager::SaveManager() {
 	for(auto& entry : std::filesystem::directory_iterator("data/fonts"))
 		getFont(entry);
 
-	loadButtonConfig(0);
-	loadButtonConfig(1);
+	for(int i = 0; i < maxButtonConfigs; i ++)
+		loadButtonConfig(i);
 
-	loadPlayerConfig(0);
-	loadPlayerConfig(1);	
+	for(int i = 0; i < maxPlayerConfigs; i ++)
+		loadPlayerConfig(i);
 
 	loadServerList();
 
@@ -207,6 +206,7 @@ void SaveManager::loadButtonConfig(int index) {
 }
 
 void SaveManager::saveButtonConfig(int index, Button::Config config) {
+	buttonConfig[index] = config;
 	std::fstream file("save/inputPlayer" + std::to_string(index) + ".json", std::fstream::out);
 
 	nlohmann::json json;

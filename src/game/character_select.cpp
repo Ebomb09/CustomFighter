@@ -15,7 +15,8 @@ struct Creator {
         Cancel      = -3,
         Disregard   = -4,
         Test        = -5,
-        MoveList    = -6
+        MoveList    = -6,
+        Confirm     = -7
     };
 
     enum Mode {
@@ -28,18 +29,30 @@ struct Creator {
 
     Player dummy        = Player();
     bool test           = false;
+    bool done           = false;
+    bool exit           = false;
+    int listHover       = 0;
     int confHover       = 0;
     int moveHover       = 0;
     int animHover       = 0;
-    int confSelected    = 0;
+    int listSelected    = 0;
     int moveSelected    = 0;
-    int animSelected    = 0;
     string animSave     = "";
-    int mode            = Mode::Config;
+    int mode            = Mode::List;
+
+    vector<Menu::Option> getListOptions() {
+        vector<Menu::Option> out;
+
+        for(int i = 0; i < g::save.maxPlayerConfigs; i ++) {
+            out.push_back({std::to_string(i), i});
+        }
+        return out;
+    }
 
     vector<Menu::Option> getConfigOptions() {
         vector<Menu::Option> out;
 
+        out.push_back({"Confirm", ID::Confirm});
         out.push_back({"MoveList", ID::MoveList});
         out.push_back({"Test", ID::Test});
         out.push_back({"Save", ID::Save});
@@ -152,8 +165,25 @@ struct Creator {
 
         if(test) {
 
-            if(dummy.state.button[0].Taunt)
+            if(dummy.state.button[0].Taunt) {
                 test = false;
+                done = false;
+            }
+
+        }else if(mode == Mode::List) {
+            auto options = getListOptions();
+
+            int res = Menu::Table(options, 5, false, &listHover, dummy.seatIndex, area);
+
+            if(res == Menu::Accept) {
+                listSelected = options[listHover].id;
+                dummy.config = g::save.getPlayerConfig(listSelected);
+                mode = Mode::Config;
+
+            // Exiting the character select
+            }else if(res == Menu::Decline) {
+                exit = true;
+            }
 
         }else if(mode == Mode::Config) {
             auto options = getConfigOptions();
@@ -166,13 +196,20 @@ struct Creator {
                 if(options[confHover].id == ID::Test) {
                     test = true;
 
+                }else if(options[confHover].id == ID::Save) {
+                    g::save.savePlayerConfig(listSelected, dummy.config);
+
+                }else if(options[confHover].id == ID::Confirm) {
+                    done = true;
+                    test = true;
+
                 }else if(options[confHover].id == ID::MoveList) {
                     moveHover = 0;
                     mode = Mode::Move;
                 }
 
             }else if(res == Menu::Decline) {
-                mode = Mode::Config;
+                mode = Mode::List;
             }
 
         // Draw the movelist selection
@@ -266,8 +303,22 @@ vector<Player::Config> CharacterSelect::run(int count) {
 
         g::video.window.clear();
 
-        for(int i = 0; i < creator.size(); i ++) 
+        vector<Player::Config> confs;
+
+        for(int i = 0; i < creator.size(); i ++) {
             creator[i].update(creator.size());
+
+            // Exit the menu
+            if(creator[i].exit)
+                return {};
+
+            if(creator[i].done) 
+                confs.push_back(creator[i].dummy.config);
+        }
+
+        // All confs filled in and done
+        if(confs.size() == creator.size())
+            return confs;
 
         g::video.window.display();
     }

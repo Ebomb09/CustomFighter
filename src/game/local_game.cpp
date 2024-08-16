@@ -27,20 +27,31 @@ void drawHealthBars(Player& p1, Player& p2) {
     g::video.window.draw(outline);    
 }
 
-bool LocalGame::run(Player::Config p1, Player::Config p2) {
-	Player players[2];
+bool LocalGame::run(vector<Player::Config> configs) {
+	vector<Player> players;
 
-	players[0].gameIndex = 0;
-	players[0].seatIndex = 0;
-	players[0].config = p1;
-	players[0].state.target = 1;
-	players[0].state.position.x = -75;
+    for(int i = 0; i < configs.size(); i ++) {
+        Player add;
+        add.gameIndex = i;
+        add.seatIndex = i;
+        add.config = configs[i];
+        players.push_back(add);
+    }
 
-	players[1].gameIndex = 1;
-	players[1].seatIndex = 1;
-	players[1].config = p2;	
-	players[1].state.target = 0;
-	players[1].state.position.x = 75;	
+    // 2 Player Game
+    if(players.size() == 2) {
+        players[0].state.position = -75;
+        players[0].state.target = 1;
+        players[1].state.position = 75; 
+        players[1].state.target = 0;
+
+    // 4 Player Tag Game
+    } else if(players.size() == 4) {
+        players[0].state.position = -75;
+        players[1].state.position = -75;        
+        players[2].state.position = 75; 
+        players[3].state.position = 75; 
+    }
 
     while(g::video.window.isOpen()) {
         g::input.prepEvents();
@@ -61,13 +72,13 @@ bool LocalGame::run(Player::Config p1, Player::Config p2) {
 
         drawHealthBars(players[0], players[1]);
         
-        vector<Player> old = {players[0], players[1]};
-        players[0].advanceFrame(players[0].readInput(), old);
-        players[1].advanceFrame(players[1].readInput(), old);
-		
+        // Update players
+        vector<Player> old = players;
 
-        players[0].draw();
-        players[1].draw();
+        for(Player& ply : players) {
+            ply.advanceFrame(ply.readInput(), old);
+            ply.draw();
+        }
 
         g::video.window.display();
     }

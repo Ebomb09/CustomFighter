@@ -18,8 +18,11 @@ struct SaveManager {
 	std::map<std::string, Clothing*> clothes;
 	std::map<std::string, Animation*> animations;
 
-	Button::Config buttonConfig[4];
-	Player::Config playerConfig[30];
+	static const int maxButtonConfigs = 4;
+	Button::Config buttonConfig[maxButtonConfigs];
+
+	static const int maxPlayerConfigs = 30;	
+	Player::Config playerConfig[maxPlayerConfigs];
 
 	std::vector<std::string> serverList;
 	string ip;

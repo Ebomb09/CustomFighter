@@ -14,7 +14,9 @@ set(Core
 	src/core/animation.cpp
 	src/core/math.cpp
 	src/core/player.cpp
+	src/core/move.cpp
 	src/core/net_tools.cpp
+	src/core/menu.cpp
 	)
 
 set(ImGui
@@ -44,7 +46,7 @@ set(LibraryDirs
 	ext/SFML-2.6.1/lib 
 	ext/nativefiledialog-extended-1.2.0/build/src
 	ext/curl-8.9.1_1-win64-mingw/lib	
-	ext/ggpo-master/build/lib/x64/Debug
+	ext/ggpo-master/build/lib/x64/Release
 	ext/sockpp-master/build	
 	)
 

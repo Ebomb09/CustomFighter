@@ -19,6 +19,7 @@ struct Creator {
     };
 
     enum Mode {
+        List,
         Config,
         Move,
         Animation,
@@ -52,7 +53,7 @@ struct Creator {
 
         for(int i = 0; i < Move::Total; i ++) {
             out.push_back({Move::String[i], i});
-            out.push_back({dummy.config.motions[i], i});
+            out.push_back({dummy.config.motions[i], i, "fight"});
             out.push_back({dummy.config.moves[i], i});                        
         }
           
@@ -101,7 +102,9 @@ struct Creator {
                 break;
 
             case Creator::Mode::Move:
-                dummy.setMove(getMoveOptions()[moveHover].id, true);  
+
+                if(getMoveOptions()[moveHover].id >= 0)
+                    dummy.setMove(getMoveOptions()[moveHover].id, true);  
                 break;       
 
             case Creator::Mode::Animation:
@@ -116,8 +119,6 @@ struct Creator {
         }   
 
         // Reset state
-        dummy.state.side = (dummy.seatIndex < total / 2) ? 1 : -1;
-        dummy.state.look = (dummy.seatIndex < total / 2) ? 0 : PI;
         dummy.state.position.x = 0;
 
         // Get the position of the skeleton
@@ -228,7 +229,7 @@ struct Creator {
         }else if(mode == Mode::Motion) {
 
             if(Move::toCategory(moveSelected) == MoveCategory::Custom) {
-                int res = Menu::Motion(&dummy.config.motions[moveSelected], dummy.state.side, dummy.seatIndex, area);
+                int res = Menu::Motion(&dummy.config.motions[moveSelected], dummy.seatIndex, area);
 
                 if(res == Menu::Accept) 
                     mode = Mode::Move;

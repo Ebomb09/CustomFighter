@@ -5,8 +5,6 @@
 #include "render_instance.h"
 #include "save.h"
 
-#include <iostream>
-
 static void cycleIndex(std::vector<Menu::Option> options, int* index, int quantity) {
 	int beg = *index;
 
@@ -32,6 +30,42 @@ static void cycleIndex(std::vector<Menu::Option> options, int* index, int quanti
 			return;
 
 	}while(options[*index].name == "");
+}
+
+static void renderText(string str, string font, sf::Color color, Rectangle area, int align) {
+
+	sf::Text text;
+	text.setFont(*g::save.getFont(font));
+	text.setCharacterSize(Menu::fontHeight);
+	text.setColor(color);	
+	text.setString(str);
+
+    // Ensure the text isn't overlapping into the next column
+    float testSize = text.getCharacterSize();
+
+    while(text.getLocalBounds().width > area.w || text.getLocalBounds().height > area.h) {
+    	text.setCharacterSize(testSize);
+    	testSize --;
+    }
+
+    // Calculate free space within cell
+    Vector2 freeSpace{
+    	area.w - text.getLocalBounds().width,
+    	area.h - text.getLocalBounds().height
+    };
+
+    // Align text
+    if(align == 0) {
+    	text.setPosition({area.x + freeSpace.x / 2, area.y + freeSpace.y});
+
+    }else if(align == 1){
+    	text.setPosition({area.x + freeSpace.x, area.y + freeSpace.y});
+
+    }else {
+    	text.setPosition({area.x, area.y + freeSpace.y});
+    }
+
+	g::video.window.draw(text);
 }
 
 int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int* hover, int user, Rectangle area) {
@@ -131,29 +165,7 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 					color = sf::Color::Yellow;
 			}
 
-	        sf::Text text;
-	        text.setFont(*g::save.getFont("Anton-Regular"));
-	        text.setCharacterSize(fontHeight);
-	        text.setString(options[i+j].name);
-	        text.setFillColor(color);
-
-	        // Ensure the text isn't overlapping into the next column
-	        float testSize = fontHeight;
-
-	        while(text.getLocalBounds().width > (area.w / columns)) {
-	        	text.setCharacterSize(testSize);
-	        	testSize --;
-	        }
-
-	        // Calculate free space within cell
-	        Vector2 freeSpace{
-	        	(area.w / columns) - text.getLocalBounds().width,
-	        	fontHeight - text.getLocalBounds().height
-	        };
-
-	        text.setPosition({pos.x + j * (area.w / columns) + freeSpace.x / 2, pos.y + freeSpace.y / 2});
-
-	        g::video.window.draw(text);
+	        renderText(options[i+j].name, options[i+j].font, color, {pos.x + j * (area.w / columns), pos.y, area.w / columns, fontHeight}, 0);
 		}
         pos.y += fontHeight;
 	}
@@ -171,29 +183,7 @@ static int keyboardData[4];
 
 int Menu::Text(std::string* str, int user, Rectangle area) {
 
-	// Draw the string
-	sf::Text text;
-	text.setFont(*g::save.getFont("Anton-Regular"));
-	text.setCharacterSize(fontHeight);
-	text.setColor(sf::Color::White);	
-	text.setString(*str);
-
-    // Ensure the text isn't overlapping into the next column
-    float testSize = fontHeight;
-
-    while(text.getLocalBounds().width > area.w) {
-    	text.setCharacterSize(testSize);
-    	testSize --;
-    }
-
-    // Calculate free space within cell
-    Vector2 freeSpace{
-    	area.w - text.getLocalBounds().width,
-    	fontHeight - text.getLocalBounds().height
-    };
-
-	text.setPosition({area.x + freeSpace.x / 2, area.y + freeSpace.y});
-	g::video.window.draw(text);
+	renderText(*str, "Anton-Regular", sf::Color::White, {area.x, area.y, area.w, fontHeight}, -1);
 
 	// Adjust remaining area for the keyboard
 	area.y += fontHeight*2;
@@ -264,32 +254,21 @@ int Menu::Text(std::string* str, int user, Rectangle area) {
 	return Wait;
 }
 
-int Menu::Motion(std::string* str, int side, int user, Rectangle area) {
+int Menu::Motion(std::string* str, int user, Rectangle area) {
 	Button::Config b = g::save.getButtonConfig(user);
 
-	// Draw the string
-	sf::Text text;
-	text.setFont(*g::save.getFont("Anton-Regular"));
-	text.setCharacterSize(fontHeight);
-	text.setColor(sf::Color::White);	
-	text.setString(*str);
+	// Draw the header
+	sf::RectangleShape rect({area.w, fontHeight});
+	rect.setPosition({area.x, area.y});
+	rect.setFillColor(sf::Color(128, 128, 128));
+	g::video.window.draw(rect);
 
-    // Ensure the text isn't overlapping into the next column
-    float testSize = fontHeight;
+	if(str->size() == 0) {
+		renderText("Input Motion...", "Anton-Regular", sf::Color::Black, {area.x, area.y, area.w, fontHeight}, 0);
 
-    while(text.getLocalBounds().width > area.w) {
-    	text.setCharacterSize(testSize);
-    	testSize --;
-    }
-
-    // Calculate free space within cell
-    Vector2 freeSpace{
-    	area.w - text.getLocalBounds().width,
-    	fontHeight - text.getLocalBounds().height
-    };
-
-	text.setPosition({area.x + freeSpace.x / 2, area.y + freeSpace.y});
-	g::video.window.draw(text);
+	}else {
+		renderText(*str, "fight", sf::Color::White, {area.x, area.y, area.w, fontHeight}, 0);
+	}
 
 	// Create a test player to get SOCD and motion inputs
 	Player test;
@@ -309,7 +288,6 @@ int Menu::Motion(std::string* str, int side, int user, Rectangle area) {
 		) {
 
 	    Vector2 socd = test.getSOCD();
-	    socd.x *= side;
 	    motion += ('5' + (int)socd.x + (int)socd.y * 3);
 	}
 
@@ -349,10 +327,11 @@ int Menu::Motion(std::string* str, int side, int user, Rectangle area) {
     	}
     }
 
-    if(motion.size() > 0)
+    if(motion.size() > 0) {
     	(*str) += motion;
+    }
 
-	if(g::input.keyPressed[b.Taunt])
+	if(str->size() > 0 && (g::input.keyReleased[b.A] || g::input.keyReleased[b.B] || g::input.keyReleased[b.C] || g::input.keyReleased[b.D]))
 		return Accept;
 
 	return Wait;

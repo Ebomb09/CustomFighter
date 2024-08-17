@@ -30,13 +30,17 @@ struct Animation {
 
     std::string name;
 
-    // Organizational
-    bool category[MoveCategory::Total];
-
-    // Leading animations can be cancelled from
-    bool from[Move::Total];
+    int category;
+    bool from[MoveCategory::Total];
 
     std::vector<Frame> keyFrames;
+
+    Animation();
+    Animation(const Animation& k);   
+    Animation(Animation&& k);
+
+    Animation& operator=(const Animation& copy);
+    Animation& operator=(Animation&& move);
 
     void loadFromFile(std::string fileName);
     void saveToFile(std::string fileName);

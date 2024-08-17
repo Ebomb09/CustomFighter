@@ -98,7 +98,7 @@ struct Creator {
     vector<Menu::Option> getAnimationOptions() {
         vector<Menu::Option> out;
 
-        for(auto anim : g::save.getAnimationsByFilter(Move::toCategory(moveSelected))) 
+        for(auto anim : g::save.getAnimationsByFilter(Move::getValidCategories(moveSelected)))
             out.push_back({anim->name, ID::Disregard});
 
         out.push_back({"", ID::Disregard});
@@ -385,7 +385,7 @@ struct Creator {
         // Draw the motion interpreter
         }else if(mode == Mode::Motion) {
 
-            if(Move::toCategory(moveSelected) == MoveCategory::Custom) {
+            if(moveSelected >= Move::Custom00) {
                 int res = Menu::Motion(&dummy.config.motions[moveSelected], dummy.seatIndex, area);
 
                 if(res == Menu::Accept) 

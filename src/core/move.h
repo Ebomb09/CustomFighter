@@ -2,6 +2,7 @@
 #define GAME_PLAYER_MOVE_H
 
 #include <string>
+#include <vector>
 
 namespace Move {
 	
@@ -107,7 +108,7 @@ namespace Move {
 		"Total"
 	};
 
-	int toCategory(int move);
+	std::vector<int> getValidCategories(int move);
 };
 
 namespace MoveCategory {
@@ -127,7 +128,13 @@ namespace MoveCategory {
 		JumpCombo,		
 		KnockDown,
 		GetUp,
-		Custom,
+
+		Normal,
+		CommandNormal,
+		Special,
+		Super,
+		Grab,
+		
 		Total
 	};
 
@@ -146,7 +153,13 @@ namespace MoveCategory {
 		"JumpCombo",		
 		"KnockDown",
 		"GetUp",
-		"Custom",
+
+		"Normal",
+		"CommandNormal",
+		"Special",
+		"Super",
+		"Grab",
+
 		"Total"	
 	};
 }

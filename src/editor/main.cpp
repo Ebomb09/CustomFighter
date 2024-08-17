@@ -214,14 +214,24 @@ int main() {
 
             if(ImGui::CollapsingHeader("Animation Category...")) {
 
-                for(int i = 0; i < MoveCategory::Total; i ++) 
-                    ImGui::Checkbox((MoveCategory::String[i] + "##CATEGORY").c_str(), &editor.anim.category[i]);
+                if(ImGui::BeginCombo("Category", MoveCategory::String[editor.anim.category].c_str())) {
+
+                    for(int i = 0; i < MoveCategory::Total; i ++) {
+
+                        if(ImGui::Selectable(MoveCategory::String[i].c_str())) {
+                            editor.anim.category = i;
+                            break;
+                        }
+                    }
+
+                    ImGui::EndCombo();
+                }
             }
 
             if(ImGui::CollapsingHeader("Animation From...")) {
 
-                for(int i = 0; i < Move::Total; i ++)
-                    ImGui::Checkbox((Move::String[i] + "##FROM").c_str(), &editor.anim.from[i]);
+                for(int i = 0; i < MoveCategory::Total; i ++)
+                    ImGui::Checkbox((MoveCategory::String[i] + "##FROM").c_str(), &editor.anim.from[i]);
             }
 
             if(ImGui::CollapsingHeader("Key Frame")) {
@@ -239,13 +249,15 @@ int main() {
 
                 if(editor.settings.mode == Editor::Mode::Joints) {
 
-                    ImGui::BeginListBox("Joints");
-                    for(int i = 0; i < keyFrame.pose.jointCount; i ++) {
+                    if(ImGui::BeginListBox("Joints")){
 
-                        if(ImGui::Selectable(("joint [" + std::to_string(i) + "]").c_str(), i == editor.selected)) 
-                            editor.setSelected(i);
+                        for(int i = 0; i < keyFrame.pose.jointCount; i ++) {
+
+                            if(ImGui::Selectable(("joint [" + std::to_string(i) + "]").c_str(), i == editor.selected)) 
+                                editor.setSelected(i);
+                        }
+                        ImGui::EndListBox();                        
                     }
-                    ImGui::EndListBox();
 
                     if(editor.selected >= 0) {
                         ImGui::SeparatorText("Attributes");
@@ -256,13 +268,16 @@ int main() {
                 } 
 
                 if(editor.settings.mode == Editor::Mode::HitBoxes) {
-                    ImGui::BeginListBox("HitBoxes");
-                    for(int i = 0; i < editor.getHitBoxes().size(); i ++) {
+                    
+                    if(ImGui::BeginListBox("HitBoxes")){
 
-                        if(ImGui::Selectable(("hitBox [" + std::to_string(i) + "]").c_str(), i == editor.selected)) 
-                            editor.setSelected(i);
+                        for(int i = 0; i < editor.getHitBoxes().size(); i ++) {
+
+                            if(ImGui::Selectable(("hitBox [" + std::to_string(i) + "]").c_str(), i == editor.selected)) 
+                                editor.setSelected(i);
+                        }
+                        ImGui::EndListBox();
                     }
-                    ImGui::EndListBox();
 
                     if(editor.selected >= 0) {
                         ImGui::SeparatorText("Attributes");
@@ -280,13 +295,15 @@ int main() {
                 } 
 
                 if(editor.settings.mode == Editor::Mode::HurtBoxes) {
-                    ImGui::BeginListBox("Hurt Boxes");
-                    for(int i = 0; i < editor.getHurtBoxes().size(); i ++) {
+                    
+                    if(ImGui::BeginListBox("Hurt Boxes")) {
+                        for(int i = 0; i < editor.getHurtBoxes().size(); i ++) {
 
-                        if(ImGui::Selectable(("hurtBox [" + std::to_string(i) + "]").c_str(), i == editor.selected)) 
-                            editor.setSelected(i);
+                            if(ImGui::Selectable(("hurtBox [" + std::to_string(i) + "]").c_str(), i == editor.selected)) 
+                                editor.setSelected(i);
+                        }
+                        ImGui::EndListBox();
                     }
-                    ImGui::EndListBox();
 
                     if(editor.selected >= 0) {
                         ImGui::SeparatorText("Attributes");

@@ -37,6 +37,44 @@ Frame& Frame::operator=(Frame&& move) {
     return *this; 
 }
 
+Animation::Animation() {
+    name = "";
+    category = 0;
+
+    for(int i = 0; i < MoveCategory::Total; i ++)
+        from[i] = false;
+}
+
+Animation::Animation(const Animation& k) {
+    *this = k;
+} 
+
+Animation::Animation(Animation&& k) {
+    *this = k;
+}
+
+Animation& Animation::operator=(const Animation& copy) {
+    name = copy.name;
+    category = copy.category;
+
+    for(int i = 0; i < MoveCategory::Total; i ++)
+        from[i] = copy.from[i];
+
+    keyFrames = copy.keyFrames;
+    return *this;    
+}
+
+Animation& Animation::operator=(Animation&& move) {
+    name = std::move(move.name);
+    category = std::move(move.category);
+
+    for(int i = 0; i < MoveCategory::Total; i ++)
+        from[i] = std::move(move.from[i]);
+
+    keyFrames = std::move(move.keyFrames);
+    return *this;
+}
+
 void Animation::swapKeyFrame(int a, int b) {
     std::swap(keyFrames[a], keyFrames[b]);
 }
@@ -112,12 +150,10 @@ void Animation::saveToFile(std::string fileName) {
 
     nlohmann::json json;
 
-    for(int i = 0; i < MoveCategory::Total; i ++) {
-        json["category" + MoveCategory::String[i]] = category[i];
-    }
+    json["category"] = MoveCategory::String[category];
 
-    for(int i = 0; i < Move::Total; i ++) {
-        json["from" + Move::String[i]] = from[i];
+    for(int i = 0; i < MoveCategory::Total; i ++) {
+        json["from" + MoveCategory::String[i]] = from[i];
     }
 
     json["keyFrames"] = nlohmann::json::array();
@@ -197,11 +233,15 @@ void Animation::loadFromFile(std::string fileName) {
 
     // Load categories
     for(int i = 0; i < MoveCategory::Total; i ++) {
-        category[i] = json.value("category" + MoveCategory::String[i], false);
+
+        if(json.value("category", "") == MoveCategory::String[i]) {
+            category = i;
+            break;
+        }
     }
 
-    for(int i = 0; i < Move::Total; i ++) {
-        from[i] = json.value("from" + Move::String[i], false);
+    for(int i = 0; i < MoveCategory::Total; i ++) {
+        from[i] = json.value("from" + MoveCategory::String[i], false);
     }
 
     auto& keyFramesAr = json["keyFrames"];

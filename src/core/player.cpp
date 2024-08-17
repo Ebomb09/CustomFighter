@@ -2,6 +2,7 @@
 #include <cmath>
 #include <json.hpp>
 
+#include "move.h"
 #include "render_instance.h"
 #include "input_interpreter.h"
 #include "save.h"
@@ -60,18 +61,19 @@ Button::Flag Player::readInput() {
 
 void Player::advanceFrame(Button::Flag in, vector<Player> others) {
 
-    // Add input to the button history
-    for(int i = Button::History - 1; i > 0; i --) {
-        state.button[i] = state.button[i - 1];
-    }
-    state.button[0] = in;   
-
     // Hitstop
     if(state.hitStop > 0)
         state.hitStop --;
 
     if(state.hitStop < 0)
         state.hitStop ++;
+
+    // Add input to the button history
+    for(int i = Button::History - 1; i > 0; i --) {
+        state.button[i] = state.button[i - 1];
+    }
+
+    state.button[0] = in;
 
     // Check if taken any damage and set the HitStop
     int dmg = 0;
@@ -145,7 +147,8 @@ void Player::advanceFrame(Button::Flag in, vector<Player> others) {
 
                     }else{
                         dealDamage(hit.damage);
-                        state.velocity = hit.force;
+                        state.velocity.x += hit.force.x;
+                        state.velocity.y = hit.force.y;
 
                         if(hit.knockdown) {
                             setMove(Move::KnockDown);
@@ -197,35 +200,29 @@ void Player::advanceFrame(Button::Flag in, vector<Player> others) {
             int v = 0;
             bool match = false;
 
-            // Check if in the required stance
-            Animation* anim = g::save.getAnimation(config.moves[i]);
+            Animation* currAnim = g::save.getAnimation(config.moves[state.moveIndex]);
+            Animation* nextAnim = g::save.getAnimation(config.moves[i]);
 
-            if(!anim)
+            if(!currAnim || !nextAnim)
                 continue;
-
-            bool good = false;
 
             // Animation can be done from Move
-            if(anim->from[state.moveIndex]) {
-                good = true;
+            if(nextAnim->from[currAnim->category]) {
 
             // Animation can be done from explicit cancel
-            }else if(config.moves[i] == getFrame().cancel && getFrame().cancel.size() > 0) {
-                good = true;
-            }
+            }else if(nextAnim->name == getFrame().cancel && getFrame().cancel.size() > 0) {
 
-            if(!good)
+            }else {
                 continue;
+            }
 
             // Check if the last motion matches between the strings
             string lastMotion[2] {"", ""};
-            string lastButton[2] {motion.substr(0), str.substr(0)};
 
             for(int j = motion.size() - 1; j >= 0; j --) {
 
                 if(motion[j] >= '0' && motion[j] <= '9'){
                     lastMotion[0] = motion[j];
-                    lastButton[0] = motion.substr(j+1);
                     break;
                 }
             }
@@ -234,14 +231,12 @@ void Player::advanceFrame(Button::Flag in, vector<Player> others) {
                 
                 if(str[j] >= '0' && str[j] <= '9'){
                     lastMotion[1] = str[j];
-                    lastButton[1] = str.substr(j+1);
                     break;
                 }
             }
 
-            if(!((lastMotion[0] == lastMotion[1] || lastMotion[1] == "") && lastButton[0] == lastButton[1])) {
+            if(lastMotion[0] != lastMotion[1] && lastMotion[1].size() > 0)
                 continue;
-            }
 
             // Scan the motion strings for matching inputs
             while(u < str.size() && v < motion.size()) {
@@ -275,6 +270,10 @@ void Player::advanceFrame(Button::Flag in, vector<Player> others) {
         if(best != -1) {
             state.moveFrame = 0;
             setMove(best);
+
+            // Clear input history to prevent misinputs
+            for(int i = 0; i < Button::History; i ++)
+                state.button[i] = (Button::Flag)0;
         }
     }
 

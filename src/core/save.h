@@ -36,7 +36,7 @@ struct SaveManager {
 	Clothing* getClothing(std::filesystem::path path);
 
 	Animation* getAnimation(std::filesystem::path path);
-	std::vector<Animation*> getAnimationsByFilter(int category);
+	std::vector<Animation*> getAnimationsByFilter(std::vector<int> filters);
 
 	sf::Font* getFont(std::filesystem::path path);
 

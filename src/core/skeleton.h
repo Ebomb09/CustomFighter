@@ -60,6 +60,8 @@ struct Skeleton {
 private:
 
 	void drawBone(Bone& bone, sf::Texture* tex, float width = 2, bool flip = false);
+	void drawUpperTorso(sf::Texture* texFront, sf::Texture* texBack);
+	void drawLowerTorso(sf::Texture* texFront, sf::Texture* texBack);
 	void drawTorso(sf::Texture* texFront, sf::Texture* texBack);
 	void drawNeck(sf::Texture* tex);	
 	void drawHead(sf::Texture* tex, float headAngle = 0.f);

@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <fstream>
+#include <algorithm>
 #include <json.hpp>
 #include <curl/curl.h>
 
@@ -146,12 +147,12 @@ Animation* SaveManager::getAnimation(std::filesystem::path path) {
 	return ptr;	
 }
 
-vector<Animation*> SaveManager::getAnimationsByFilter(int category) {
+vector<Animation*> SaveManager::getAnimationsByFilter(std::vector<int> filters) {
 	vector<Animation*> out;
 
 	for(std::pair<string, Animation*> it : animations) {
 
-		if(it.second->category[category])
+		if(std::find(filters.begin(), filters.end(), it.second->category) != filters.end())
 			out.push_back(it.second);
 	}
 	return out;

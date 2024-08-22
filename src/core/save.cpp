@@ -24,6 +24,9 @@ SaveManager::SaveManager() {
 	for(auto& entry : std::filesystem::directory_iterator("data/moves"))
 		getAnimation(entry);
 
+	// Animation used for testing purposes
+	animations["test"] = new Animation();
+
 	for(auto& entry : std::filesystem::directory_iterator("data/fonts"))
 		getFont(entry);
 
@@ -174,6 +177,15 @@ Animation* SaveManager::getAnimation(std::filesystem::path path) {
 	}
 
 	return ptr;	
+}
+
+vector<Animation*> SaveManager::getAnimationsList() {
+	vector<Animation*> list;
+
+    for(auto it = g::save.animations.begin(); it != g::save.animations.end(); it ++) 
+        list.push_back(it->second);
+    
+    return list;
 }
 
 vector<Animation*> SaveManager::getAnimationsByFilter(std::vector<int> filters) {

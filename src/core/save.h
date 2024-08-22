@@ -39,6 +39,7 @@ private:
 public:
 	Animation* getAnimation(std::filesystem::path path);
 	std::vector<Animation*> getAnimationsByFilter(std::vector<int> filters);
+	std::vector<Animation*> getAnimationsList();
 
 private:
 	std::map<std::string, Animation*> animations;

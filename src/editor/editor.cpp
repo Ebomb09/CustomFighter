@@ -150,9 +150,9 @@ void Editor::resetPlayer() {
     timer = 0;
     player.state.position = {0, 0};
 
-    // Set player to test and address in the save
-    //g::save.animations["test"] = &anim;
+    // Set player to test and copy in the save
     player.config.moves[Move::Custom00] = "test";
+    *g::save.getAnimation("test") = anim;
     player.setMove(Move::Custom00);
 }
 

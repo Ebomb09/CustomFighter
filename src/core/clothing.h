@@ -4,6 +4,8 @@
 #include <SFML/Graphics.hpp>
 
 struct Clothing {
+	std::string name = "";
+	
 	sf::Texture *torsoFront		= NULL,
 				*torsoBack		= NULL,
 				*neck 			= NULL,

@@ -14,6 +14,20 @@
 using std::vector;
 using std::string;
 
+const Rectangle StageBounds = {
+	-384,
+	224,
+	768,
+	256
+};
+
+const Rectangle CameraBounds = {
+	0, 
+	0,
+	256,
+	192
+};
+
 struct Player {
 
 	int gameIndex = 0;

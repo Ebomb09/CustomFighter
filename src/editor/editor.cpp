@@ -22,7 +22,7 @@ void Editor::drawGrid() {
         l[0].color = {20, 20, 20};
         l[1].position = g::video.camera.getScreen(Vector2{sX + x, g::video.camera.y - g::video.camera.h});
         l[1].color = {20, 20, 20};
-        g::video.window.draw(l, 2, sf::PrimitiveType::Lines);
+        g::video.draw(l, 2, sf::PrimitiveType::Lines);
     }
 
     for(int y = 0; y <= g::video.camera.h; y += 32) {
@@ -30,7 +30,7 @@ void Editor::drawGrid() {
         l[0].color = {20, 20, 20};
         l[1].position = g::video.camera.getScreen(Vector2{g::video.camera.x + g::video.camera.w, sY - y});
         l[1].color = {20, 20, 20};
-        g::video.window.draw(l, 2, sf::PrimitiveType::Lines);
+        g::video.draw(l, 2, sf::PrimitiveType::Lines);
     }
 
     // X - Line
@@ -38,14 +38,14 @@ void Editor::drawGrid() {
     l[0].color = sf::Color::Green;
     l[1].position = g::video.camera.getScreen(Vector2{g::video.camera.x + g::video.camera.w, 0});    
     l[1].color = sf::Color::Green;    
-    g::video.window.draw(l, 2, sf::PrimitiveType::Lines);   
+    g::video.draw(l, 2, sf::PrimitiveType::Lines);   
 
     // Y - Line
     l[0].position = g::video.camera.getScreen(Vector2{0, g::video.camera.y}); 
     l[0].color = sf::Color::Red;
     l[1].position = g::video.camera.getScreen(Vector2{0, g::video.camera.y - g::video.camera.h});
     l[1].color = sf::Color::Red;
-    g::video.window.draw(l, 2, sf::PrimitiveType::Lines);
+    g::video.draw(l, 2, sf::PrimitiveType::Lines);
 }
 
 void Editor::drawModel() {
@@ -94,7 +94,7 @@ void Editor::drawSkeleton() {
         line[1].position = g::video.camera.getScreen(b.end);
         line[1].color = {255, 255, 255, 255};
 
-        g::video.window.draw((const sf::Vertex*)&line, 2, sf::PrimitiveType::Lines);
+        g::video.draw((const sf::Vertex*)&line, 2, sf::PrimitiveType::Lines);
     }
 }
 
@@ -118,7 +118,7 @@ void Editor::drawHitBox() {
         rect.setFillColor({252, 62, 45, 50});
         rect.setOutlineThickness(1);
         rect.setOutlineColor({252, 62, 45});
-        g::video.window.draw(rect);
+        g::video.draw(rect);
     }  
 }
 
@@ -142,7 +142,7 @@ void Editor::drawHurtBox() {
         rect.setFillColor({252, 218, 45, 50});
         rect.setOutlineThickness(1);
         rect.setOutlineColor({252, 218, 45});
-        g::video.window.draw(rect);
+        g::video.draw(rect);
     }                
 } 
 
@@ -151,7 +151,7 @@ void Editor::resetPlayer() {
     player.state.position = {0, 0};
 
     // Set player to test and address in the save
-    g::save.animations["test"] = &anim;
+    //g::save.animations["test"] = &anim;
     player.config.moves[Move::Custom00] = "test";
     player.setMove(Move::Custom00);
 }
@@ -307,7 +307,7 @@ void Editor::selectJoint() {
         highlight.setOutlineThickness(2);
         highlight.setPosition({pos.x - 8, pos.y - 8});
         highlight.setRadius(8);
-        g::video.window.draw(highlight);
+        g::video.draw(highlight);
     }     
 }
 
@@ -355,7 +355,7 @@ void Editor::selectRectangle() {
             rect.setOutlineColor(sf::Color::White);
             rect.setOutlineThickness(1);
 
-            g::video.window.draw(rect);
+            g::video.draw(rect);
         }
 
         if(g::input.mousePressed[sf::Mouse::Button::Left]) {

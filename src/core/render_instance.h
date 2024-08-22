@@ -9,15 +9,21 @@
 #include <nfd.h>
 
 #include "math.h"
+#include "player.h"
 
-struct RenderInstance {
-	sf::RenderWindow window;
+class RenderInstance : public sf::RenderWindow {
+	bool IMGUI_UPDATE = false;
+
+public:
 	sf::Clock clock;
 
 	Camera camera;
 
 	RenderInstance();
 	~RenderInstance();
+
+	void clear();
+	void display();
 
 	bool init(unsigned int w, unsigned int h, std::string title);
 };

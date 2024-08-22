@@ -1,14 +1,14 @@
-#include <fstream>
-#include <cmath>
-#include <json.hpp>
-
+#include "player.h"
 #include "move.h"
 #include "render_instance.h"
 #include "input_interpreter.h"
 #include "save.h"
 #include "math.h"
 #include "save.h"
-#include "player.h"
+
+#include <fstream>
+#include <cmath>
+#include <json.hpp>
 
 void Player::draw() {
     Skeleton pose = getSkeleton();
@@ -288,6 +288,15 @@ void Player::advanceFrame(Button::Flag in, vector<Player> others) {
     state.velocity += getFrame().impulse;
     state.position += state.velocity;
 
+    // Clamp position within the target by stage width
+    if(std::abs(state.velocity.x) > 0 && state.target != -1) {
+        state.position.x = std::clamp(
+            state.position.x, 
+            others[state.target].state.position.x - CameraBounds.w + 16,
+            others[state.target].state.position.x + CameraBounds.w - 16
+            );
+    }
+
     if(state.position.y <= 0) {
         state.position.y = 0;
         state.velocity.y = 0;
@@ -361,7 +370,7 @@ void Player::advanceFrame(Button::Flag in, vector<Player> others) {
         Skeleton myPose = getSkeleton();
         Skeleton opPose = others[state.target].getSkeleton();
 
-        state.look = (opPose.head - myPose.head).getAngle();
+        state.look = (g::video.camera.getScreen(opPose.head) - g::video.camera.getScreen(myPose.head)).getAngle();
 
         if(state.side == 1) {
             
@@ -380,6 +389,13 @@ void Player::advanceFrame(Button::Flag in, vector<Player> others) {
                 state.look = -PI * 3/4.f;
         }   
     } 
+
+    // Clamp position within stage bounds
+    state.position.x = std::clamp(
+        state.position.x, 
+        StageBounds.x + 16, 
+        StageBounds.x + StageBounds.w - 16
+        );
 }
 
 void Player::dealDamage(int dmg) {

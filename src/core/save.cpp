@@ -1,5 +1,6 @@
 #include "save.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <fstream>
 #include <algorithm>
@@ -25,6 +26,13 @@ SaveManager::SaveManager() {
 
 	for(auto& entry : std::filesystem::directory_iterator("data/fonts"))
 		getFont(entry);
+
+	for(auto& entry : std::filesystem::directory_iterator("data/stages")) {
+		sf::Texture* ptr = getTexture(entry);
+
+		if(ptr) 
+			stages.push_back(ptr);
+	}
 
 	for(int i = 0; i < maxButtonConfigs; i ++)
 		loadButtonConfig(i);
@@ -112,24 +120,45 @@ Clothing* SaveManager::getClothing(std::filesystem::path path) {
 	Clothing* ptr = NULL;
 
 	if(clothes.find(path.string()) == clothes.end()) {
-		ptr = new Clothing;
-		ptr->torsoFront	= getTexture(path/"torsoFront.png");
-		ptr->torsoBack	= getTexture(path/"torsoBack.png");
-		ptr->neck 		= getTexture(path/"neck.png");
-		ptr->upperArm 	= getTexture(path/"upperArm.png");
-		ptr->foreArm 	= getTexture(path/"foreArm.png");
-		ptr->pelvis 	= getTexture(path/"pelvis.png");
-		ptr->thigh 		= getTexture(path/"thigh.png");
-		ptr->calf 		= getTexture(path/"calf.png");
-		ptr->hand 		= getTexture(path/"hand.png");	
-		ptr->foot 		= getTexture(path/"foot.png");
-		ptr->head 		= getTexture(path/"head.png");							
-		clothes[path.stem().string()] = ptr;
+
+		// Find from list by name
+		for(auto& clothing : getClothingList()) {
+			if(clothing->name == path.string()) {
+				ptr = clothing;
+			}
+		}
+
+		// Load from file
+		if(!ptr) {
+			ptr = new Clothing;
+			ptr->name		= path.stem().string();
+			ptr->torsoFront	= getTexture(path/"torsoFront.png");
+			ptr->torsoBack	= getTexture(path/"torsoBack.png");
+			ptr->neck 		= getTexture(path/"neck.png");
+			ptr->upperArm 	= getTexture(path/"upperArm.png");
+			ptr->foreArm 	= getTexture(path/"foreArm.png");
+			ptr->pelvis 	= getTexture(path/"pelvis.png");
+			ptr->thigh 		= getTexture(path/"thigh.png");
+			ptr->calf 		= getTexture(path/"calf.png");
+			ptr->hand 		= getTexture(path/"hand.png");	
+			ptr->foot 		= getTexture(path/"foot.png");
+			ptr->head 		= getTexture(path/"head.png");
+			clothes[path.string()] = ptr;			
+		}
 	
 	}else {
 		ptr = clothes.at(path.string());
 	}
 	return ptr;
+}
+
+vector<Clothing*> SaveManager::getClothingList() {
+	vector<Clothing*> list;
+
+    for(auto it = g::save.clothes.begin(); it != g::save.clothes.end(); it ++) 
+        list.push_back(it->second);
+    
+    return list;
 }
 
 Animation* SaveManager::getAnimation(std::filesystem::path path) {
@@ -261,6 +290,24 @@ void SaveManager::loadServerList() {
 	file.close();
 }
 
+string SaveManager::getServer(int index) {
+	index = std::clamp(index, 0, (int)serverList.size()-1);
+	return serverList[index];
+}
+
 string SaveManager::getNetworkAddress() {
 	return ip + ":" + std::to_string(port);
+}
+
+int SaveManager::getPort() {
+	return port;
+}
+
+int SaveManager::getRandomStage() {
+	return rand() % stages.size();
+}
+
+sf::Texture* SaveManager::getStage(int index) {
+	index = std::clamp(index, 0, (int)stages.size()-1);
+	return stages[index];
 }

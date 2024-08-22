@@ -20,11 +20,10 @@ struct InputInterpreter {
 	bool mouseHeld[sf::Mouse::Button::ButtonCount];
 	bool mouseReleased[sf::Mouse::Button::ButtonCount];
 
-	bool windowClose;
-
 	InputInterpreter();
 
 	void prepEvents();
+	void pollEvents();
 	void processEvent(const sf::Event& event);
 };
 

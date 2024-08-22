@@ -126,9 +126,9 @@ struct Creator {
     vector<Menu::Option> getClothingOptions() {
         vector<Menu::Option> out;
         
-        for(auto it = g::save.clothes.begin(); it != g::save.clothes.end(); it ++) {
-            out.push_back({it->first, 0});
-        }
+        for(auto& clothing : g::save.getClothingList())
+            out.push_back({clothing->name, 0});
+        
         out.push_back({"", ID::Disregard});
         out.push_back({"REMOVE", ID::Delete});
         out.push_back({"BACK", ID::Cancel});
@@ -203,9 +203,9 @@ struct Creator {
 
         view.setViewport(sf::FloatRect(x, y, w, h));
 
-        g::video.window.setView(view);
+        g::video.setView(view);
         dummy.draw();
-        g::video.window.setView(g::video.window.getDefaultView());
+        g::video.setView(g::video.getDefaultView());
 
         Rectangle area {
             (g::video.camera.screen_w / total * dummy.seatIndex) + 8, 
@@ -409,19 +409,16 @@ vector<Player::Config> CharacterSelect::run(int count) {
         creator.push_back(cr);
     }
 
-    while (g::video.window.isOpen()) {
+    while (g::video.isOpen()) {
         g::input.prepEvents();
 
         sf::Event event;
 
-        while(g::video.window.pollEvent(event)){
+        while(g::video.pollEvent(event)){
             g::input.processEvent(event);
         }
 
-        if(g::input.windowClose)
-            g::video.window.close();
-
-        g::video.window.clear();
+        g::video.clear();
 
         vector<Player::Config> confs;
 
@@ -440,7 +437,7 @@ vector<Player::Config> CharacterSelect::run(int count) {
         if(confs.size() == creator.size())
             return confs;
 
-        g::video.window.display();
+        g::video.display();
     }
 
 	return {};

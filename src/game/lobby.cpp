@@ -9,7 +9,7 @@ nlohmann::json listRoom(){
     nlohmann::json postFields;
     postFields["reason"] = "list-room";
 
-    return runQuery(g::save.serverList[0], postFields);
+    return runQuery(g::save.getServer(0), postFields);
 }
 
 nlohmann::json createRoom(string password=""){
@@ -17,7 +17,7 @@ nlohmann::json createRoom(string password=""){
     postFields["reason"] = "create-room";
     postFields["password"] = password;
     
-    return runQuery(g::save.serverList[0], postFields);
+    return runQuery(g::save.getServer(0), postFields);
 }
 
 nlohmann::json joinRoom(int code, string password, int slot, string remote, Player::Config config){
@@ -29,7 +29,7 @@ nlohmann::json joinRoom(int code, string password, int slot, string remote, Play
     postFields["remote"] = remote;
     postFields["config"] = config.saveToText();
 
-    return runQuery(g::save.serverList[0], postFields);
+    return runQuery(g::save.getServer(0), postFields);
 }
 
 nlohmann::json leaveRoom(int code, string remote) {
@@ -38,7 +38,7 @@ nlohmann::json leaveRoom(int code, string remote) {
     postFields["code"] = code;
     postFields["remote"] = remote;
 
-    return runQuery(g::save.serverList[0], postFields);
+    return runQuery(g::save.getServer(0), postFields);
 }
 
 nlohmann::json statusRoom(int code, string remote){
@@ -47,32 +47,23 @@ nlohmann::json statusRoom(int code, string remote){
     postFields["code"] = code;
     postFields["remote"] = remote;
 
-    return runQuery(g::save.serverList[0], postFields);
+    return runQuery(g::save.getServer(0), postFields);
 }
 
-bool Lobby::run(Room& room) {
+Lobby::Room Lobby::run(Player::Config config) {
+    Lobby::Room room;
     nlohmann::json roomList;
 
-    while (g::video.window.isOpen()) {
-        g::input.prepEvents();
+    bool stayOpen = true; 
 
-        sf::Event event;
+    while (g::video.isOpen() && stayOpen) {
+        g::input.pollEvents();
 
-        while(g::video.window.pollEvent(event)){
-            ImGui::SFML::ProcessEvent(event);
+        g::video.clear();
 
-            if(!ImGui::GetIO().WantCaptureKeyboard && !ImGui::GetIO().WantCaptureMouse)
-                g::input.processEvent(event);
-        }
-
-        if(g::input.windowClose)
-            g::video.window.close();
-
-        ImGui::SFML::Update(g::video.window, g::video.clock.restart());
-
-        g::video.window.clear();
-
-        ImGui::Begin("Browser");
+        ImGui::SetNextWindowPos({64, 64});
+        ImGui::SetNextWindowSize({g::video.camera.screen_w - 128, g::video.camera.screen_h - 128});
+        ImGui::Begin("Browser", &stayOpen);
 
         // Room Browser
         if(room.code == -1) {
@@ -109,7 +100,7 @@ bool Lobby::run(Room& room) {
                     ImGui::TableSetColumnIndex(3);  
                     if(ImGui::Button(("Join##" + std::to_string(i)).c_str()) ) {
 
-                        if(joinRoom(roomList[i].value("code", 0), "", -1, g::save.getNetworkAddress(), g::save.playerConfig[0])["response"] == "OK")
+                        if(joinRoom(roomList[i].value("code", 0), "", -1, g::save.getNetworkAddress(), config)["response"] == "OK")
                             room.code = roomList[i]["code"];
                     }
                 }
@@ -131,7 +122,7 @@ bool Lobby::run(Room& room) {
 
                 if(msg["response"] == "OK" && msg["code"].is_number_integer()) {
 
-                    if(joinRoom(msg["code"], "", -1, g::save.getNetworkAddress(), g::save.playerConfig[0])["response"] == "OK")
+                    if(joinRoom(msg["code"], "", -1, g::save.getNetworkAddress(), config)["response"] == "OK")
                         room.code = msg["code"];
                 }
             }
@@ -191,14 +182,16 @@ bool Lobby::run(Room& room) {
             }
 
             // Found the wanted players
-            if(room.remotes.size() == 2) 
-                return true;
+            if(room.remotes.size() == 2) {
+                room.good = true;
+                return room;
+            }
         }
 
         ImGui::End();
 
-        ImGui::SFML::Render(g::video.window);
-        g::video.window.display();
+        
+        g::video.display();
     }
-	return false;
+	return room;
 }

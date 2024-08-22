@@ -11,24 +11,10 @@ int main() {
     g::video.camera.x = -1024/2.f;
     g::video.camera.y = 768/2.f;
 
-    while (g::video.window.isOpen()) {
-        g::input.prepEvents();
+    while (g::video.isOpen()) {
+        g::input.pollEvents();
 
-        sf::Event event;
-
-        while(g::video.window.pollEvent(event)){
-            ImGui::SFML::ProcessEvent(event);
-
-            if(!ImGui::GetIO().WantCaptureKeyboard && !ImGui::GetIO().WantCaptureMouse)
-                g::input.processEvent(event);
-        }
-
-        ImGui::SFML::Update(g::video.window, g::video.clock.restart());
-
-        if(g::input.windowClose)
-            g::video.window.close();
-
-        g::video.window.clear();
+        g::video.clear();
 
         // Draw editor grid
         editor.update();
@@ -172,7 +158,7 @@ int main() {
                 ImGui::Separator();
 
                 if(ImGui::MenuItem("Exit")) {
-                    g::input.windowClose = true;
+                    g::video.close();
                 }
 
                 ImGui::EndMenu();
@@ -319,8 +305,8 @@ int main() {
 
         ImGui::End();
 
-        ImGui::SFML::Render(g::video.window);
-        g::video.window.display();
+        ImGui::SFML::Render(g::video);
+        g::video.display();
     }
     ImGui::SFML::Shutdown();
 

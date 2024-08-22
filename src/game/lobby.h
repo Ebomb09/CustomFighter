@@ -6,13 +6,14 @@
 namespace Lobby {
 
 	struct Room {
+		bool good = false;
 		int code = -1;
 		int refresh = 0;
 		vector<Player::Config> 	configs;
 		vector<string>			remotes;
 	};
 
-	bool run(Room& room);
+	Room run(Player::Config config);
 };
 
 #endif

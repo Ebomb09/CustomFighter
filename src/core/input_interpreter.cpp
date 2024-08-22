@@ -1,5 +1,7 @@
 #include "input_interpreter.h"
 
+#include "render_instance.h"
+
 InputInterpreter g::input = InputInterpreter();
 
 InputInterpreter::InputInterpreter() {
@@ -15,8 +17,6 @@ InputInterpreter::InputInterpreter() {
 		mouseHeld[i] = false;
 		mouseReleased[i] = false;		
 	}
-
-	windowClose = false;
 }
 
 void InputInterpreter::prepEvents() {
@@ -35,10 +35,24 @@ void InputInterpreter::prepEvents() {
 	mouseMove = {0, 0};
 }
 
+void InputInterpreter::pollEvents() {
+	prepEvents();
+
+	sf::Event event;
+
+	while(g::video.pollEvent(event)) {
+        ImGui::SFML::ProcessEvent(event);
+
+        if(!ImGui::GetIO().WantCaptureKeyboard && !ImGui::GetIO().WantCaptureMouse)
+            processEvent(event);		
+	}
+}
+
 void InputInterpreter::processEvent(const sf::Event& event) {
 
-	if(event.type == sf::Event::Closed)
-		windowClose = true;
+	if(event.type == sf::Event::Closed) {
+		g::video.close();
+	}
 
 	if(event.type == sf::Event::KeyPressed) {
 		keyPressed[event.key.code] = true;

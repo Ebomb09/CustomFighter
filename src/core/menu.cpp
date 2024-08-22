@@ -65,7 +65,7 @@ static void renderText(string str, string font, sf::Color color, Rectangle area,
     	text.setPosition({area.x, area.y + freeSpace.y});
     }
 
-	g::video.window.draw(text);
+	g::video.draw(text);
 }
 
 int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int* hover, int user, Rectangle area) {
@@ -146,7 +146,7 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 		area.h / g::video.camera.screen_h
 	});
 
-	g::video.window.setView(view);
+	g::video.setView(view);
 
 	// Draw on screen
 	for(int i = 0; i < options.size(); i += columns) {
@@ -170,7 +170,7 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
         pos.y += fontHeight;
 	}
 
-	g::video.window.setView(g::video.window.getDefaultView());
+	g::video.setView(g::video.getDefaultView());
 
 	return status;
 }
@@ -261,7 +261,7 @@ int Menu::Motion(std::string* str, int user, Rectangle area) {
 	sf::RectangleShape rect({area.w, fontHeight});
 	rect.setPosition({area.x, area.y});
 	rect.setFillColor(sf::Color(128, 128, 128));
-	g::video.window.draw(rect);
+	g::video.draw(rect);
 
 	if(str->size() == 0) {
 		renderText("Input Motion...", "Anton-Regular", sf::Color::Black, {area.x, area.y, area.w, fontHeight}, 0);

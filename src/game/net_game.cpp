@@ -1,4 +1,5 @@
 #include "net_game.h"
+#include "game_tools.h"
 
 #include "core/save.h"
 #include "core/render_instance.h"
@@ -10,13 +11,16 @@
 #include <cstdio>
 #include <ggponet.h>
 
+using std::vector, std::string;
+
 GGPOSession* 		ggpo;
-GGPOPlayerHandle 	handle[2];
-Player 				player[2];
+int                 currPlayers = 0;
+const int           maxPlayers = 4;
+GGPOPlayerHandle    handle[maxPlayers];
+Player              player[maxPlayers];
 
 struct GameState {
-    Player::State p1;
-    Player::State p2;
+    Player::State p[maxPlayers];
 };
 
 bool beginGame(const char *game) {
@@ -24,16 +28,21 @@ bool beginGame(const char *game) {
 }
 
 bool advanceFrame(int flags) {
-    Button::Flag in[2];
+    Button::Flag in[maxPlayers];
     int disconnect_flags;
     GGPOErrorCode result;
 
-    result = ggpo_synchronize_input(ggpo, in, sizeof(Button::Flag) * 2, &disconnect_flags);
+    result = ggpo_synchronize_input(ggpo, in, sizeof(Button::Flag) * currPlayers, &disconnect_flags);
 
     if(result == GGPO_OK) {
-        vector<Player> old = {player[0], player[1]};
-        player[0].advanceFrame(in[0], old);
-        player[1].advanceFrame(in[1], old);
+        vector<Player> others;
+
+        for(int i = 0; i < currPlayers; i ++)
+            others.push_back(player[i]);
+
+        for(int i = 0; i < currPlayers; i ++)
+            player[i].advanceFrame(in[i], others);
+
 	    ggpo_advance_frame(ggpo);
 	}
 
@@ -42,15 +51,18 @@ bool advanceFrame(int flags) {
 
 bool loadGameState(unsigned char *buffer, int len) {
     GameState* state = (GameState*)buffer;
-    player[0].state = state->p1;
-    player[1].state = state->p2;
+
+    for(int i = 0; i < maxPlayers; i ++)
+        player[i].state = state->p[i];
+
     return true;
 }
 
 bool saveGameState(unsigned char **buffer, int *len, int *checksum, int frame) {
     GameState* state = new GameState();
-    state->p1 = player[0].state;
-    state->p2 = player[1].state;
+
+    for(int i = 0; i < maxPlayers; i ++)
+        state->p[i] = player[i].state;
 
     *buffer = (unsigned char*)state;
     *len = sizeof(GameState);
@@ -124,7 +136,7 @@ bool start(Lobby::Room room) {
     	return false;
     }
 
-    result = ggpo_start_session(&ggpo, &cb, "CustomFighter", 2, sizeof(Button::Flag), g::save.port);
+    result = ggpo_start_session(&ggpo, &cb, "CustomFighter", 2, sizeof(Button::Flag), g::save.getPort());
 	//result = ggpo_start_synctest(&ggpo, &cb, "CustomFighter", 2, sizeof(Button::Flag), 1);
 
     if(result != GGPO_OK) {
@@ -177,74 +189,58 @@ bool start(Lobby::Room room) {
 
     // GGPO done, now set state of players based on room size
     if(room.remotes.size() == 2) {
+        currPlayers = 2;
+
         player[0].state.position.x = -75;
         player[0].state.target = 1;
         player[1].state.position.x = 75;    
         player[1].state.target = 0;    
-    }
-/*
-    if(room.remotes.size() == 4) {
+
+
+    }else if(room.remotes.size() == 4) {
+        currPlayers = 4;
+
         player[0].state.position.x = -75;
         player[1].state.position.x = -75;
         player[2].state.position.x = 75;
         player[3].state.position.x = 75;                        
     }  
-*/  
     return true;
 }
 
 bool loop() {
 
-    while(g::video.window.isOpen()) {
-        g::input.prepEvents();
-
-        sf::Event event;
-        while(g::video.window.pollEvent(event)) {
-            g::input.processEvent(event);
-        }
-
-        if(g::input.windowClose)
-            g::video.window.close();
-
-        g::video.window.clear();
-
-        // Camera
-        g::video.camera.x = (player[0].state.position.x + player[1].state.position.x) / 2. - g::video.camera.w / 2.;
-        g::video.camera.y = g::video.camera.h * 0.75;
-
-        //drawHealthBars(g::video, p[0], p[1]);
+    while(g::video.isOpen()) {
+        g::input.pollEvents();
         
         // Get buttons for local and remote player
         GGPOErrorCode result;
-        Button::Flag in[2];
 
-        if(player[0].seatIndex != -1) {
-            in[0] = player[0].readInput();  
-            result = ggpo_add_local_input(ggpo, handle[0], &in[0], sizeof(Button::Flag)); 
-        }else {
-            in[1] = player[1].readInput();  
-            result = ggpo_add_local_input(ggpo, handle[1], &in[1], sizeof(Button::Flag));             
-        }
+        for(int i = 0; i < currPlayers; i ++) {
 
-        // Only advance frame when synchronize both player's buttons
-        if(result == GGPO_OK) {
-            int d;
-            result = ggpo_synchronize_input(ggpo, in, sizeof(Button::Flag) * 2, &d);
-
-            if(result == GGPO_OK) {
-                vector<Player> old = {player[0], player[1]};
-                player[0].advanceFrame(in[0], old);
-                player[1].advanceFrame(in[1], old);
-                ggpo_advance_frame(ggpo);
+            if(player[i].seatIndex >= 0) {
+                Button::Flag in = player[i].readInput();
+                result = ggpo_add_local_input(ggpo, handle[i], &in, sizeof(Button::Flag));
             }
         }
 
-        player[0].draw();
-        player[1].draw();
+        // Advance frame if local input was OK
+        if(result == GGPO_OK) 
+            advanceFrame(NULL);
+
+        g::video.clear();
+
+        setCamera(player, currPlayers);
+
+        drawStage(0);
+        drawHealthBars(player, currPlayers);
+
+        for(int i = 0; i < currPlayers; i ++) 
+            player[i].draw();
+
+        g::video.display();
 
         ggpo_idle(ggpo, 16);
-
-        g::video.window.display();
     }
 	return true;
 }
@@ -257,13 +253,13 @@ bool close() {
 
 bool NetGame::run(Lobby::Room room) {
 
-    if(verify_UDP_hole_punch(g::save.port, room.remotes)) {
+    if(verify_UDP_hole_punch(g::save.getPort(), room.remotes)) {
 
         if(start(room)) {
             loop();
             close();
             return true;
-        }        
+        }
     }
     return false;
 }

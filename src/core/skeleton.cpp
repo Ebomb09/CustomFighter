@@ -124,7 +124,7 @@ void Skeleton::drawBone(Bone& bone, sf::Texture* tex, float width, bool flip) {
     sf::RenderStates states;
     states.texture = tex;
 
-    g::video.window.draw(v, 4, sf::PrimitiveType::Quads, states);
+    g::video.draw(v, 4, sf::PrimitiveType::Quads, states);
 }
 
 void Skeleton::drawUpperTorso(sf::Texture* texFront, sf::Texture* texBack) {
@@ -192,7 +192,7 @@ void Skeleton::drawUpperTorso(sf::Texture* texFront, sf::Texture* texBack) {
     sf::RenderStates states;
     states.texture = tex;
 
-    g::video.window.draw(v, 8, sf::PrimitiveType::Quads, states);
+    g::video.draw(v, 8, sf::PrimitiveType::Quads, states);
 }
 
 void Skeleton::drawLowerTorso(sf::Texture* texFront, sf::Texture* texBack) {
@@ -260,7 +260,7 @@ void Skeleton::drawLowerTorso(sf::Texture* texFront, sf::Texture* texBack) {
     sf::RenderStates states;
     states.texture = tex;
 
-    g::video.window.draw(v, 8, sf::PrimitiveType::Quads, states);
+    g::video.draw(v, 8, sf::PrimitiveType::Quads, states);
 } 
 
 void Skeleton::drawTorso(sf::Texture* texFront, sf::Texture* texBack) {

@@ -60,9 +60,6 @@ void Editor::drawModel() {
     else
         copy = getSkeleton();
 
-    for(int i = 0; i < copy.jointCount; i ++)
-        copy.joints[i] = g::video.camera.getScreen(copy.joints[i]);
-
     std::vector<Clothing*> clothes = {
         g::save.getClothing("realistic")
     };

@@ -84,6 +84,14 @@ Vector2 Vector2::translate(float rad, float h) {
 	return {x + std::cos(rad) * h, y + std::sin(rad) * h};
 }
 
+Vector2 Vector2::rotate(float angle, Vector2 origin) {
+	
+	return origin + Vector2(
+		(x - origin.x) * std::cos(angle) - (y - origin.y) * std::sin(angle), 
+		(y - origin.y) * std::cos(angle) + (x - origin.x) * std::sin(angle)		
+	);
+}
+
 bool Real::pointInCircle(const Vector2& point, const Circle& circle) {
 	float a = std::pow(point.x - circle.x, 2);
 	float b = std::pow(point.y - circle.y, 2);

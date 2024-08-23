@@ -30,6 +30,7 @@ struct Vector2 {
 	float getAngle();
 	float getDistance();
 	Vector2 translate(float rad, float h);
+	Vector2 rotate(float angle, Vector2 origin = {0,0});
 };
 
 struct Circle {

@@ -13,9 +13,6 @@
 void Player::draw() {
     Skeleton pose = getSkeleton();
 
-    for(int i = 0; i < pose.jointCount; i ++) 
-        pose.joints[i] = g::video.camera.getScreen(pose.joints[i]);
-
     // HitStop shake
     if(state.hitStop < 0) {
 
@@ -370,7 +367,7 @@ void Player::advanceFrame(Button::Flag in, vector<Player> others) {
         Skeleton myPose = getSkeleton();
         Skeleton opPose = others[state.target].getSkeleton();
 
-        state.look = (g::video.camera.getScreen(opPose.head) - g::video.camera.getScreen(myPose.head)).getAngle();
+        state.look = (opPose.head - myPose.head).getAngle();
 
         if(state.side == 1) {
             

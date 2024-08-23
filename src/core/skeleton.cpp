@@ -1,5 +1,8 @@
-#include "render_instance.h"
 #include "skeleton.h"
+#include "render_instance.h"
+
+#include <cmath>
+#include <iostream>
 
 Skeleton::Skeleton() :
 	// Unique bones
@@ -97,198 +100,186 @@ void Skeleton::moveJoint(Vector2& joint, Vector2 mov) {
 	}
 }
 
-void Skeleton::drawBone(Bone& bone, sf::Texture* tex, float width, bool flip) {
-
-    if(!tex)
-        return;
-
+void Skeleton::drawBone(std::vector<Clothing*> list, int part, Bone& bone, float width, bool flip) {
     width /= 2.f;
 
-    float angle = (bone.end - bone.start).getAngle();
-
+    // Shortcuts
     Vector2 start = bone.start;
+    Vector2 mid = bone.start + (bone.end - bone.start)/2.f;
     Vector2 end = bone.end;
 
-    sf::Vertex v[] = {
-        sf::Vertex(start.translate(angle - 0.75f * PI, width), {0.f, 0.f}),     
-        sf::Vertex(end.translate(angle - 0.25f * PI, width), {(float)tex->getSize().x, 0}),
-        sf::Vertex(end.translate(angle + 0.25f * PI, width), {(float)tex->getSize().x, (float)tex->getSize().y}),   
-        sf::Vertex(start.translate(angle + 0.75f * PI, width), {0.f, (float)tex->getSize().y}),                                             
-    };
+    // Real world coordinates
+    Vector2 pt[4];
+    float ptAngle = (end - start).getAngle();
 
-    if(flip) {
-        std::swap(v[0].texCoords, v[3].texCoords);
-        std::swap(v[1].texCoords, v[2].texCoords);        
+    pt[0] = start.translate(ptAngle + 0.75f * PI, width);
+    pt[1] = end.translate(ptAngle + 0.25f * PI, width);
+    pt[2] = end.translate(ptAngle - 0.25f * PI, width);
+    pt[3] = start.translate(ptAngle - 0.75f * PI, width);
+
+    for(int i = 0; i < list.size(); i ++) {
+        sf::Texture* ogTex = list[0]->part[part];
+        sf::Texture* tex = list[i]->part[part];
+
+        if(!tex || !ogTex)
+            continue;
+
+        // Drawing texture coordinates
+        Vector2 texPt[4] = {
+            {0, 0},
+            {(float)tex->getSize().x, 0},
+            {(float)tex->getSize().x, (float)tex->getSize().y},
+            {0.f, (float)tex->getSize().y}
+        };
+
+        Vector2 scale = {
+            (float)tex->getSize().x / (float)ogTex->getSize().x,
+            (float)tex->getSize().y / (float)ogTex->getSize().y
+        };
+
+        // Screen coordinates
+        sf::Vertex vert[4];
+
+        // Want vs Have Angle
+        float rotate = PI/2 - (ptAngle + PI/2);
+
+        for(int j = 0; j < 4; j ++) {
+
+            // Rotate skeleton, and scale accordingly, then rerotate into proper position
+            Vector2 pos = pt[j].rotate(rotate, mid);
+            pos = mid + (pos - mid) * scale;
+            pos = pos.rotate(-rotate, mid);
+
+            vert[j].position = g::video.camera.getScreen(pos);
+            vert[j].texCoords = texPt[j];
+        }                                    
+
+        if(flip) {
+            std::swap(vert[0].texCoords, vert[3].texCoords);
+            std::swap(vert[1].texCoords, vert[2].texCoords);        
+        }
+
+        sf::RenderStates states;
+        states.texture = tex;
+
+        g::video.draw(vert, 4, sf::PrimitiveType::Quads, states);        
     }
-
-    sf::RenderStates states;
-    states.texture = tex;
-
-    g::video.draw(v, 4, sf::PrimitiveType::Quads, states);
 }
 
-void Skeleton::drawUpperTorso(sf::Texture* texFront, sf::Texture* texBack) {
+void Skeleton::drawTorso(std::vector<Clothing*> list) {
+    Vector2 pt[3][3];
 
-    if(!texFront || !texBack)
-        return;
-
-    Vector2 mid[2];
-    Vector2 midTorso = (torso[1] - torso[0])/2 + torso[0];
-
-    // Normal
-    bool flipTop = torsoTopFlipped();
-    bool flipBot = torsoBottomFlipped();
-
-    if(!flipTop && !flipBot) {
-        mid[0] = (hip[0] - shoulder[0])/2 + shoulder[0];
-        mid[1] = (hip[1] - shoulder[1])/2 + shoulder[1];        
-
-    // Top flipped
-    }else if(flipTop && !flipBot) {
-        mid[0] = (hip[0] - shoulder[1])/2 + shoulder[1];
-        mid[1] = (hip[1] - shoulder[0])/2 + shoulder[0];   
-
-    // Bottom flipped
-    }else if(!flipTop && flipBot) {
-        mid[0] = (hip[1] - shoulder[0])/2 + shoulder[0];
-        mid[1] = (hip[0] - shoulder[1])/2 + shoulder[1];  
-
-    // Both flipped
-    }else {
-        mid[0] = (hip[1] - shoulder[1])/2 + shoulder[1];
-        mid[1] = (hip[0] - shoulder[0])/2 + shoulder[0];
-    }
-
-    sf::Texture* tex;
-    sf::Vertex v[8];
-
-    if(!torsoTopFlipped()){
-        tex = texFront;
-
-        v[0] = sf::Vertex(torso[0],         Vector2(tex->getSize().x/2, 0));
-        v[1] = sf::Vertex(shoulder[0],      Vector2(tex->getSize().x, 0));
-        v[2] = sf::Vertex(mid[0],           Vector2(tex->getSize().x, tex->getSize().y/2));
-        v[3] = sf::Vertex(midTorso,         Vector2(tex->getSize().x/2, tex->getSize().y/2));
-
-        v[4] = sf::Vertex(torso[0],         Vector2(tex->getSize().x/2, 0));
-        v[5] = sf::Vertex(midTorso,         Vector2(tex->getSize().x/2, tex->getSize().y/2));
-        v[6] = sf::Vertex(mid[1],           Vector2(0, tex->getSize().y/2));         
-        v[7] = sf::Vertex(shoulder[1],      Vector2(0, 0));
+    if(!torsoTopFlipped()) {
+        pt[0][0] = shoulder[1];
+        pt[0][2] = shoulder[0];
 
     }else{
-        tex = texBack;
-
-        v[0] = sf::Vertex(torso[0],         Vector2(tex->getSize().x/2, 0));
-        v[1] = sf::Vertex(midTorso,         Vector2(tex->getSize().x/2, tex->getSize().y/2));
-        v[2] = sf::Vertex(mid[1],           Vector2(0, tex->getSize().y/2));
-        v[3] = sf::Vertex(shoulder[0],      Vector2(0, 0));
-
-        v[4] = sf::Vertex(torso[0],         Vector2(tex->getSize().x/2, 0));
-        v[5] = sf::Vertex(shoulder[1],      Vector2(tex->getSize().x, 0));
-        v[6] = sf::Vertex(mid[0],           Vector2(tex->getSize().x, tex->getSize().y/2));                                  
-        v[7] = sf::Vertex(midTorso,         Vector2(tex->getSize().x/2, tex->getSize().y/2));   
-    }
-    
-    sf::RenderStates states;
-    states.texture = tex;
-
-    g::video.draw(v, 8, sf::PrimitiveType::Quads, states);
-}
-
-void Skeleton::drawLowerTorso(sf::Texture* texFront, sf::Texture* texBack) {
-
-    if(!texFront || !texBack)
-        return;
-
-    Vector2 mid[2];
-    Vector2 midTorso = (torso[1] - torso[0])/2 + torso[0];
-
-    // Normal
-    bool flipTop = torsoTopFlipped();
-    bool flipBot = torsoBottomFlipped();
-
-    if(!flipTop && !flipBot) {
-        mid[0] = (hip[0] - shoulder[0])/2 + shoulder[0];
-        mid[1] = (hip[1] - shoulder[1])/2 + shoulder[1];        
-
-    // Top flipped
-    }else if(flipTop && !flipBot) {
-        mid[0] = (hip[0] - shoulder[1])/2 + shoulder[1];
-        mid[1] = (hip[1] - shoulder[0])/2 + shoulder[0];   
-
-    // Bottom flipped
-    }else if(!flipTop && flipBot) {
-        mid[0] = (hip[1] - shoulder[0])/2 + shoulder[0];
-        mid[1] = (hip[0] - shoulder[1])/2 + shoulder[1];  
-
-    // Both flipped
-    }else {
-        mid[0] = (hip[1] - shoulder[1])/2 + shoulder[1];
-        mid[1] = (hip[0] - shoulder[0])/2 + shoulder[0];       
+        pt[0][0] = shoulder[0];        
+        pt[0][2] = shoulder[1];
     }
 
-    sf::Texture* tex;
-    sf::Vertex v[8];
+    pt[0][1] = torso[0];
+    pt[1][1] = (torso[1] - torso[0])/2.f + torso[0];
+    pt[2][1] = torso[1];
 
-    if(!torsoBottomFlipped()){
-        tex = texFront;
-
-        v[0] = sf::Vertex(midTorso,     Vector2(tex->getSize().x/2, tex->getSize().y/2));
-        v[1] = sf::Vertex(mid[0],       Vector2(tex->getSize().x, tex->getSize().y/2));
-        v[2] = sf::Vertex(hip[0],       Vector2(tex->getSize().x, tex->getSize().y));
-        v[3] = sf::Vertex(torso[1],     Vector2(tex->getSize().x/2, tex->getSize().y));
-
-        v[4] = sf::Vertex(midTorso,     Vector2(tex->getSize().x/2, tex->getSize().y/2));
-        v[5] = sf::Vertex(torso[1],     Vector2(tex->getSize().x/2, tex->getSize().y));
-        v[6] = sf::Vertex(hip[1],       Vector2(0, tex->getSize().y));
-        v[7] = sf::Vertex(mid[1],       Vector2(0, tex->getSize().y/2));              
+    if(!torsoBottomFlipped()) {
+        pt[2][0] = hip[1];
+        pt[2][2] = hip[0];
 
     }else{
-        tex = texBack;
-
-        v[0] = sf::Vertex(midTorso,     Vector2(tex->getSize().x/2, tex->getSize().y/2));
-        v[1] = sf::Vertex(torso[1],     Vector2(tex->getSize().x/2, tex->getSize().y));
-        v[2] = sf::Vertex(hip[1],       Vector2(tex->getSize().x, tex->getSize().y));
-        v[3] = sf::Vertex(mid[0],       Vector2(tex->getSize().x, tex->getSize().y/2));
-
-        v[4] = sf::Vertex(midTorso,     Vector2(tex->getSize().x/2, tex->getSize().y/2));
-        v[5] = sf::Vertex(mid[1],       Vector2(0, tex->getSize().y/2));
-        v[6] = sf::Vertex(hip[0],       Vector2(0, tex->getSize().y));
-        v[7] = sf::Vertex(torso[1],     Vector2(tex->getSize().x/2, tex->getSize().y));              
+        pt[2][0] = hip[0];
+        pt[2][2] = hip[1];
     }
-    
-    sf::RenderStates states;
-    states.texture = tex;
 
-    g::video.draw(v, 8, sf::PrimitiveType::Quads, states);
-} 
+    pt[1][0] = (pt[2][0] - pt[0][0])/2.f + pt[0][0];
+    pt[1][2] = (pt[2][2] - pt[0][2])/2.f + pt[0][2];
 
-void Skeleton::drawTorso(sf::Texture* texFront, sf::Texture* texBack) {
-    drawUpperTorso(texFront, texBack);
-    drawLowerTorso(texFront, texBack);    
+    for(int i = 0; i < list.size(); i ++) {
+        sf::Texture* ogTex = (torsoTopFlipped() || torsoBottomFlipped()) ? list[0]->torsoBack : list[0]->torsoFront;
+        sf::Texture* tex = (torsoTopFlipped() || torsoBottomFlipped()) ? list[i]->torsoBack : list[i]->torsoFront;
+
+        if(!tex || !ogTex)
+            continue;
+
+        Vector2 texPt[3][3] = {
+            {
+                {0.f, 0.f},
+                {tex->getSize().x/2.f, 0.f},
+                {tex->getSize().x/1.f, 0.f}                
+            },
+            {
+                {0.f, tex->getSize().y/2.f},
+                {tex->getSize().x/2.f, tex->getSize().y/2.f},
+                {tex->getSize().x/1.f, tex->getSize().y/2.f}   
+            },
+            {
+                {0.f, tex->getSize().y/1.f},
+                {tex->getSize().x/2.f, tex->getSize().y/1.f},
+                {tex->getSize().x/1.f, tex->getSize().y/1.f}  
+            }
+        };
+
+        Vector2 scale = {
+            (float)tex->getSize().x / (float)ogTex->getSize().x,
+            (float)tex->getSize().y / (float)ogTex->getSize().y
+        };
+
+        sf::Vertex vert[4];
+
+        sf::RenderStates states;
+        states.texture = tex;
+
+        // For each 4 quadrants
+        vector<sf::Vector2i> indices = {
+            {0, 0}, {0, 1}, {1, 1}, {1, 0},
+            {0, 1}, {0, 2}, {1, 2}, {1, 1},
+            {1, 0}, {1, 1}, {2, 1}, {2, 0},
+            {1, 1}, {1, 2}, {2, 2}, {2, 1}                
+        };
+
+        // Want vs Have Angle
+        float rotate = PI/2 - (pt[0][1] - pt[2][1]).getAngle();
+
+        for(int i = 0; i < indices.size(); i += 4) {
+
+            for(int j = 0; j < 4; j ++) {
+                int x = indices[i+j].x;
+                int y = indices[i+j].y;
+
+                // Rotate skeleton, and scale accordingly, then rerotate into proper position
+                Vector2 pos = pt[x][y].rotate(rotate, pt[1][1]);
+                pos = pt[1][1] + (pos - pt[1][1]) * scale;
+                pos = pos.rotate(-rotate, pt[1][1]);
+
+                vert[j].position = g::video.camera.getScreen(pos);
+                vert[j].texCoords = texPt[x][y];   
+            }
+            g::video.draw(vert, 4, sf::PrimitiveType::Quads, states);
+        }
+    }
 }
 
-void Skeleton::drawNeck(sf::Texture* tex) {
+void Skeleton::drawNeck(std::vector<Clothing*> list) {
     float width = ((shoulder[0] - torso[0]).getDistance() + (shoulder[1] - torso[0]).getDistance()) / 3.f;
-    drawBone(neck, tex, width);
+    drawBone(list, Clothing::Neck, neck, width);
 }
 
-void Skeleton::drawHead(sf::Texture* tex, float headAngle) {
+void Skeleton::drawHead(std::vector<Clothing*> list, float headAngle) {
     float height = (torso[0] - torso[1]).getDistance();   
 
     Vector2 psuedoHeadTop;
 
-    if(headAngle > PI / 2.f || headAngle < PI / -2.f)
+    if(headAngle >= -PI / 2 && headAngle < PI / 2.f)
         psuedoHeadTop = head.translate(headAngle + PI / 2, height / 4);
     else
         psuedoHeadTop = head.translate(headAngle - PI / 2, height / 4);
 
     Bone psuedoBone {head, psuedoHeadTop};
 
-    drawBone(psuedoBone, tex, height / 2.f, (headAngle > PI / 2.f || headAngle < PI / -2.f));
+    drawBone(list, Clothing::Head, psuedoBone, height / 2.f, !(headAngle >= -PI / 2 && headAngle < PI / 2.f));  
 }
 
-void Skeleton::drawUpperArm(int side, sf::Texture* tex) {
+void Skeleton::drawUpperArm(std::vector<Clothing*> list, int side) {
     float width = (torso[1] - torso[0]).getDistance() / 5.f;
 
     Vector2 psuedoShoulder = shoulder[side].translate((hip[side] - shoulder[side]).getAngle(), width / 2);
@@ -296,10 +287,10 @@ void Skeleton::drawUpperArm(int side, sf::Texture* tex) {
 
     Bone psuedoBone {psuedoShoulder, psuedoElbow};
 
-    drawBone(psuedoBone, tex, width, torsoTopFlipped());
+    drawBone(list, Clothing::UpperArm, psuedoBone, width, torsoTopFlipped());
 }
 
-void Skeleton::drawForeArm(int side, sf::Texture* tex) {
+void Skeleton::drawForeArm(std::vector<Clothing*> list, int side) {
     float width = (torso[1] - torso[0]).getDistance() / 5.f;
 
     Vector2 psuedoShoulder = shoulder[side].translate((hip[side] - shoulder[side]).getAngle(), width / 2);
@@ -308,10 +299,10 @@ void Skeleton::drawForeArm(int side, sf::Texture* tex) {
 
     Bone psuedoBone {psuedoElbow, psuedoWrist};
 
-    drawBone(psuedoBone, tex, width, torsoTopFlipped());
+    drawBone(list, Clothing::ForeArm, psuedoBone, width, torsoTopFlipped());   
 }
 
-void Skeleton::drawHand(int side, sf::Texture* tex) {
+void Skeleton::drawHand(std::vector<Clothing*> list, int side) {
     float width = (torso[1] - torso[0]).getDistance() / 5.f;
 
     Vector2 psuedoShoulder = shoulder[side].translate((hip[side] - shoulder[side]).getAngle(), width / 2);
@@ -321,21 +312,20 @@ void Skeleton::drawHand(int side, sf::Texture* tex) {
 
     Bone psuedoBone {psuedoWrist, psuedoHand};
 
-    float angle = (fingers[side] - wrist[side]).getAngle();
-    drawBone(psuedoBone, tex, width, (angle > PI / 2.f || angle < PI / -2.f));
+    drawBone(list, Clothing::Hand, psuedoBone, width, (hand[side].end - hand[side].start).x < 0);       
 }
 
-void Skeleton::drawThigh(int side, sf::Texture* tex) {
+void Skeleton::drawThigh(std::vector<Clothing*> list, int side) {
     float width = (hip[side] - torso[1]).getDistance();
 
     Vector2 psuedoHip = torso[1] + (hip[side] - torso[1]) / 2.f;
     Vector2 psuedoKnee = psuedoHip + (knee[side] - hip[side]);
 
     Bone psuedoBone {psuedoHip, psuedoKnee};
-    drawBone(psuedoBone, tex, width, torsoBottomFlipped());
+    drawBone(list, Clothing::Thigh, psuedoBone, width, torsoBottomFlipped()); 
 }
 
-void Skeleton::drawCalf(int side, sf::Texture* tex) {
+void Skeleton::drawCalf(std::vector<Clothing*> list, int side) {
     float width = (hip[side] - torso[1]).getDistance();
 
     Vector2 psuedoHip = torso[1] + (hip[side] - torso[1]) / 2.f;
@@ -343,12 +333,11 @@ void Skeleton::drawCalf(int side, sf::Texture* tex) {
     Vector2 psuedoHeel = psuedoKnee + (heel[side] - knee[side]);
 
     Bone psuedoBone {psuedoKnee, psuedoHeel};
-    drawBone(psuedoBone, tex, width, torsoBottomFlipped());
+    drawBone(list, Clothing::Calf, psuedoBone, width, torsoBottomFlipped());   
 }
 
-void Skeleton::drawFoot(int side, sf::Texture* tex) {
+void Skeleton::drawFoot(std::vector<Clothing*> list, int side) {
     float width = (hip[side] - torso[1]).getDistance();
-    float angle = (toes[side] - heel[side]).getAngle();
 
     Vector2 psuedoHip = torso[1] + (hip[side] - torso[1]) / 2.f;
     Vector2 psuedoKnee = psuedoHip + (knee[side] - hip[side]);
@@ -357,90 +346,45 @@ void Skeleton::drawFoot(int side, sf::Texture* tex) {
 
     Bone psuedoBone {psuedoHeel, psuedoToes};
 
-    drawBone(psuedoBone, tex, width, (angle > PI / 2.f || angle < PI / -2.f));
+    drawBone(list, Clothing::Foot, psuedoBone, width, (foot[side].end - foot[side].start).x < 0);    
 }
 
-void Skeleton::draw(std::vector<Clothing*> clothes, float headAngle) {
+void Skeleton::draw(vector<Clothing*> list, float headAngle) {
 
-    for(auto& it : clothes) 
-        drawNeck(it->neck);
+    drawNeck(list);
 
-    for(auto& it : clothes) 
-        drawHead(it->head, headAngle);
+    drawCalf(list, 0); 
+    drawCalf(list, 1);        
+    drawThigh(list, 0);  
+    drawThigh(list, 1);  
 
-    if(torsoBottomFlipped()) {
-
-        for(auto& it : clothes) {
-            drawFoot(0, it->foot);
-            drawFoot(1, it->foot); 
-        }   
-
-        for(auto& it : clothes) {
-            drawCalf(0, it->calf); 
-            drawCalf(1, it->calf);        
-        }
-
-        for(auto& it : clothes) {
-            drawThigh(0, it->thigh);  
-            drawThigh(1, it->thigh);          
-        }
-    }
+    drawFoot(list, 0);
+    drawFoot(list, 1);
 
     if(torsoTopFlipped()) {  
+        drawForeArm(list, 0);
+        drawForeArm(list, 1);
+        drawUpperArm(list, 0);
+        drawUpperArm(list, 1);
 
-        for(auto& it : clothes) {
-            drawHand(0, it->hand);
-            drawHand(1, it->hand);         
-        }
+        drawHead(list, headAngle);
 
-        for(auto& it : clothes) {
-            drawForeArm(0, it->foreArm);
-            drawForeArm(1, it->foreArm);
-        }
-
-        for(auto& it : clothes) {   
-            drawUpperArm(0, it->upperArm);
-            drawUpperArm(1, it->upperArm);
-        }
+        drawHand(list, 0);
+        drawHand(list, 1);         
     }
 
-    for(auto& it : clothes) 
-        drawTorso(it->torsoFront, it->torsoBack);  
-
-    if(!torsoBottomFlipped()) {
-
-        for(auto& it : clothes) {
-            drawThigh(0, it->thigh);  
-            drawThigh(1, it->thigh);          
-        }
-
-        for(auto& it : clothes) {
-            drawCalf(0, it->calf); 
-            drawCalf(1, it->calf);        
-        }
-
-        for(auto& it : clothes) {
-            drawFoot(0, it->foot);
-            drawFoot(1, it->foot); 
-        }        
-    }
+    drawTorso(list);  
 
     if(!torsoTopFlipped()) {   
+        drawHand(list, 0);
+        drawHand(list, 1); 
 
-        for(auto& it : clothes) {   
-            drawUpperArm(0, it->upperArm);
-            drawUpperArm(1, it->upperArm);
-        }
-
-        for(auto& it : clothes) {
-            drawForeArm(0, it->foreArm);
-            drawForeArm(1, it->foreArm);
-        }
-
-        for(auto& it : clothes) {
-            drawHand(0, it->hand);
-            drawHand(1, it->hand);         
-        }
+        drawHead(list, headAngle);
+        
+        drawUpperArm(list, 0);
+        drawUpperArm(list, 1);                
+        drawForeArm(list, 0);
+        drawForeArm(list, 1);
     }
 }
 

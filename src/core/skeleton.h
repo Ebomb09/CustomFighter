@@ -59,18 +59,16 @@ struct Skeleton {
 
 private:
 
-	void drawBone(Bone& bone, sf::Texture* tex, float width = 2, bool flip = false);
-	void drawUpperTorso(sf::Texture* texFront, sf::Texture* texBack);
-	void drawLowerTorso(sf::Texture* texFront, sf::Texture* texBack);
-	void drawTorso(sf::Texture* texFront, sf::Texture* texBack);
-	void drawNeck(sf::Texture* tex);	
-	void drawHead(sf::Texture* tex, float headAngle = 0.f);
-	void drawUpperArm(int side, sf::Texture* tex);
-	void drawForeArm(int side, sf::Texture* tex);
-	void drawHand(int side, sf::Texture* tex);
-	void drawThigh(int side, sf::Texture* tex);
-	void drawCalf(int side, sf::Texture* tex);
-	void drawFoot(int side, sf::Texture* tex);
+	void drawBone(std::vector<Clothing*> list, int part, Bone& bone, float width = 2, bool flip = false);
+	void drawTorso(std::vector<Clothing*> list);
+	void drawNeck(std::vector<Clothing*> list);	
+	void drawHead(std::vector<Clothing*> list, float headAngle = 0.f);
+	void drawUpperArm(std::vector<Clothing*> list, int side);
+	void drawForeArm(std::vector<Clothing*> list, int side);
+	void drawHand(std::vector<Clothing*> list, int side);
+	void drawThigh(std::vector<Clothing*> list, int side);
+	void drawCalf(std::vector<Clothing*> list, int side);
+	void drawFoot(std::vector<Clothing*> list, int side);
 
 	bool torsoTopFlipped();
 	bool torsoBottomFlipped();

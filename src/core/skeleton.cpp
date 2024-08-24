@@ -327,7 +327,7 @@ void Skeleton::drawHand(std::vector<Clothing*> list, int side) {
 
     Bone psuedoBone {psuedoWrist, psuedoHand};
 
-    drawBone(list, Clothing::Hand, psuedoBone, width, (hand[side].end - hand[side].start).x < 0);       
+    drawBone(list, Clothing::Hand, psuedoBone, width, hand[side].end.x < hand[side].start.x);       
 }
 
 void Skeleton::drawThigh(std::vector<Clothing*> list, int side) {
@@ -361,7 +361,10 @@ void Skeleton::drawFoot(std::vector<Clothing*> list, int side) {
 
     Bone psuedoBone {psuedoHeel, psuedoToes};
 
-    drawBone(list, Clothing::Foot, psuedoBone, width, (foot[side].end - foot[side].start).x < 0);    
+    float rotate = PI/2 - (knee[side] - heel[side]).getAngle();
+    Vector2 norm = toes[side].rotate(rotate, heel[side]);
+
+    drawBone(list, Clothing::Foot, psuedoBone, width, norm.x < heel[side].x);    
 }
 
 void Skeleton::draw(vector<Clothing*> list, float headAngle) {

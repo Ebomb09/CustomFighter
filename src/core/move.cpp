@@ -14,6 +14,12 @@ std::vector<int> Move::getValidCategories(int move) {
 		categories.push_back(MoveCategory::Super);
 		categories.push_back(MoveCategory::Grab);	
 
+		categories.push_back(MoveCategory::AirNormal);
+		categories.push_back(MoveCategory::AirCommandNormal);	
+		categories.push_back(MoveCategory::AirSpecial);
+		categories.push_back(MoveCategory::AirSuper);
+		categories.push_back(MoveCategory::AirGrab);	
+
 	}else {
 		categories.push_back(move);
 	}

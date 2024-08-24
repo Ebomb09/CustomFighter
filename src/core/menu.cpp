@@ -11,13 +11,6 @@ static void cycleIndex(std::vector<Menu::Option> options, int* index, int quanti
 	do {
 		(*index) += quantity;
 
-		// Maximum quantity movement first then try checking closer elements
-		if(quantity > 0)
-			quantity = 1;
-
-		else if(quantity < 0)
-			quantity = -1;
-
 		// Safe check index
 		if(*index < 0)
 			(*index) = options.size() - 1;
@@ -26,8 +19,15 @@ static void cycleIndex(std::vector<Menu::Option> options, int* index, int quanti
 			(*index) = 0;		
 
 		// Cyclical check, if we loop back on starting point
-		if(*index == beg)
+		if(*index == beg && quantity != 0)
 			return;
+
+		// Maximum quantity movement first then try checking closer elements
+		if(quantity >= 0)
+			quantity = 1;
+
+		else if(quantity < 0)
+			quantity = -1;
 
 	}while(options[*index].name == "");
 }
@@ -96,11 +96,7 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 	}
 
 	// Safe check index, can be bad on the first table call
-	if(*hover < 0)
-		(*hover) = options.size() - 1;
-	
-	else if(*hover >= options.size()) 
-		(*hover) = 0;	
+	cycleIndex(options, hover, 0);
 
 	if(g::input.keyPressed[b.B]){
 		status = Accept;

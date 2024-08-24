@@ -134,6 +134,12 @@ namespace MoveCategory {
 		Special,
 		Super,
 		Grab,
+
+		AirNormal,
+		AirCommandNormal,
+		AirSpecial,
+		AirSuper,
+		AirGrab,
 		
 		Total
 	};
@@ -159,6 +165,12 @@ namespace MoveCategory {
 		"Special",
 		"Super",
 		"Grab",
+
+		"AirNormal",
+		"AirCommandNormal",
+		"AirSpecial",
+		"AirSuper",
+		"AirGrab",
 
 		"Total"	
 	};

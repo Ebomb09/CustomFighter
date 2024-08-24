@@ -366,8 +366,6 @@ void Skeleton::drawFoot(std::vector<Clothing*> list, int side) {
 
 void Skeleton::draw(vector<Clothing*> list, float headAngle) {
 
-    drawNeck(list);
-
     drawCalf(list, 0); 
     drawCalf(list, 1);        
     drawThigh(list, 0);  
@@ -382,6 +380,7 @@ void Skeleton::draw(vector<Clothing*> list, float headAngle) {
         drawUpperArm(list, 0);
         drawUpperArm(list, 1);
 
+        drawNeck(list);
         drawHead(list, headAngle);
 
         drawHand(list, 0);
@@ -394,6 +393,7 @@ void Skeleton::draw(vector<Clothing*> list, float headAngle) {
         drawHand(list, 0);
         drawHand(list, 1); 
 
+        drawNeck(list);
         drawHead(list, headAngle);
         
         drawUpperArm(list, 0);

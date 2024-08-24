@@ -284,13 +284,20 @@ void Editor::selectJoint() {
         }
     }
 
+    // Rotate Joint
+    if(g::input.mouseHeld[sf::Mouse::Button::Right] && selected >= 0) {
+        skele.rotateJoint(selected, -g::input.mouseMove.x * PI / 180);   
+    }
+
+    // Move Joint
     if(g::input.mouseHeld[sf::Mouse::Button::Left] && selected >= 0 && dragZone == 1) {
+
         skele.moveJoint(selected,
             {
                 g::input.mouseMove.x * g::video.camera.getScreenScale().x,
                 -g::input.mouseMove.y * g::video.camera.getScreenScale().y
             }
-        );
+        );   
     }
 
     if(selected >= 0) {

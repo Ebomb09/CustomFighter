@@ -80,11 +80,9 @@ void Skeleton::moveJoint(int index, Vector2 mov) {
 	joints[index] += mov;
 
 	for(int i = 0; i < boneCount; i ++) {
-		if(&joints[index] == &bones[i].start) {
 
-			if(&bones[i].end != &torso[1])
-				moveJoint(bones[i].end, mov);
-		}
+		if(&joints[index] == &bones[i].start && &bones[i].end != &torso[1]) 
+			moveJoint(bones[i].end, mov);
 	}
 }
 
@@ -92,12 +90,29 @@ void Skeleton::moveJoint(Vector2& joint, Vector2 mov) {
 	joint += mov;
 
 	for(int i = 0; i < boneCount; i ++) {
-		if(&joint == &bones[i].start) {
 
-			if(&bones[i].end != &torso[1])
-				moveJoint(bones[i].end, mov);
-		}
+		if(&joint == &bones[i].start && &bones[i].end != &torso[1]) 
+			moveJoint(bones[i].end, mov);
 	}
+}
+
+void Skeleton::rotateJoint(int index, float rotate) {
+
+    for(int i = 0; i < boneCount; i ++) {
+
+        if(&joints[index] == &bones[i].start && &bones[i].end != &torso[1]) 
+            rotateJoint(bones[i].end, bones[i].start, rotate);
+    }
+}
+
+void Skeleton::rotateJoint(Vector2& joint, Vector2& origin, float rotate) {
+    joint = joint.rotate(rotate, origin);
+
+    for(int i = 0; i < boneCount; i ++) {
+
+        if(&joint == &bones[i].start && &bones[i].end != &torso[1]) 
+            rotateJoint(bones[i].end, origin, rotate);
+    }    
 }
 
 void Skeleton::drawBone(std::vector<Clothing*> list, int part, Bone& bone, float width, bool flip) {
@@ -195,8 +210,8 @@ void Skeleton::drawTorso(std::vector<Clothing*> list) {
     pt[1][2] = (pt[2][2] - pt[0][2])/2.f + pt[0][2];
 
     for(int i = 0; i < list.size(); i ++) {
-        sf::Texture* ogTex = (torsoTopFlipped() || torsoBottomFlipped()) ? list[0]->torsoBack : list[0]->torsoFront;
-        sf::Texture* tex = (torsoTopFlipped() || torsoBottomFlipped()) ? list[i]->torsoBack : list[i]->torsoFront;
+        sf::Texture* ogTex = torsoTopFlipped() ? list[0]->torsoBack : list[0]->torsoFront;
+        sf::Texture* tex = torsoTopFlipped() ? list[i]->torsoBack : list[i]->torsoFront;
 
         if(!tex || !ogTex)
             continue;
@@ -389,9 +404,23 @@ void Skeleton::draw(vector<Clothing*> list, float headAngle) {
 }
 
 bool Skeleton::torsoTopFlipped() {
-    return shoulder[0].x < shoulder[1].x;
+    Skeleton copy = *this;
+    float rotate = PI/2 - (torso[0] - torso[1]).getAngle();
+
+    for(int i = 0; i < jointCount; i ++) {
+        copy.joints[i].rotate(rotate, torso[1]);
+    }
+
+    return copy.shoulder[0].x < copy.shoulder[1].x;
 }
 
 bool Skeleton::torsoBottomFlipped() {
-    return hip[0].x < hip[1].x;
+    Skeleton copy = *this;
+    float rotate = PI/2 - (torso[0] - torso[1]).getAngle();
+
+    for(int i = 0; i < jointCount; i ++) {
+        copy.joints[i].rotate(rotate, torso[1]);
+    }
+
+    return copy.hip[0].x < copy.hip[1].x;
 }

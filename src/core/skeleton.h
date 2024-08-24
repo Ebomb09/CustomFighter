@@ -55,6 +55,9 @@ struct Skeleton {
 	void moveJoint(int index, Vector2 mov);
 	void moveJoint(Vector2& joint, Vector2 mov);
 
+	void rotateJoint(int index, float rotate);
+	void rotateJoint(Vector2& joint, Vector2& origin, float rotate);
+
 	void draw(std::vector<Clothing*> clothes, float headAngle = 0.f);
 
 private:

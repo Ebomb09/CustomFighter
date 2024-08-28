@@ -86,6 +86,7 @@ add_executable(Game
 	src/game/net_game.cpp
 	src/game/character_select.cpp
 	src/game/game_tools.cpp
+	src/game/game_state.cpp
 
 	${Core}
 	${ImGui}

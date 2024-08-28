@@ -221,7 +221,7 @@ void Editor::update() {
     if(settings.playback && timer >= settings.playbackSpeed) {
         timer = 0;
 
-        player.advanceFrame(Button::Flag(), {player});
+        player.advanceFrame({player});
 
         if(player.inMove(Move::Stand))
             resetPlayer();

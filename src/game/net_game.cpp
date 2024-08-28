@@ -1,5 +1,5 @@
 #include "net_game.h"
-#include "game_tools.h"
+#include "game_state.h"
 
 #include "core/save.h"
 #include "core/render_instance.h"
@@ -11,37 +11,29 @@
 #include <cstdio>
 #include <ggponet.h>
 
-using std::vector, std::string;
+using std::string;
 
 GGPOSession* 		ggpo;
-int                 currPlayers = 0;
-const int           maxPlayers = 4;
-GGPOPlayerHandle    handle[maxPlayers];
-Player              player[maxPlayers];
-
-struct GameState {
-    Player::State p[maxPlayers];
-};
+GGPOPlayerHandle    handle[MAX_PLAYERS];
+Game                game;
 
 bool beginGame(const char *game) {
     return true;
 }
 
 bool advanceFrame(int flags) {
-    Button::Flag in[maxPlayers];
+    Button::Flag in[MAX_PLAYERS];
     int disconnect_flags;
     GGPOErrorCode result;
 
-    result = ggpo_synchronize_input(ggpo, in, sizeof(Button::Flag) * currPlayers, &disconnect_flags);
+    result = ggpo_synchronize_input(ggpo, in, sizeof(Button::Flag) * MAX_PLAYERS, &disconnect_flags);
 
     if(result == GGPO_OK) {
-        vector<Player> others;
 
-        for(int i = 0; i < currPlayers; i ++)
-            others.push_back(player[i]);
+        for(int i = 0; i < game.playerCount; i ++) 
+            game.players[i].in = in[i];
 
-        for(int i = 0; i < currPlayers; i ++)
-            player[i].advanceFrame(in[i], others);
+        game.advanceFrame();
 
 	    ggpo_advance_frame(ggpo);
 	}
@@ -50,28 +42,25 @@ bool advanceFrame(int flags) {
 }
 
 bool loadGameState(unsigned char *buffer, int len) {
-    GameState* state = (GameState*)buffer;
+    Game::SaveState* state = (Game::SaveState*)buffer;
 
-    for(int i = 0; i < maxPlayers; i ++)
-        player[i].state = state->p[i];
+    game.loadState(*state);
 
     return true;
 }
 
 bool saveGameState(unsigned char **buffer, int *len, int *checksum, int frame) {
-    GameState* state = new GameState();
+    Game::SaveState* state = new Game::SaveState();
 
-    for(int i = 0; i < maxPlayers; i ++)
-        state->p[i] = player[i].state;
+    *state = game.saveState();
 
     *buffer = (unsigned char*)state;
-    *len = sizeof(GameState);
-
+    *len = sizeof(Game::SaveState);
     return true;
 }
 
 void freeBuffer (void *buffer) {
-    GameState* state = (GameState*)buffer;
+    Game::SaveState* state = (Game::SaveState*)buffer;
     delete state;
 }
 
@@ -147,13 +136,11 @@ bool start(Lobby::Room room) {
 	ggpo_set_disconnect_timeout(ggpo, 3000);
 	ggpo_set_disconnect_notify_start(ggpo, 1000);
 
-    // Initialize players
+    // Configure players
     for(int i = 0; i < room.remotes.size(); i ++) {
 
         // Reset player states
-        player[i] = Player();
-        player[i].config = room.configs[i];
-        player[i].gameIndex = i;
+        game.players[i].config = room.configs[i];
 
         // Hint to GGPO what each player is
         GGPOPlayer hint;
@@ -162,10 +149,11 @@ bool start(Lobby::Room room) {
 
         // Determine player type from ip:port
         if(room.remotes[i] == "localhost") {
+            game.players[i].seatIndex = 0;            
             hint.type = GGPO_PLAYERTYPE_LOCAL;
-            player[i].seatIndex = 0;
 
         }else {
+            game.players[i].seatIndex = -1;
             hint.type = GGPO_PLAYERTYPE_REMOTE;
 
             // Get Address components
@@ -187,24 +175,9 @@ bool start(Lobby::Room room) {
         }
     }
 
-    // GGPO done, now set state of players based on room size
-    if(room.remotes.size() == 2) {
-        currPlayers = 2;
+    // GGPO done, initialize the game
+    game.init(room.remotes.size());
 
-        player[0].state.position.x = -75;
-        player[0].state.target = 1;
-        player[1].state.position.x = 75;    
-        player[1].state.target = 0;    
-
-
-    }else if(room.remotes.size() == 4) {
-        currPlayers = 4;
-
-        player[0].state.position.x = -75;
-        player[1].state.position.x = -75;
-        player[2].state.position.x = 75;
-        player[3].state.position.x = 75;                        
-    }  
     return true;
 }
 
@@ -216,10 +189,10 @@ bool loop() {
         // Get buttons for local and remote player
         GGPOErrorCode result;
 
-        for(int i = 0; i < currPlayers; i ++) {
+        for(int i = 0; i < game.playerCount; i ++) {
 
-            if(player[i].seatIndex >= 0) {
-                Button::Flag in = player[i].readInput();
+            if(game.players[i].seatIndex >= 0) {
+                Button::Flag in = game.players[i].readInput();
                 result = ggpo_add_local_input(ggpo, handle[i], &in, sizeof(Button::Flag));
             }
         }
@@ -229,15 +202,7 @@ bool loop() {
             advanceFrame(NULL);
 
         g::video.clear();
-
-        setCamera(player, currPlayers);
-
-        drawStage(0);
-        drawHealthBars(player, currPlayers);
-
-        for(int i = 0; i < currPlayers; i ++) 
-            player[i].draw();
-
+        game.draw();
         g::video.display();
 
         ggpo_idle(ggpo, 16);

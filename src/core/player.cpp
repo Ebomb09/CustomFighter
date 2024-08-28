@@ -56,7 +56,10 @@ Button::Flag Player::readInput() {
     return out;
 }
 
-void Player::advanceFrame(Button::Flag in, vector<Player> others) {
+void Player::advanceFrame(vector<Player> others) {
+
+    // Find other currently tagged in player
+    int target = getTarget(others);
 
     // Hitstop
     if(state.hitStop > 0)
@@ -99,10 +102,10 @@ void Player::advanceFrame(Button::Flag in, vector<Player> others) {
 
     // Damage, only be hit once per keyframe
     // Opponent doing a new move can reset the hitKeyFrame
-    if(state.target != -1 && others[state.target].getKeyFrame() != state.hitKeyFrame)
+    if(target != -1 && others[target].getKeyFrame() != state.hitKeyFrame)
         state.hitKeyFrame = -1;
 
-    bool damageValid = (state.target != -1 && state.hitKeyFrame != others[state.target].getKeyFrame());
+    bool damageValid = (target != -1 && state.hitKeyFrame != others[target].getKeyFrame());
 
     if(damageValid) {
 
@@ -110,12 +113,12 @@ void Player::advanceFrame(Button::Flag in, vector<Player> others) {
         bool found = false;
 
         for(auto& hurt : getHurtBoxes()) {
-            for(auto& hit : others[state.target].getHitBoxes()) {
+            for(auto& hit : others[target].getHitBoxes()) {
 
                 if(Real::rectangleInRectangle(hurt, hit)) {
 
                     // Set what keyframe you were hit on
-                    state.hitKeyFrame = others[state.target].getKeyFrame();        
+                    state.hitKeyFrame = others[target].getKeyFrame();        
 
                     // Block if input in the opposite direction of opponent           
                     bool block = false;
@@ -136,10 +139,12 @@ void Player::advanceFrame(Button::Flag in, vector<Player> others) {
                         if(inMove(Move::Stand) || inMove(Move::StandBlock)){
                             setMove(Move::StandBlock);
                             state.stun = hit.blockStun;
+                            state.accDamage = hit.blockStun;
                         
                         }else{
                             setMove(Move::CrouchBlock);
                             state.stun = hit.blockStun;
+                            state.accDamage = hit.blockStun;
                         }
 
                     }else{
@@ -286,11 +291,11 @@ void Player::advanceFrame(Button::Flag in, vector<Player> others) {
     state.position += state.velocity;
 
     // Clamp position within the target by stage width
-    if(std::abs(state.velocity.x) > 0 && state.target != -1) {
+    if(std::abs(state.velocity.x) > 0 && target != -1) {
         state.position.x = std::clamp(
             state.position.x, 
-            others[state.target].state.position.x - CameraBounds.w + 16,
-            others[state.target].state.position.x + CameraBounds.w - 16
+            others[target].state.position.x - CameraBounds.w + 16,
+            others[target].state.position.x + CameraBounds.w - 16
             );
     }
 
@@ -319,8 +324,8 @@ void Player::advanceFrame(Button::Flag in, vector<Player> others) {
     if(inMove(Move::Stand) || inMove(Move::Crouch)) {
 
         // If on ground look in direction of opponent
-        if(state.target != -1)
-            state.side = (state.position.x < others[state.target].state.position.x) ? 1 : -1;
+        if(target != -1)
+            state.side = (state.position.x < others[target].state.position.x) ? 1 : -1;
 
         // Reset to grounded
         state.velocity = {0, 0};
@@ -358,14 +363,14 @@ void Player::advanceFrame(Button::Flag in, vector<Player> others) {
     }
 
     // Collision checks
-    if(state.target != -1 && (state.position - others[state.target].state.position).getDistance() < 25) {
-        state.position.x = others[state.target].state.position.x + 25 * others[state.target].state.side;
+    if(target != -1 && (state.position - others[target].state.position).getDistance() < 25) {
+        state.position.x = others[target].state.position.x + 25 * others[target].state.side;
     }
 
     // Clamp look to side, no 180 degree head turns
-    if(state.target != -1) {
+    if(target != -1) {
         Skeleton myPose = getSkeleton();
-        Skeleton opPose = others[state.target].getSkeleton();
+        Skeleton opPose = others[target].getSkeleton();
 
         state.look = (opPose.head - myPose.head).getAngle();
 
@@ -393,6 +398,9 @@ void Player::advanceFrame(Button::Flag in, vector<Player> others) {
         StageBounds.x + 16, 
         StageBounds.x + StageBounds.w - 16
         );
+
+    // Reset input
+    in = Button::Flag();
 }
 
 void Player::dealDamage(int dmg) {
@@ -401,6 +409,17 @@ void Player::dealDamage(int dmg) {
 
     if(state.health < 0)
         state.health = 0;
+}
+
+int Player::getTarget(vector<Player> others) {
+
+    for(int i = 0; i < others.size(); i ++) {
+
+        if(others[i].state.taggedIn && others[i].team != team) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 string Player::getMotion(int index) {

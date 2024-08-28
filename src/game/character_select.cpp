@@ -142,8 +142,8 @@ struct Creator {
         Button::Flag in;
 
         if(test) {
-            in = dummy.readInput();
-            dummy.advanceFrame(in, {});
+            dummy.in = dummy.readInput();
+            dummy.advanceFrame({});
 
         }else {
             dummy.state.moveFrame ++;

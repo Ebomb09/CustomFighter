@@ -30,8 +30,11 @@ const Rectangle CameraBounds = {
 
 struct Player {
 
-	int gameIndex = 0;
-	int seatIndex = -1;
+	int gameIndex 	= 0;
+	int seatIndex 	= -1;
+	int team 		= -1;
+	
+	Button::Flag in;
 
 	struct Config {
 		vector<string>	clothes;
@@ -45,7 +48,7 @@ struct Player {
 	}config;
 
 	struct State {
-		int 			target			= -1;
+		bool			taggedIn		= true;
 		int				health			= 100;
 		int				accDamage		= 0;
 		int				stun			= 0;
@@ -62,10 +65,12 @@ struct Player {
 	}state;
 
 	Button::Flag readInput();
-	void advanceFrame(Button::Flag in, vector<Player> others);
+	void advanceFrame(vector<Player> others);
 	void draw();
 
 	void dealDamage(int dmg);
+
+	int getTarget(vector<Player> others);
 
 	Vector2 getSOCD(int index = 0);
 	string getMotion(int index = 0);

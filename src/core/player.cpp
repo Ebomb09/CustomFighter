@@ -538,6 +538,12 @@ Frame Player::getFrame() {
             frame.pose.joints[i].x *= state.side;
             frame.pose.joints[i] += state.position;
         }
+
+        // Flip draw order array
+        if(state.side == -1) {
+            for(int i = 0; i < SkeletonDrawOrder::Total / 2; i ++) 
+                std::swap(frame.pose.order[i], frame.pose.order[SkeletonDrawOrder::Total - 1 - i]);
+        }
     }
     return frame;
 }

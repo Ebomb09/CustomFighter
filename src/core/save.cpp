@@ -143,7 +143,8 @@ Clothing* SaveManager::getClothing(std::filesystem::path path) {
 			ptr->pelvis 	= getTexture(path/"pelvis.png");
 			ptr->thigh 		= getTexture(path/"thigh.png");
 			ptr->calf 		= getTexture(path/"calf.png");
-			ptr->hand 		= getTexture(path/"hand.png");	
+			ptr->handFront 	= getTexture(path/"handFront.png");
+			ptr->handBack 	= getTexture(path/"handBack.png");					
 			ptr->foot 		= getTexture(path/"foot.png");
 			ptr->head 		= getTexture(path/"head.png");
 			clothes[path.string()] = ptr;			

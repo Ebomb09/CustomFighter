@@ -3,6 +3,7 @@
 #include "core/math.h"
 
 #include "editor.h"
+#include <string>
 
 int main() {
     Editor editor;
@@ -218,6 +219,28 @@ int main() {
 
                 for(int i = 0; i < MoveCategory::Total; i ++)
                     ImGui::Checkbox((MoveCategory::String[i] + "##FROM").c_str(), &editor.anim.from[i]);
+            }
+
+            if(ImGui::CollapsingHeader("Skeleton Draw Order")) {
+                
+                // Skeleton reoderable draw part selection
+                for(int i = 0; i < SkeletonDrawOrder::Total; i ++) {
+                    ImGui::Text("%s", (std::to_string(i) + ".").c_str());
+                    ImGui::SameLine();
+                    ImGui::Selectable(SkeletonDrawOrder::String[keyFrame.pose.order[i]].c_str());
+
+                    if(ImGui::IsItemActive() && !ImGui::IsItemHovered()) {
+                        ImVec2 drag = ImGui::GetMouseDragDelta();
+
+                        if(drag.y < 0 && i > 0) {
+                            std::swap(keyFrame.pose.order[i], keyFrame.pose.order[i-1]);
+
+                        }else if(drag.y > 0 && i < SkeletonDrawOrder::Total - 1){
+                            std::swap(keyFrame.pose.order[i], keyFrame.pose.order[i+1]);
+                        }
+                        ImGui::ResetMouseDragDelta();
+                    }
+                }
             }
 
             if(ImGui::CollapsingHeader("Key Frame")) {

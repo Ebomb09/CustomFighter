@@ -176,6 +176,10 @@ void Animation::saveToFile(std::string fileName) {
             node["y"] = keyFrames[i].pose.joints[j].y;            
         } 
 
+        for(int j = 0; j < SkeletonDrawOrder::Total; j ++) {
+            auto& node = json["keyFrames"][i]["order"] = keyFrames[i].pose.order;
+        }
+
         json["keyFrames"][i]["hitBoxes"] = nlohmann::json::array();   
 
         for(int j = 0; j < keyFrames[i].hitBoxes.size(); j ++) {
@@ -258,16 +262,21 @@ void Animation::loadFromFile(std::string fileName) {
         }
 
         auto& jointAr = keyFramesAr[i]["joints"];
+        auto& orderAr = keyFramesAr[i]["order"];
         auto& hitBoxAr = keyFramesAr[i]["hitBoxes"];
         auto& hurtBoxAr = keyFramesAr[i]["hurtBoxes"];
 
-        for(int j = 0; j < jointAr.size(); j++) {
+        for(int j = 0; j < newFrame.pose.jointCount && j < jointAr.size(); j++) {
 
             if(jointAr[j]["x"].is_number_float())
                 newFrame.pose.joints[j].x = jointAr[j]["x"];
 
             if(jointAr[j]["y"].is_number_float())
                 newFrame.pose.joints[j].y = jointAr[j]["y"];   
+        }
+
+        for(int j = 0; j < SkeletonDrawOrder::Total && j < orderAr.size(); j++) {
+            newFrame.pose.order[j] = orderAr[j];
         }
 
         for(int j = 0; j < hitBoxAr.size(); j++) {

@@ -35,13 +35,19 @@ Skeleton& Skeleton::operator=(const Skeleton& copy) {
 	for(int i = 0; i < jointCount; i ++)
 		joints[i] = copy.joints[i];	
 
+    for(int i = 0; i < SkeletonDrawOrder::Total; i ++) 
+        order[i] = copy.order[i];
+
 	return *this;
 }
 
 Skeleton& Skeleton::operator=(Skeleton&& move) {
 
 	for(int i = 0; i < jointCount; i ++)
-		joints[i] = std::move(move.joints[i]);	
+		joints[i] = std::move(move.joints[i]);
+
+    for(int i = 0; i < SkeletonDrawOrder::Total; i ++) 
+        order[i] = std::move(move.order[i]);
 
 	return *this;
 }
@@ -52,19 +58,19 @@ void Skeleton::setDefault() {
     toes[0] = {20, 0};
     toes[1] = {-20, 0};
 	knee[0] = {17, 15};
-	knee[1] = {-17, 15};	
+	knee[1] = {-17, 15};
 	hip[0] = {15, 30};
 	hip[1] = {-15, 30};
 	torso[1] = {0, 30};	
 	torso[0] = {0, 60};	
 	shoulder[0] = {10, 60};	
-	shoulder[1] = {-10, 60};	
+	shoulder[1] = {-10, 60};
 	elbow[0] = {20, 55};
 	elbow[1] = {-20, 55};
 	wrist[0] = {8, 45};	
 	wrist[1] = {-8, 45};	
     fingers[0] = {13, 45};
-    fingers[1] = {-13, 45};       	
+    fingers[1] = {-13, 45};
 	head = {0, 70};	
 }
 
@@ -327,7 +333,15 @@ void Skeleton::drawHand(std::vector<Clothing*> list, int side) {
 
     Bone psuedoBone {psuedoWrist, psuedoHand};
 
-    drawBone(list, Clothing::Hand, psuedoBone, width, hand[side].end.x < hand[side].start.x);       
+    // Determine back or front of hand showing
+    int index = Clothing::HandFront;
+
+    if(side == 0 && hand[side].end.x < hand[side].start.x) 
+        index = Clothing::HandBack;
+    else if(side == 1 && hand[side].end.x > hand[side].start.x) 
+        index = Clothing::HandBack;           
+
+    drawBone(list, index, psuedoBone, width, hand[side].end.x < hand[side].start.x);       
 }
 
 void Skeleton::drawThigh(std::vector<Clothing*> list, int side) {
@@ -369,40 +383,43 @@ void Skeleton::drawFoot(std::vector<Clothing*> list, int side) {
 
 void Skeleton::draw(vector<Clothing*> list, float headAngle) {
 
-    drawCalf(list, 0); 
-    drawCalf(list, 1);        
-    drawThigh(list, 0);  
-    drawThigh(list, 1);  
+    for(int i = 0; i < SkeletonDrawOrder::Total; i ++) {
 
-    drawFoot(list, 0);
-    drawFoot(list, 1);
+        switch(order[i]) {
 
-    if(torsoTopFlipped()) {  
-        drawForeArm(list, 0);
-        drawForeArm(list, 1);
-        drawUpperArm(list, 0);
-        drawUpperArm(list, 1);
+            case SkeletonDrawOrder::LegLeft:
+                drawCalf(list, 1);
+                drawThigh(list, 1);
+                drawFoot(list, 1); 
+                break; 
 
-        drawNeck(list);
-        drawHead(list, headAngle);
+            case SkeletonDrawOrder::LegRight:
+                drawCalf(list, 0);
+                drawThigh(list, 0);  
+                drawFoot(list, 0);
+                break; 
 
-        drawHand(list, 0);
-        drawHand(list, 1);         
-    }
+            case SkeletonDrawOrder::Body:
+                drawTorso(list);
+                break;
 
-    drawTorso(list);  
+            case SkeletonDrawOrder::Head:
+                drawNeck(list);
+                drawHead(list, headAngle);
+                break;           
 
-    if(!torsoTopFlipped()) {   
-        drawHand(list, 0);
-        drawHand(list, 1); 
+            case SkeletonDrawOrder::ArmLeft:
+                drawUpperArm(list, 0);
+                drawForeArm(list, 0);
+                drawHand(list, 0);
+                break;
 
-        drawNeck(list);
-        drawHead(list, headAngle);
-        
-        drawUpperArm(list, 0);
-        drawUpperArm(list, 1);                
-        drawForeArm(list, 0);
-        drawForeArm(list, 1);
+            case SkeletonDrawOrder::ArmRight:
+                drawUpperArm(list, 1);
+                drawForeArm(list, 1);
+                drawHand(list, 1);
+                break;                   
+        }
     }
 }
 

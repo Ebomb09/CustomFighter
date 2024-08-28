@@ -15,7 +15,8 @@ struct Clothing {
 		Pelvis,
 		Thigh,
 		Calf,
-		Hand,
+		HandFront,
+		HandBack,
 		Foot,
 		Head,
 		Total
@@ -33,7 +34,8 @@ struct Clothing {
 						*pelvis 		= NULL,
 						*thigh 			= NULL,
 						*calf 			= NULL,
-						*hand			= NULL,
+						*handFront		= NULL,
+						*handBack		= NULL,
 						*foot			= NULL,
 						*head			= NULL;			
 		};

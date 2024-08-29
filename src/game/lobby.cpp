@@ -180,18 +180,16 @@ Lobby::Room Lobby::run(Player::Config config) {
                 }
                 ImGui::EndTable();
             }
-
-            // Found the wanted players
-            if(room.remotes.size() == 2) {
-                room.good = true;
-                return room;
-            }
         }
 
-        ImGui::End();
-
-        
+        ImGui::End();        
         g::video.display();
+
+        // Found the wanted players
+        if(room.remotes.size() == 2) {
+            room.good = true;
+            return room;
+        }        
     }
 	return room;
 }

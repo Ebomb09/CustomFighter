@@ -257,8 +257,8 @@ void Animation::loadFromFile(std::string fileName) {
         newFrame.cancel = keyFramesAr[i].value("cancel", "");
 
         if(keyFramesAr[i]["impulse"].is_object()) {
-            newFrame.impulse.x = keyFramesAr[i]["impulse"].value("x", 0);
-            newFrame.impulse.y = keyFramesAr[i]["impulse"].value("y", 0);
+            newFrame.impulse.x = keyFramesAr[i]["impulse"].value("x", 0.f);
+            newFrame.impulse.y = keyFramesAr[i]["impulse"].value("y", 0.f);
         }
 
         auto& jointAr = keyFramesAr[i]["joints"];

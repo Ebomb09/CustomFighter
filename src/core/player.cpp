@@ -58,6 +58,12 @@ Button::Flag Player::readInput() {
 
 void Player::advanceFrame(vector<Player> others) {
 
+    // Player stay down once defeated
+    if(state.health <= 0) {
+        in = Button::Flag();
+        setMove(Move::KnockDown);
+    }
+
     // Find other currently tagged in player
     int target = getTarget(others);
 
@@ -69,13 +75,12 @@ void Player::advanceFrame(vector<Player> others) {
         state.hitStop ++;
 
     // Add input to the button history
-    for(int i = Button::History - 1; i > 0; i --) {
+    for(int i = Button::History - 1; i > 0; i --) 
         state.button[i] = state.button[i - 1];
-    }
 
     state.button[0] = in;
 
-    // Check if taken any damage and set the HitStop
+    // Check if any damage was dealt and set the HitStop
     int dmg = 0;
 
     for(Player& other : others) 
@@ -100,93 +105,84 @@ void Player::advanceFrame(vector<Player> others) {
     if(state.stun > 0)
         state.stun --;
 
-    // Damage, only be hit once per keyframe
-    // Opponent doing a new move can reset the hitKeyFrame
-    if(target != -1 && others[target].getKeyFrame() != state.hitKeyFrame)
-        state.hitKeyFrame = -1;
+    if(target != -1) {
 
-    bool damageValid = (target != -1 && state.hitKeyFrame != others[target].getKeyFrame());
+        // Opponent doing a new move can reset the hitKeyFrame
+        if(others[target].getKeyFrame() != state.hitKeyFrame)
+            state.hitKeyFrame = -1;
 
-    if(damageValid) {
+        // Damage, only be hit once per keyframe
+        if(state.hitKeyFrame != others[target].getKeyFrame()) {
 
-        // Check HurtBox <-> HitBox collisions, for only one match
-        bool found = false;
+            // Check HurtBox <-> HitBox collisions, for only one match
+            bool found = false;
 
-        for(auto& hurt : getHurtBoxes()) {
-            for(auto& hit : others[target].getHitBoxes()) {
+            for(auto& hurt : getHurtBoxes()) {
+                for(auto& hit : others[target].getHitBoxes()) {
 
-                if(Real::rectangleInRectangle(hurt, hit)) {
+                    if(Real::rectangleInRectangle(hurt, hit)) {
 
-                    // Set what keyframe you were hit on
-                    state.hitKeyFrame = others[target].getKeyFrame();        
+                        // Set what keyframe you were hit on
+                        state.hitKeyFrame = others[target].getKeyFrame();        
 
-                    // Block if input in the opposite direction of opponent           
-                    bool block = false;
+                        // Block if input in the opposite direction of opponent           
+                        bool block = false;
 
-                    if(inMove(Move::Stand) || inMove(Move::StandBlock) ||
-                        inMove(Move::Crouch) || inMove(Move::CrouchBlock)) {
+                        if(inMove(Move::Stand) || inMove(Move::StandBlock) ||
+                            inMove(Move::Crouch) || inMove(Move::CrouchBlock)) {
 
-                        if((state.side == 1 && getSOCD().x < 0) || (state.side == -1 && getSOCD().x > 0)) {
-                            block = true;
-                        }
-                    }
-
-                    if(block) {
-
-                        // Push back
-                        state.velocity.x = hit.force.x;
-
-                        if(inMove(Move::Stand) || inMove(Move::StandBlock)){
-                            setMove(Move::StandBlock);
-                            state.stun = hit.blockStun;
-                            state.accDamage = hit.blockStun;
-                        
-                        }else{
-                            setMove(Move::CrouchBlock);
-                            state.stun = hit.blockStun;
-                            state.accDamage = hit.blockStun;
+                            if((state.side == 1 && getSOCD().x < 0) || (state.side == -1 && getSOCD().x > 0)) {
+                                block = true;
+                            }
                         }
 
-                    }else{
-                        dealDamage(hit.damage);
-                        state.velocity.x += hit.force.x;
-                        state.velocity.y = hit.force.y;
+                        if(block) {
 
-                        if(hit.knockdown) {
-                            setMove(Move::KnockDown);
+                            // Push back
+                            state.velocity.x = hit.force.x;
 
-                        }else if(state.position.y > 0 || state.velocity.y > 0){
-                            setMove(Move::JumpCombo);
-
-                        }else if(inMove(Move::Crouch) || inMove(Move::CrouchBlock) || inMove(Move::CrouchCombo)){
-                            setMove(Move::CrouchCombo);
-                            state.stun = hit.hitStun;
+                            if(inMove(Move::Stand) || inMove(Move::StandBlock)){
+                                setMove(Move::StandBlock);
+                                state.stun = hit.blockStun;
+                                state.accDamage = hit.blockStun;
+                            
+                            }else{
+                                setMove(Move::CrouchBlock);
+                                state.stun = hit.blockStun;
+                                state.accDamage = hit.blockStun;
+                            }
 
                         }else{
-                            setMove(Move::StandCombo);
-                            state.stun = hit.hitStun;
-                        }
-                    }
+                            dealDamage(hit.damage);
+                            state.velocity.x += hit.force.x;
+                            state.velocity.y = hit.force.y;
 
-                    found = true;
-                    break;
+                            if(hit.knockdown) {
+                                setMove(Move::KnockDown);
+
+                            }else if(state.position.y > 0 || state.velocity.y > 0){
+                                setMove(Move::JumpCombo);
+
+                            }else if(inMove(Move::Crouch) || inMove(Move::CrouchBlock) || inMove(Move::CrouchCombo)){
+                                setMove(Move::CrouchCombo);
+                                state.stun = hit.hitStun;
+
+                            }else{
+                                setMove(Move::StandCombo);
+                                state.stun = hit.hitStun;
+                            }
+                        }
+
+                        found = true;
+                        break;
+                    }
                 }
-            }
 
-            if(found)
-                break;
+                if(found)
+                    break;
+            }
         }
     }
-
-    // Hit/Block Stun finish
-    if((inMove(Move::StandCombo) || inMove(Move::StandBlock)) && state.stun == 0) 
-        setMove(Move::Stand);
-
-    if((inMove(Move::CrouchCombo) || inMove(Move::CrouchBlock)) && state.stun == 0) 
-        setMove(Move::Crouch);
-
-    if(inMove(Move::GetUp) && doneMove())
-        setMove(Move::Stand);
 
     // Special Move Check
     {
@@ -279,101 +275,127 @@ void Player::advanceFrame(vector<Player> others) {
         }
     }
 
-    // Custom move finish
-    if(state.moveIndex >= Move::Custom00 && state.moveIndex < Move::Total && doneMove()) {
-
-        if(state.position.y <= 0)
-            setMove(Move::Stand);
-    }
-
     // Movement
     state.velocity += getFrame().impulse;
     state.position += state.velocity;
 
-    // Clamp position within the target by stage width
-    if(std::abs(state.velocity.x) > 0 && target != -1) {
-        state.position.x = std::clamp(
-            state.position.x, 
-            others[target].state.position.x - CameraBounds.w + 16,
-            others[target].state.position.x + CameraBounds.w - 16
-            );
+    // Collision checks
+    if(target != -1) {
+
+        // Unstick players
+        while((state.position - others[target].state.position).getDistance() < 25) {
+
+            if(state.position.x < others[target].state.position.x)
+                state.position.x -= 1;
+
+            else if(state.position.x == others[target].state.position.x)
+                state.position.x += (state.position.x < 0) ? 1 : -1;
+
+            else
+                state.position.x += 1;
+        }   
     }
+
+    // Clamp position within the camera
+    state.position.x = std::clamp(
+        state.position.x, 
+        g::video.camera.x + 16,
+        g::video.camera.x + g::video.camera.w - 16
+        );
+
+    // Clamp position within stage bounds
+    state.position.x = std::clamp(
+        state.position.x, 
+        StageBounds.x + 16, 
+        StageBounds.x + StageBounds.w - 16
+        );    
 
     if(state.position.y <= 0) {
         state.position.y = 0;
         state.velocity.y = 0;
-        state.velocity.x /= 1.1;
 
-        if(std::abs(state.velocity.x) < 0.25)
+        if(state.velocity.x > 0)
+            state.velocity.x = std::clamp(state.velocity.x - 0.25f, 0.f, state.velocity.x);
+
+        if(state.velocity.x < 0)
+            state.velocity.x = std::clamp(state.velocity.x + 0.25f, state.velocity.x, 0.f);
+
+        // Custom move commit to move until on ground
+        if(inMove(Move::Custom00) && doneMove())
+            setMove(Move::Stand);
+
+        // Anticipate the jump startup and only return once animation is done
+        if(inMove(Move::Jump) && doneMove())
+            setMove(Move::Stand);
+
+        // Movement options
+        if(inMove(Move::Stand) || inMove(Move::Crouch)) {
             state.velocity.x = 0;
 
-        if((inMove(Move::JumpCombo) || inMove(Move::KnockDown)))
+            // If on ground look in direction of opponent
+            if(target != -1)
+                state.side = (state.position.x < others[target].state.position.x) ? 1 : -1;
+
+            // Standing
+            if(getSOCD().y == 0) {
+
+                if(getSOCD().x == state.side){
+                    setMove(Move::WalkForwards, true);
+
+                }else if(getSOCD().x == -state.side){
+                    setMove(Move::WalkBackwards, true);
+
+                }else {
+                    setMove(Move::Stand, true);
+                }
+
+            // Jumping
+            }else if(getSOCD().y > 0) {
+
+                if(getSOCD().x == state.side){
+                    setMove(Move::JumpForwards);
+
+                }else if(getSOCD().x == -state.side){
+                    setMove(Move::JumpBackwards);
+
+                }else {
+                    setMove(Move::Jump);
+                }
+
+            // Crouching
+            }else if(getSOCD().y < 0) {
+                setMove(Move::Crouch, true);
+            }      
+        }
+
+        // Hit States
+        if(inMove(Move::JumpCombo)) 
             setMove(Move::GetUp);
 
-        if(inMove(Move::Stand) || inMove(Move::Crouch))
-            state.velocity.x = 0;
+        if(inMove(Move::KnockDown) && state.health > 0)
+            setMove(Move::GetUp);
+
+        if((inMove(Move::StandCombo) || inMove(Move::StandBlock)) && state.stun == 0) 
+            setMove(Move::Stand);
+
+        if((inMove(Move::CrouchCombo) || inMove(Move::CrouchBlock)) && state.stun == 0) 
+            setMove(Move::Crouch);
+
+        if(inMove(Move::GetUp) && doneMove())
+            setMove(Move::Stand);
 
     }else{
         state.velocity.y -= 0.25;
     }
 
-    if(inMove(Move::Jump) && state.position.y <= 0 && doneMove()) {
-        setMove(Move::Stand);
-    }
-
-    if(inMove(Move::Stand) || inMove(Move::Crouch)) {
-
-        // If on ground look in direction of opponent
-        if(target != -1)
-            state.side = (state.position.x < others[target].state.position.x) ? 1 : -1;
-
-        // Reset to grounded
-        state.velocity = {0, 0};
-
-        // Standing
-        if(getSOCD().y == 0) {
-
-            if(getSOCD().x == state.side){
-                setMove(Move::WalkForwards, true);
-
-            }else if(getSOCD().x == -state.side){
-                setMove(Move::WalkBackwards, true);
-
-            }else {
-                setMove(Move::Stand, true);
-            }
-
-        // Jumping
-        }else if(getSOCD().y > 0) {
-
-            if(getSOCD().x == state.side){
-                setMove(Move::JumpForwards);
-
-            }else if(getSOCD().x == -state.side){
-                setMove(Move::JumpBackwards);
-
-            }else {
-                setMove(Move::Jump);
-            }
-
-        // Crouching
-        }else if(getSOCD().y < 0) {
-            setMove(Move::Crouch, true);
-        }      
-    }
-
-    // Collision checks
-    if(target != -1 && (state.position - others[target].state.position).getDistance() < 25) {
-        state.position.x = others[target].state.position.x + 25 * others[target].state.side;
-    }
-
-    // Clamp look to side, no 180 degree head turns
-    if(target != -1) {
+    // Look at the target while still alive
+    if(target != -1 && state.health > 0) {
         Skeleton myPose = getSkeleton();
         Skeleton opPose = others[target].getSkeleton();
 
         state.look = (opPose.head - myPose.head).getAngle();
 
+        // Clamp look to side, no 180 degree head turns
         if(state.side == 1) {
             
             if(state.look > PI * 1/4.f)
@@ -391,13 +413,6 @@ void Player::advanceFrame(vector<Player> others) {
                 state.look = -PI * 3/4.f;
         }   
     } 
-
-    // Clamp position within stage bounds
-    state.position.x = std::clamp(
-        state.position.x, 
-        StageBounds.x + 16, 
-        StageBounds.x + StageBounds.w - 16
-        );
 
     // Reset input
     in = Button::Flag();
@@ -464,6 +479,9 @@ bool Player::inMove(int move) {
         current = Move::Jump;
         break;
     }
+
+    if(current >= Move::Custom00 && current < Move::Total)
+        current = Move::Custom00;
 
     return current == move;
 }

@@ -10,6 +10,7 @@ void setCamera(Player* players, int count);
 
 void drawHealthBars(std::vector<Player> players);
 void drawHealthBars(Player* players, int count);
+void drawRoundTokens(int lWin, int rWin, int winMax);
 
 void drawStage(int index);
 

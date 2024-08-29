@@ -4,6 +4,7 @@
 #include "core/render_instance.h"
 #include "core/save.h"
 
+#include <string>
 #include <vector>
 
 using std::vector;
@@ -52,7 +53,7 @@ void Game::loadState(SaveState save) {
 
 void Game::resetRound() {
 	state.round ++;
-	state.timer = timerMax * 60;
+	state.timer = (timerMax + 3) * 60;
 	state.judge = false;
 
 	// Reset players to default states
@@ -71,6 +72,7 @@ void Game::resetRound() {
         players[2].state.position = 75;
         players[3].state.position = 100;
     }	
+    setCamera(players, playerCount);
 }
 
 void Game::nextRound() {
@@ -90,54 +92,62 @@ void Game::advanceFrame() {
 
 	state.timer --;
 
+	// Update players
+	vector<Player> others;
+
+	for(int i = 0; i < playerCount; i ++) {
+		others.push_back(players[i]);
+
+		// Still in round start
+		if(state.timer > timerMax * 60) 
+			players[i].in = Button::Flag();
+	}
+
+	for(int i = 0; i < playerCount; i ++) 
+		players[i].advanceFrame(others);
+
+	setCamera(players, playerCount);	
+
+	// Consider win conditions
 	if(state.timer > 0) {
 
-		// Update players
-		vector<Player> others;
-
-		for(int i = 0; i < playerCount; i ++)
-			others.push_back(players[i]);
-
-		for(int i = 0; i < playerCount; i ++)
-			players[i].advanceFrame(others);
-
 		// Check alive status of teams
-		int lTeamAlive = 0;
-		int rTeamAlive = 0;
+		if(!state.judge) {
+			int lTeamAlive = 0;
+			int rTeamAlive = 0;
 
-		for(int i = 0; i < playerCount; i ++) {
+			for(int i = 0; i < playerCount; i ++) {
 
-			if(players[i].state.health > 0) {
+				if(players[i].state.health > 0) {
 
-				if(players[i].team == 0) {
-					lTeamAlive ++;
+					if(players[i].team == 0) {
+						lTeamAlive ++;
 
-				}else {
-					rTeamAlive ++;
+					}else {
+						rTeamAlive ++;
+					}
 				}
 			}
+
+			if(lTeamAlive == 0 && rTeamAlive == 0) {
+				state.timer = 0;
+
+			}else if(lTeamAlive == 0) {
+				state.timer = 0;
+				state.rWins ++;
+				state.judge = true;
+
+			}else if(rTeamAlive == 0) {
+				state.timer = 0;
+				state.lWins ++;
+				state.judge = true;
+			}
 		}
-
-		if(lTeamAlive == 0 && rTeamAlive == 0) {
-			state.timer = 0;
-
-		}else if(lTeamAlive == 0) {
-			state.timer = 0;
-			state.rWins ++;
-			state.judge = true;
-
-		}else if(rTeamAlive == 0) {
-			state.timer = 0;
-			state.lWins ++;
-			state.judge = true;
-		}
-
-		setCamera(players, playerCount);
 
 	// Round over
 	}else {
 
-		// Determine winner by whichever team has the most health remaining
+		// Check which team has the most health
 		if(!state.judge) {
 			int lTeamHP = 0;
 			int rTeamHP = 0;
@@ -160,23 +170,46 @@ void Game::advanceFrame() {
 		}
 
 		// Wait a couple seconds after judgement to go next
-		if(state.timer < -5 * 60)
+		if(state.timer < -3 * 60)
 			nextRound();
 	}
 }
 
 void Game::draw() {
     drawStage(0);
-    drawHealthBars(players, playerCount);  
+    drawHealthBars(players, playerCount);
+
+    // Draw round wins
+    drawRoundTokens(state.lWins, state.rWins, roundMax);
+
+    // Draw round header
+    if(state.timer > (timerMax + 1) * 60) {
+	    sf::Text txt;
+	    txt.setString("Round " + std::to_string(state.round));
+	    txt.setFont(*g::save.getFont("Anton-Regular"));
+	    txt.setCharacterSize(64);
+	    txt.setFillColor(sf::Color::Red);
+	    txt.setPosition({g::video.getSize().x / 2.f - txt.getLocalBounds().width / 2.f, g::video.getSize().y / 2.f});
+	    g::video.draw(txt); 
+
+    }else if(state.timer > timerMax * 60) {
+	    sf::Text txt;
+	    txt.setString("Fight!");
+	    txt.setFont(*g::save.getFont("Anton-Regular"));
+	    txt.setCharacterSize(64);
+	    txt.setFillColor(sf::Color::Red);
+	    txt.setPosition({g::video.getSize().x / 2.f - txt.getLocalBounds().width / 2.f, g::video.getSize().y / 2.f});
+	    g::video.draw(txt);  
+    }
 
     // Draw clock
-    if(state.timer >= 0) {
+    if(state.timer < timerMax * 60 && state.timer >= 0) {
 	    sf::Text txt;
 	    txt.setString(std::to_string(state.timer / 60));
 	    txt.setFont(*g::save.getFont("Anton-Regular"));
 	    txt.setCharacterSize(64);
 	    txt.setFillColor(sf::Color::White);
-	    txt.setPosition({g::video.getSize().x / 2 - txt.getLocalBounds().width / 2, 0});
+	    txt.setPosition({g::video.getSize().x / 2.f - txt.getLocalBounds().width / 2.f, 0});
 	    g::video.draw(txt);    	
     }
 

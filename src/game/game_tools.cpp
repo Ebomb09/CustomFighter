@@ -59,6 +59,43 @@ void drawHealthBars(Player* players, int count) {
 	drawHealthBars(vec);
 }
 
+void drawRoundTokens(int lWin, int rWin, int winMax) {
+	Vector2 center = {g::video.getSize().x / 2.f, 64};
+
+	string lString = "";
+	string rString = "";
+
+	for(int i = 0; i < winMax; i ++) {
+
+		// right -> left
+		if(i < lWin)
+			lString = 'X' + lString;
+		else
+			lString = 'O' + lString;		
+			
+		// left -> right
+		if(i < rWin)
+			rString = rString + 'X';
+		else
+			rString = rString + 'O';						
+	}
+
+	sf::Text text;
+	text.setString(lString);
+	text.setFont(*g::save.getFont("fight"));
+	text.setCharacterSize(32);
+	text.setPosition(center + Vector2(-32 - text.getLocalBounds().width, 0));
+	text.setColor(sf::Color::White);
+	g::video.draw(text);
+
+	text.setString(rString);
+	text.setFont(*g::save.getFont("fight"));
+	text.setCharacterSize(32);
+	text.setPosition(center + Vector2(32, 0));
+	text.setColor(sf::Color::White);
+	g::video.draw(text);	
+}
+
 void drawStage(int index) {
 	sf::Texture* tex = g::save.getStage(index);
 

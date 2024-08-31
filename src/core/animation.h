@@ -12,7 +12,7 @@ struct Frame {
     int duration;
     Skeleton pose;
     Vector2 impulse;
-    std::string cancel;
+    bool cancel;
 
     std::vector<HitBox> hitBoxes;
     std::vector<HurtBox> hurtBoxes;
@@ -32,6 +32,7 @@ struct Animation {
 
     int category;
     bool from[MoveCategory::Total];
+    std::string customFrom;
 
     std::vector<Frame> keyFrames;
 

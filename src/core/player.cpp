@@ -185,7 +185,7 @@ void Player::advanceFrame(vector<Player> others) {
     }
 
     // Special Move Check
-    {
+    if(getFrame().cancel){
         string motion = "";
         for(int i = 0; i < 30; i ++) 
             motion = getMotion(i) + motion;
@@ -204,11 +204,12 @@ void Player::advanceFrame(vector<Player> others) {
             if(!currAnim || !nextAnim)
                 continue;
 
-            // Animation can be done from Move
-            if(nextAnim->from[currAnim->category]) {
 
-            // Animation can be done from explicit cancel
-            }else if(nextAnim->name == getFrame().cancel && getFrame().cancel.size() > 0) {
+            if(nextAnim->from[currAnim->category]) {
+                // Animation can be done from Move
+
+            }else if(nextAnim->customFrom == currAnim->name) {
+                // Animation can be done from explicit cancel
 
             }else {
                 continue;

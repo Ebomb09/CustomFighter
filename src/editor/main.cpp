@@ -219,6 +219,8 @@ int main() {
 
                 for(int i = 0; i < MoveCategory::Total; i ++)
                     ImGui::Checkbox((MoveCategory::String[i] + "##FROM").c_str(), &editor.anim.from[i]);
+
+                ImGui::InputText("Custom From", &editor.anim.customFrom);
             }
 
             if(ImGui::CollapsingHeader("Skeleton Draw Order")) {
@@ -246,7 +248,7 @@ int main() {
             if(ImGui::CollapsingHeader("Key Frame")) {
                 ImGui::InputFloat("Impulse X", &keyFrame.impulse.x);
                 ImGui::InputFloat("Impulse Y", &keyFrame.impulse.y);
-                ImGui::InputText("Cancel", &keyFrame.cancel);
+                ImGui::Checkbox("Cancel", &keyFrame.cancel);
             }
 
             if(ImGui::CollapsingHeader("Selection")) {

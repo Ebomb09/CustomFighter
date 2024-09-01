@@ -20,7 +20,7 @@ std::vector<int> Move::getValidCategories(int move) {
 		categories.push_back(MoveCategory::AirSuper);
 		categories.push_back(MoveCategory::AirGrab);	
 
-	}else {
+	}else if(move < Move::Total){
 		categories.push_back(move);
 	}
 	return categories;

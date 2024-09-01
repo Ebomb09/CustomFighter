@@ -148,9 +148,18 @@ void Editor::resetPlayer() {
     player.state.position = {0, 0};
 
     // Set player to test and copy in the save
-    player.config.moves[Move::Custom00] = "test";
+    player.config.moves[Move::Stand] = "";
+    player.config.moves[Move::Custom00] = "";    
+
+    if(anim.category < Move::Custom00) {
+        player.config.moves[Move::Stand] = "test";
+        player.setMove(Move::Stand);
+        
+    }else {
+        player.config.moves[Move::Custom00] = "test";
+        player.setMove(Move::Custom00);        
+    }
     *g::save.getAnimation("test") = anim;
-    player.setMove(Move::Custom00);
 }
 
 Skeleton Editor::getSkeleton() {
@@ -223,7 +232,7 @@ void Editor::update() {
 
         player.advanceFrame({player});
 
-        if(player.inMove(Move::Stand))
+        if(player.state.moveFrame == 0 && player.state.position.y == 0)
             resetPlayer();
     }
 }

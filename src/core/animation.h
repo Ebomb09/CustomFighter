@@ -7,44 +7,34 @@
 
 #include <vector>
 #include <string>
+#include <filesystem>
 
 struct Frame {
-    int duration;
-    Skeleton pose;
-    Vector2 impulse;
-    bool cancel;
+    int duration        = 1;
+    Skeleton pose       = Skeleton();
+    Vector2 impulse     = Vector2(0, 0);
+    bool cancel         = false;
 
     std::vector<HitBox> hitBoxes;
     std::vector<HurtBox> hurtBoxes;
-
-    Frame();
-    Frame(Skeleton _pose, int _duration);
-    Frame(const Frame& k);   
-    Frame(Frame&& k);
-
-    Frame& operator=(const Frame& copy);
-    Frame& operator=(Frame&& move);
 };
 
 struct Animation {
 
-    std::string name;
+    Animation();
 
-    int category;
+    // What the animation is
+    std::string name                = "";
+    int category                    = MoveCategory::Normal;
+
+    // How you can get into the animation
     bool from[MoveCategory::Total];
-    std::string customFrom;
+    std::string customFrom          = "";
 
     std::vector<Frame> keyFrames;
 
-    Animation();
-    Animation(const Animation& k);   
-    Animation(Animation&& k);
-
-    Animation& operator=(const Animation& copy);
-    Animation& operator=(Animation&& move);
-
-    void loadFromFile(std::string fileName);
-    void saveToFile(std::string fileName);
+    void loadFromFile(std::filesystem::path path);
+    void saveToFile(std::filesystem::path path);
 
     void swapKeyFrame(int a, int b);
 

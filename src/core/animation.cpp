@@ -2,83 +2,12 @@
 #include "move.h"
 
 #include <fstream>
-#include <filesystem>
 #include <json.hpp>
 
-Frame::Frame() : pose(), duration(1), impulse(), cancel(false) {}
-
-Frame::Frame(Skeleton _pose, int _duration) : pose(_pose), duration(_duration), impulse(), cancel(false) {}
-
-Frame::Frame(const Frame& k) { 
-    *this = k; 
-}    
-
-Frame::Frame(Frame&& k) { 
-    *this = k; 
-}
-
-Frame& Frame::operator=(const Frame& copy) { 
-    pose        = copy.pose; 
-    duration    = copy.duration;
-    hitBoxes    = copy.hitBoxes;
-    hurtBoxes   = copy.hurtBoxes;
-    impulse     = copy.impulse;
-    cancel      = copy.cancel;
-    return *this; 
-}
-
-Frame& Frame::operator=(Frame&& move) { 
-    pose        = std::move(move.pose); 
-    duration    = std::move(move.duration);
-    hitBoxes    = std::move(move.hitBoxes);
-    hurtBoxes   = std::move(move.hurtBoxes);   
-    impulse     = std::move(move.impulse); 
-    cancel      = std::move(move.cancel);
-    return *this; 
-}
-
 Animation::Animation() {
-    name = "";
-    category = 0;
 
-    for(int i = 0; i < MoveCategory::Total; i ++)
+    for(int i = 0; i < MoveCategory::Total; i ++) 
         from[i] = false;
-
-    customFrom = "";
-}
-
-Animation::Animation(const Animation& k) {
-    *this = k;
-} 
-
-Animation::Animation(Animation&& k) {
-    *this = k;
-}
-
-Animation& Animation::operator=(const Animation& copy) {
-    name = copy.name;
-    category = copy.category;
-
-    for(int i = 0; i < MoveCategory::Total; i ++)
-        from[i] = copy.from[i];
-
-    customFrom = copy.customFrom;
-
-    keyFrames = copy.keyFrames;
-    return *this;    
-}
-
-Animation& Animation::operator=(Animation&& move) {
-    name = std::move(move.name);
-    category = std::move(move.category);
-
-    for(int i = 0; i < MoveCategory::Total; i ++)
-        from[i] = std::move(move.from[i]);
-
-    customFrom = std::move(move.customFrom);
-
-    keyFrames = std::move(move.keyFrames);
-    return *this;
 }
 
 void Animation::swapKeyFrame(int a, int b) {
@@ -146,8 +75,8 @@ int Animation::getFrameCount() {
     return total;
 }
 
-void Animation::saveToFile(std::string fileName) {
-    std::fstream file(fileName, std::fstream::out | std::fstream::trunc);
+void Animation::saveToFile(std::filesystem::path path) {
+    std::fstream file(path, std::fstream::out | std::fstream::trunc);
 
     if(!file.good()) {
         file.close();
@@ -167,29 +96,30 @@ void Animation::saveToFile(std::string fileName) {
     json["keyFrames"] = nlohmann::json::array();
 
     for(int i = 0; i < keyFrames.size(); i ++) {
-        nlohmann::json add;
+        nlohmann::json newFrame;
 
-        add["duration"] = keyFrames[i].duration;
-        add["cancel"]   = keyFrames[i].cancel;
+        // Key Frame Properties
+        newFrame["duration"] = keyFrames[i].duration;
+        newFrame["cancel"]   = keyFrames[i].cancel;
 
-        add["impulse"]["x"] = keyFrames[i].impulse.x;
-        add["impulse"]["y"] = keyFrames[i].impulse.y;
+        newFrame["impulse"]["x"] = keyFrames[i].impulse.x;
+        newFrame["impulse"]["y"] = keyFrames[i].impulse.y;
 
         // Save Joints
-        add["joints"] = nlohmann::json::array();
+        newFrame["joints"] = nlohmann::json::array();
 
         for(int j = 0; j < keyFrames[i].pose.jointCount; j ++) {
             nlohmann::json obj;
             obj["x"] = keyFrames[i].pose.joints[j].x;
             obj["y"] = keyFrames[i].pose.joints[j].y;      
-            add["joints"].push_back(obj);      
+            newFrame["joints"].push_back(obj);      
         } 
 
         // Save draw order
-        add["order"] = keyFrames[i].pose.order;
+        newFrame["order"] = keyFrames[i].pose.order;
 
         // Save Hitboxes
-        add["hitBoxes"] = nlohmann::json::array();   
+        newFrame["hitBoxes"] = nlohmann::json::array();   
 
         for(int j = 0; j < keyFrames[i].hitBoxes.size(); j ++) {
             nlohmann::json obj;
@@ -203,11 +133,11 @@ void Animation::saveToFile(std::string fileName) {
             obj["knockdown"]   = keyFrames[i].hitBoxes[j].knockdown;
             obj["force"]["x"]  = keyFrames[i].hitBoxes[j].force.x;
             obj["force"]["y"]  = keyFrames[i].hitBoxes[j].force.y;
-            add["hitBoxes"].push_back(obj);
+            newFrame["hitBoxes"].push_back(obj);
         } 
 
         // Save Hurtboxes
-        add["hurtBoxes"] = nlohmann::json::array();    
+        newFrame["hurtBoxes"] = nlohmann::json::array();    
 
         for(int j = 0; j < keyFrames[i].hurtBoxes.size(); j ++) {
             nlohmann::json obj;
@@ -216,29 +146,25 @@ void Animation::saveToFile(std::string fileName) {
             obj["w"]       = keyFrames[i].hurtBoxes[j].w;
             obj["h"]       = keyFrames[i].hurtBoxes[j].h;
             obj["armour"]  = keyFrames[i].hurtBoxes[j].armour;
-            add["hurtBoxes"].push_back(obj);
+            newFrame["hurtBoxes"].push_back(obj);
         } 
 
         // Add to keyframes
-        json["keyFrames"].push_back(add);
+        json["keyFrames"].push_back(newFrame);
     }
     file << json;
     file.close();
 }
 
-void Animation::loadFromFile(std::string fileName) {
+void Animation::loadFromFile(std::filesystem::path path) {
     keyFrames.clear();
 
-    std::fstream file(fileName, std::fstream::in);
+    std::fstream file(path, std::fstream::in);
 
     if(!file.good()) {
         file.close();
         return;
     }
-
-    // Get the stem name
-    std::filesystem::path path(fileName);
-    name = path.stem().string();
 
     // Parse json
     nlohmann::json json;
@@ -250,7 +176,13 @@ void Animation::loadFromFile(std::string fileName) {
         return;
     }
 
-    // Load categories
+    // Reset to default object
+    *this = Animation();
+
+    // Get the stem name
+    name = path.stem().string();
+
+    // Load category
     if(json["category"].is_string()) {
 
         for(int i = 0; i < MoveCategory::Total; i ++) {
@@ -262,87 +194,79 @@ void Animation::loadFromFile(std::string fileName) {
         }        
     }
 
+    // Load the cancel properties
     for(int i = 0; i < MoveCategory::Total; i ++) {
 
         if(json["from" + MoveCategory::String[i]].is_boolean())
-            from[i] = json.value("from" + MoveCategory::String[i], false);
+            from[i] = json["from" + MoveCategory::String[i]];
     }
 
     if(json["customFrom"].is_string()) 
-        customFrom = json.value("customFrom", "");
+        customFrom = json["customFrom"];
 
+    // Load the keyframes
     for(auto& frame : json["keyFrames"]) {
         Frame newFrame;
 
-        if(frame["duration"].is_number_integer())
-            newFrame.duration = frame.value("duration", 0);
+        // Key Frame Properties
+        if(frame["duration"].is_number_integer())       newFrame.duration = frame["duration"];
+        if(frame["cancel"].is_boolean())                newFrame.cancel = frame["cancel"];
 
-        if(frame["cancel"].is_boolean())
-            newFrame.cancel = frame.value("cancel", false);
+        if(frame["impulse"]["x"].is_number_float())     newFrame.impulse.x = frame["impulse"]["x"];
+        if(frame["impulse"]["y"].is_number_float())     newFrame.impulse.y = frame["impulse"]["y"];
 
-        if(frame["impulse"].is_object()) {
-
-            if(frame["impulse"]["x"].is_number())
-                newFrame.impulse.x = frame["impulse"].value("x", 0.f);
-
-            if(frame["impulse"]["y"].is_number())            
-                newFrame.impulse.y = frame["impulse"].value("y", 0.f);
-        }
-
+        // Load Joints
         int i = 0;
         for(auto& joint : frame["joints"]) {
 
-            if(joint["x"].is_number_float())
-                newFrame.pose.joints[i].x = joint.value("x", 0.f);
-
-            if(joint["y"].is_number_float())
-                newFrame.pose.joints[i].y = joint.value("y", 0.f);   
+            if(joint["x"].is_number_float())            newFrame.pose.joints[i].x = joint["x"];
+            if(joint["y"].is_number_float())            newFrame.pose.joints[i].y = joint["y"];   
 
             i ++;
         }
 
+        // Load Draw Order
         i = 0;
         for(auto& order : frame["order"]) {
 
-            if(order.is_number_integer())
-                newFrame.pose.order[i] = order;
+            if(order.is_number_integer())               newFrame.pose.order[i] = order;
 
             i ++;
         }
 
+        // Load HitBoxes
         for(auto& hitBox : frame["hitBoxes"]) {
             HitBox add;
-            add.x           = hitBox.value("x", 0);
-            add.y           = hitBox.value("y", 0);
-            add.w           = hitBox.value("w", 0);
-            add.h           = hitBox.value("h", 0);  
-            add.damage      = hitBox.value("damage", 0);
-            add.hitStun     = hitBox.value("hitStun", 0);
-            add.blockStun   = hitBox.value("blockStun", 0);
-            add.knockdown   = hitBox.value("knockdown", false);
 
-            if(hitBox["force"].is_object()) {
+            if(hitBox["x"].is_number_float())           add.x = hitBox["x"];
+            if(hitBox["y"].is_number_float())           add.y = hitBox["y"];
+            if(hitBox["w"].is_number_float())           add.w = hitBox["w"];
+            if(hitBox["h"].is_number_float())           add.h = hitBox["h"];
 
-                if(hitBox["force"]["x"].is_number_float())
-                    add.force.x = hitBox["force"].value("x", 0.f);  
+            if(hitBox["damage"].is_number_integer())    add.damage = hitBox["damage"];
+            if(hitBox["hitStun"].is_number_integer())   add.hitStun = hitBox["hitStun"];
+            if(hitBox["blockStun"].is_number_integer()) add.blockStun = hitBox["blockStun"];
+            if(hitBox["knockdown"].is_boolean())        add.knockdown = hitBox["knockdown"];
 
-                if(hitBox["force"]["y"].is_number_float())
-                    add.force.y = hitBox["force"].value("y", 0.f);            
-            }
+            if(hitBox["force"]["x"].is_number_float())  add.force.x = hitBox["force"]["x"]; 
+            if(hitBox["force"]["y"].is_number_float())  add.force.y = hitBox["force"]["y"];
             
             newFrame.hitBoxes.push_back(add);
         }
 
+        // Load HurtBoxes
         for(auto& hurtBox : frame["hurtBoxes"]) {
             HurtBox add;
-            add.x       = hurtBox.value("x", 0);
-            add.y       = hurtBox.value("y", 0);
-            add.w       = hurtBox.value("w", 0);
-            add.h       = hurtBox.value("h", 0); 
-            add.armour  = hurtBox.value("armour", 0);
+
+            if(hurtBox["x"].is_number_float())          add.x = hurtBox["x"];
+            if(hurtBox["y"].is_number_float())          add.y = hurtBox["y"];
+            if(hurtBox["w"].is_number_float())          add.w = hurtBox["w"];
+            if(hurtBox["h"].is_number_float())          add.h = hurtBox["h"]; 
+
+            if(hurtBox["armour"].is_number_integer())   add.armour  = hurtBox["armour"];
 
             newFrame.hurtBoxes.push_back(add);
-        }    
+        }
         keyFrames.push_back(newFrame);
     }
     file.close();

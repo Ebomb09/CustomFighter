@@ -29,7 +29,11 @@ void Game::init(int _playerCount, int _roundMax, int _timerMax) {
         players[3].team = 1;        
     }
 
-	resetRound();
+    resetGame();
+}
+
+bool Game::done() {
+	return state.done;
 }
 
 Game::SaveState Game::saveState() {
@@ -49,6 +53,17 @@ void Game::loadState(SaveState save) {
 
 	for(int i = 0; i < playerCount; i ++)
 		players[i].state = save.players[i];
+}
+
+void Game::resetGame() {
+
+	// Reset game state
+	state = Game::State();
+
+    for(int i = 0; i < playerCount; i ++)
+    	state.rematch[i] = 0;
+
+	resetRound();
 }
 
 void Game::resetRound() {
@@ -87,8 +102,39 @@ void Game::nextRound() {
 
 void Game::advanceFrame() {
 
-	if(state.gameOver)
+	if(state.done)
 		return;
+
+	// Check if want to rematch
+	if(state.gameOver) {
+
+		// Steal the players buttons
+		for(int i = 0; i < playerCount; i ++) {
+
+			if(players[i].in.D) {
+				state.rematch[i] = -1;
+
+			}else if(players[i].in.B) {
+				state.rematch[i] = 1;				
+			}
+			players[i].in = Button::Flag();
+		}
+
+		// If all agreed resetGame, if one didn't we are done
+		int sum = 0;
+
+		for(int i = 0; i < playerCount; i ++) {
+			sum += state.rematch[i];
+
+			if(state.rematch[i] < 0)
+				state.done = true;
+		}
+
+		if(sum == playerCount)
+			resetGame();
+
+		return;
+	}
 
 	state.timer --;
 
@@ -182,6 +228,29 @@ void Game::draw() {
     // Draw round wins
     drawRoundTokens(state.lWins, state.rWins, roundMax);
 
+    // Draw rematch
+    if(state.gameOver) {
+
+    	for(int i = 0; i < playerCount; i ++) {
+
+    		string str = "Rematch [ ]";
+
+    		if(state.rematch[i] > 0) {
+    			str = "Rematch [X]";
+    		}
+
+	   	    sf::Text txt;
+		    txt.setString(str);
+		    txt.setFont(*g::save.getFont("Anton-Regular"));
+		    txt.setCharacterSize(64);
+		    txt.setFillColor(sf::Color::White);
+		    txt.setOutlineThickness(1);
+		    txt.setOutlineColor(sf::Color::Black);
+		    txt.setPosition({g::video.getSize().x / 2.f - txt.getLocalBounds().width / 2.f, 128.f + i * 72.f});
+		    g::video.draw(txt); 
+    	}
+    }
+
     // Draw round header
     if(state.timer > (timerMax + 1) * 60) {
 	    sf::Text txt;
@@ -189,6 +258,8 @@ void Game::draw() {
 	    txt.setFont(*g::save.getFont("Anton-Regular"));
 	    txt.setCharacterSize(64);
 	    txt.setFillColor(sf::Color::Red);
+		txt.setOutlineThickness(1);	    
+		txt.setOutlineColor(sf::Color::Black);	    
 	    txt.setPosition({g::video.getSize().x / 2.f - txt.getLocalBounds().width / 2.f, g::video.getSize().y / 2.f});
 	    g::video.draw(txt); 
 
@@ -198,6 +269,8 @@ void Game::draw() {
 	    txt.setFont(*g::save.getFont("Anton-Regular"));
 	    txt.setCharacterSize(64);
 	    txt.setFillColor(sf::Color::Red);
+		txt.setOutlineThickness(1);
+	    txt.setOutlineColor(sf::Color::Black);
 	    txt.setPosition({g::video.getSize().x / 2.f - txt.getLocalBounds().width / 2.f, g::video.getSize().y / 2.f});
 	    g::video.draw(txt);  
     }
@@ -209,6 +282,8 @@ void Game::draw() {
 	    txt.setFont(*g::save.getFont("Anton-Regular"));
 	    txt.setCharacterSize(64);
 	    txt.setFillColor(sf::Color::White);
+		txt.setOutlineThickness(1);	 	    
+	    txt.setOutlineColor(sf::Color::Black);
 	    txt.setPosition({g::video.getSize().x / 2.f - txt.getLocalBounds().width / 2.f, 0});
 	    g::video.draw(txt);    	
     }

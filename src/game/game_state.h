@@ -13,7 +13,9 @@ struct Game {
 	Player players[MAX_PLAYERS];
 
 	struct State {
+		bool done 		= false;
 		bool gameOver 	= false;
+		int rematch	[MAX_PLAYERS];
 		bool judge		= false;
 		int round		= 0;
 		int lWins		= 0;
@@ -27,7 +29,9 @@ struct Game {
 	};
 
 	void init(int _playerCount, int _roundMax = 3, int _timerMax = 99);
+	bool done();
 
+	void resetGame();
 	void resetRound();
 	void nextRound();
 

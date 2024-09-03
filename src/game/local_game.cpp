@@ -25,6 +25,9 @@ bool LocalGame::run(vector<Player::Config> configs) {
         g::video.clear();
         game.draw();
         g::video.display();
+
+        if(game.done())
+            return true;
     }
-    return true;
+    return false;
 }

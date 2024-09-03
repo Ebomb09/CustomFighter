@@ -205,6 +205,9 @@ bool loop() {
         game.draw();
         g::video.display();
 
+        if(game.done())
+            return true;
+
         ggpo_idle(ggpo, 16);
     }
 	return true;

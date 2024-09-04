@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
                 if(configs.size() == 1) {
                     Lobby::Room room = Lobby::run(configs[0]);
 
-                    if(room.good) {
+                    if(room.good()) {
                         NetGame::run(room);
                     }
                 }

@@ -125,7 +125,7 @@ bool start(Lobby::Room room) {
     	return false;
     }
 
-    result = ggpo_start_session(&ggpo, &cb, "CustomFighter", 2, sizeof(Button::Flag), g::save.getPort());
+    result = ggpo_start_session(&ggpo, &cb, "CustomFighter", room.player_count, sizeof(Button::Flag), g::save.getPort());
 	//result = ggpo_start_synctest(&ggpo, &cb, "CustomFighter", 2, sizeof(Button::Flag), 1);
 
     if(result != GGPO_OK) {
@@ -137,10 +137,10 @@ bool start(Lobby::Room room) {
 	ggpo_set_disconnect_notify_start(ggpo, 1000);
 
     // Configure players
-    for(int i = 0; i < room.remotes.size(); i ++) {
+    for(int i = 0; i < room.player_count; i ++) {
 
         // Reset player states
-        game.players[i].config = room.configs[i];
+        game.players[i].config = room.player_data[i].config;
 
         // Hint to GGPO what each player is
         GGPOPlayer hint;
@@ -148,7 +148,7 @@ bool start(Lobby::Room room) {
         hint.player_num = (i + 1);
 
         // Determine player type from ip:port
-        if(room.remotes[i] == "localhost") {
+        if(room.player_data[i].remote == "localhost") {
             game.players[i].seatIndex = 0;            
             hint.type = GGPO_PLAYERTYPE_LOCAL;
 
@@ -159,7 +159,7 @@ bool start(Lobby::Room room) {
             // Get Address components
             int ip[4];
             int port;
-            std::sscanf(room.remotes[i].c_str(), "%d.%d.%d.%d:%d", &ip[0], &ip[1], &ip[2], &ip[3], &port);
+            std::sscanf(room.player_data[i].remote.c_str(), "%d.%d.%d.%d:%d", &ip[0], &ip[1], &ip[2], &ip[3], &port);
 
             // Set the hint components
             std::sprintf(hint.u.remote.ip_address, "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
@@ -176,7 +176,7 @@ bool start(Lobby::Room room) {
     }
 
     // GGPO done, initialize the game
-    game.init(room.remotes.size());
+    game.init(room.player_count);
 
     return true;
 }
@@ -221,13 +221,24 @@ bool close() {
 
 bool NetGame::run(Lobby::Room room) {
 
-    if(verify_UDP_hole_punch(g::save.getPort(), room.remotes)) {
+    // Collect remotes to test UDP
+    vector<string> remotes;
 
-        if(start(room)) {
-            loop();
-            close();
-            return true;
-        }
+    for(int i = 0; i < room.player_count; i ++) {
+
+        if(room.player_data[i].remote != "")
+            remotes.push_back(room.player_data[i].remote);
     }
-    return false;
+
+    if(!verify_UDP_hole_punch(g::save.getPort(), remotes))
+        return false;
+
+    if(!start(room)) {
+        close();
+        return false;
+    }
+
+    loop();
+    close();
+    return true;
 }

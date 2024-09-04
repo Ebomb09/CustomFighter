@@ -12,9 +12,10 @@ nlohmann::json listRoom(){
     return runQuery(g::save.getServer(0), postFields);
 }
 
-nlohmann::json createRoom(string password=""){
+nlohmann::json createRoom(int players, string password=""){
     nlohmann::json postFields;
     postFields["reason"] = "create-room";
+    postFields["players"] = players;
     postFields["password"] = password;
     
     return runQuery(g::save.getServer(0), postFields);
@@ -54,6 +55,9 @@ Lobby::Room Lobby::run(Player::Config config) {
     Lobby::Room room;
     nlohmann::json roomList;
 
+    string password = "";
+    int playerMax = 2;
+
     bool stayOpen = true; 
 
     while (g::video.isOpen() && stayOpen) {
@@ -85,22 +89,24 @@ Lobby::Room Lobby::run(Player::Config config) {
                     ImGui::TableSetColumnIndex(0);
                     int code = roomList[i].value("code", 0);
                     ImGui::Text("%d", code);
+                    
 
                     ImGui::TableSetColumnIndex(1);
-                    int players = roomList[i].value("player_count", 0);          
-                    ImGui::Text("%d/4", players);
+                    int player_count = roomList[i].value("player_count", 0);
+                    int player_max = roomList[i].value("player_max", 0);
+                    ImGui::Text("%d/%d", player_count, player_max);
                     
                     // Password
                     ImGui::TableSetColumnIndex(2);
-                    string password = roomList[i].value("password", " ");
+                    string password = roomList[i].value("password", "");
                     ImGui::InputText(("##Password" + std::to_string(i)).c_str(), &password);
                     roomList[i]["password"] = password;
 
                     // Attempt room
-                    ImGui::TableSetColumnIndex(3);  
+                    ImGui::TableSetColumnIndex(3);
                     if(ImGui::Button(("Join##" + std::to_string(i)).c_str()) ) {
 
-                        if(joinRoom(roomList[i].value("code", 0), "", -1, g::save.getNetworkAddress(), config)["response"] == "OK")
+                        if(joinRoom(roomList[i]["code"], roomList[i]["password"], -1, g::save.getNetworkAddress(), config)["response"] == "OK");
                             room.code = roomList[i]["code"];
                     }
                 }
@@ -118,14 +124,14 @@ Lobby::Room Lobby::run(Player::Config config) {
 
             // Create room
             if(ImGui::Button("Create")) {
-                nlohmann::json msg = createRoom("");
+                nlohmann::json msg = createRoom(playerMax, password);
 
-                if(msg["response"] == "OK" && msg["code"].is_number_integer()) {
-
-                    if(joinRoom(msg["code"], "", -1, g::save.getNetworkAddress(), config)["response"] == "OK")
-                        room.code = msg["code"];
-                }
+                if(joinRoom(msg.value("code", 0), password, -1, g::save.getNetworkAddress(), config)["response"] == "OK")
+                    room.code = msg.value("code", 0);    
             }
+
+            ImGui::DragInt("Players", &playerMax, 2, 2, 4);
+            ImGui::InputText("Password", &password);
 
         // Room viewer
         }else {

@@ -9,6 +9,7 @@ namespace Lobby {
 		bool good = false;
 		int code = -1;
 		int refresh = 0;
+		int maxPlayers = 0;
 		vector<Player::Config> 	configs;
 		vector<string>			remotes;
 	};

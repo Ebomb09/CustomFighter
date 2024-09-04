@@ -28,6 +28,11 @@ namespace Move {
 		KnockDown,
 		GetUp,
 
+		TagIn,
+		TagOut,
+
+		Taunt,
+
 		// Custom Moves
 		Custom00,
 		Custom01,
@@ -79,6 +84,11 @@ namespace Move {
 		"KnockDown",
 		"GetUp",
 
+		"TagIn",
+		"TagOut",
+
+		"Taunt",
+
 		"Custom00",
 		"Custom01",
 		"Custom02",
@@ -128,6 +138,10 @@ namespace MoveCategory {
 		JumpCombo,		
 		KnockDown,
 		GetUp,
+		TagIn,
+		TagOut,
+
+		Taunt,
 
 		Normal,
 		CommandNormal,
@@ -159,6 +173,10 @@ namespace MoveCategory {
 		"JumpCombo",		
 		"KnockDown",
 		"GetUp",
+		"TagIn",
+		"TagOut",
+
+		"Taunt",
 
 		"Normal",
 		"CommandNormal",

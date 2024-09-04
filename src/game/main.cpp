@@ -11,13 +11,15 @@
 using std::vector, std::string;
 
 enum {
-    LocalFight,
+    LocalFight2P,
+    LocalFight4P,    
     NetPlay,
     Exit
 };
 
 vector<Menu::Option> menuOptions = {
-    {"Local 2P Fight", LocalFight},
+    {"Local 2P Fight", LocalFight2P},
+    {"Local 4P Fight", LocalFight4P},    
     {"NetPlay", NetPlay},
     {"Exit", Exit}
 };
@@ -38,10 +40,17 @@ int main(int argc, char* argv[]) {
 
         if(res == Menu::Accept) {
 
-            if(menuOptions[menuHover].id == LocalFight) {
+            if(menuOptions[menuHover].id == LocalFight2P) {
                 vector<Player::Config> configs = CharacterSelect::run(2);
 
                 if(configs.size() == 2) {
+                    LocalGame::run(configs);
+                }
+                
+            }else if(menuOptions[menuHover].id == LocalFight4P) {
+                vector<Player::Config> configs = CharacterSelect::run(4);
+
+                if(configs.size() == 4) {
                     LocalGame::run(configs);
                 }
                 

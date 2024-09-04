@@ -15,7 +15,18 @@ void setCamera(Player* players, int count) {
 }
 
 void setCamera(std::vector<Player> players) {
-    g::video.camera.x = (players[0].state.position.x + players[1].state.position.x) / 2. - g::video.camera.w / 2.;
+	float pos = 0.f;
+	int n = 0;
+
+	for(int i = 0; i < players.size(); i ++) {
+
+		if(players[i].taggedIn(players)) {
+			pos += players[i].state.position.x;
+			n ++;
+		}
+	}
+
+    g::video.camera.x = g::video.camera.x + (((pos / n) - (g::video.camera.w / 2.f)) - g::video.camera.x) * 0.10f;
     g::video.camera.y = StageBounds.y - StageBounds.h + g::video.camera.h;	
 
     // Clamp camera within stage bounds
@@ -23,9 +34,16 @@ void setCamera(std::vector<Player> players) {
 }
 
 void drawHealthBars(vector<Player> players) {
+	float health[2] = {0.f, 0.f};
 
-	if(players.size() != 2)
-		return;
+	for(auto& ply : players) {
+
+		if(ply.team == 0 && ply.taggedIn(players))
+			health[0] = ply.state.health;
+
+		if(ply.team == 1 && ply.taggedIn(players))
+			health[1] = ply.state.health;		
+	}
 
     float width = (g::video.getSize().x - 32 * 3) / 2.f;
     sf::RectangleShape outline, fill;
@@ -38,14 +56,14 @@ void drawHealthBars(vector<Player> players) {
     outline.setSize({width, 32});
 
     outline.setPosition(32, 32);
-    fill.setPosition(32 + width * (1. - players[0].state.health / 100.), 32);
+    fill.setPosition(32 + width * (1. - health[0] / 100.), 32);
     fill.setSize({width * players[0].state.health / 100, 32});
     g::video.draw(fill);
     g::video.draw(outline);
 
     outline.setPosition(64 + width, 32);
     fill.setPosition(64 + width, 32);
-    fill.setSize({width * players[1].state.health / 100, 32});
+    fill.setSize({width * health[1] / 100, 32});
     g::video.draw(fill);        
     g::video.draw(outline);    
 }

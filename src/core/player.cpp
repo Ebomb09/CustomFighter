@@ -9,6 +9,7 @@
 #include <fstream>
 #include <cmath>
 #include <json.hpp>
+#include <iostream>
 
 void Player::draw() {
     Skeleton pose = getSkeleton();
@@ -58,12 +59,6 @@ Button::Flag Player::readInput() {
 
 void Player::advanceFrame(vector<Player> others) {
 
-    // Player stay down once defeated
-    if(state.health <= 0) {
-        in = Button::Flag();
-        setMove(Move::KnockDown);
-    }
-
     // Find other currently tagged in player
     int target = getTarget(others);
 
@@ -105,87 +100,62 @@ void Player::advanceFrame(vector<Player> others) {
     if(state.stun > 0)
         state.stun --;
 
-    if(target != -1) {
+    if(state.hitKeyFrame > 0)
+        state.hitKeyFrame --;
 
-        // Opponent doing a new move can reset the hitKeyFrame
-        if(others[target].getKeyFrame() != state.hitKeyFrame)
-            state.hitKeyFrame = -1;
+    // Check Hit/Hurtbox Collisions
+    HitBox hit = getCollision(others);
 
-        // Damage, only be hit once per keyframe
-        if(state.hitKeyFrame != others[target].getKeyFrame()) {
+    if(hit.damage > 0) {  
+        // Block if input in the opposite direction of opponent           
+        bool block = false;
 
-            // Check HurtBox <-> HitBox collisions, for only one match
-            bool found = false;
+        if(inMove(Move::Stand) || inMove(Move::StandBlock) ||
+            inMove(Move::Crouch) || inMove(Move::CrouchBlock)) {
 
-            for(auto& hurt : getHurtBoxes()) {
-                for(auto& hit : others[target].getHitBoxes()) {
+            if((state.side == 1 && getSOCD().x < 0) || (state.side == -1 && getSOCD().x > 0)) {
+                block = true;
+            }
+        }
 
-                    if(Real::rectangleInRectangle(hurt, hit)) {
+        if(block) {
 
-                        // Set what keyframe you were hit on
-                        state.hitKeyFrame = others[target].getKeyFrame();        
+            // Push back
+            state.velocity.x = hit.force.x;
+            state.stun = hit.blockStun;
+            state.accDamage = hit.blockStun;
 
-                        // Block if input in the opposite direction of opponent           
-                        bool block = false;
+            if(inMove(Move::Stand) || inMove(Move::StandBlock)){
+                setMove(Move::StandBlock);
 
-                        if(inMove(Move::Stand) || inMove(Move::StandBlock) ||
-                            inMove(Move::Crouch) || inMove(Move::CrouchBlock)) {
+            }else{
+                setMove(Move::CrouchBlock);
+            }
 
-                            if((state.side == 1 && getSOCD().x < 0) || (state.side == -1 && getSOCD().x > 0)) {
-                                block = true;
-                            }
-                        }
+        }else{
+            dealDamage(hit.damage);
+            state.velocity.x += hit.force.x;
+            state.velocity.y = hit.force.y;
 
-                        if(block) {
+            if(hit.knockdown) {
+                setMove(Move::KnockDown);
 
-                            // Push back
-                            state.velocity.x = hit.force.x;
+            }else if(state.position.y > 0 || state.velocity.y > 0){
+                setMove(Move::JumpCombo);
 
-                            if(inMove(Move::Stand) || inMove(Move::StandBlock)){
-                                setMove(Move::StandBlock);
-                                state.stun = hit.blockStun;
-                                state.accDamage = hit.blockStun;
-                            
-                            }else{
-                                setMove(Move::CrouchBlock);
-                                state.stun = hit.blockStun;
-                                state.accDamage = hit.blockStun;
-                            }
+            }else if(inMove(Move::Crouch) || inMove(Move::CrouchBlock) || inMove(Move::CrouchCombo)){
+                setMove(Move::CrouchCombo);
+                state.stun = hit.hitStun;
 
-                        }else{
-                            dealDamage(hit.damage);
-                            state.velocity.x += hit.force.x;
-                            state.velocity.y = hit.force.y;
-
-                            if(hit.knockdown) {
-                                setMove(Move::KnockDown);
-
-                            }else if(state.position.y > 0 || state.velocity.y > 0){
-                                setMove(Move::JumpCombo);
-
-                            }else if(inMove(Move::Crouch) || inMove(Move::CrouchBlock) || inMove(Move::CrouchCombo)){
-                                setMove(Move::CrouchCombo);
-                                state.stun = hit.hitStun;
-
-                            }else{
-                                setMove(Move::StandCombo);
-                                state.stun = hit.hitStun;
-                            }
-                        }
-
-                        found = true;
-                        break;
-                    }
-                }
-
-                if(found)
-                    break;
+            }else{
+                setMove(Move::StandCombo);
+                state.stun = hit.hitStun;
             }
         }
     }
 
     // Special Move Check
-    if(getFrame().cancel){
+    if(getFrame().cancel && taggedIn(others)){
         string motion = "";
         for(int i = 0; i < 30; i ++) 
             motion = getMotion(i) + motion;
@@ -198,22 +168,16 @@ void Player::advanceFrame(vector<Player> others) {
             int v = 0;
             bool match = false;
 
+            // Validate both animations
             Animation* currAnim = g::save.getAnimation(config.moves[state.moveIndex]);
             Animation* nextAnim = g::save.getAnimation(config.moves[i]);
 
             if(!currAnim || !nextAnim)
                 continue;
 
-
-            if(nextAnim->from[currAnim->category]) {
-                // Animation can be done from Move
-
-            }else if(nextAnim->customFrom == currAnim->name) {
-                // Animation can be done from explicit cancel
-
-            }else {
+            // Check valid to cancel into the next anim
+            if(!nextAnim->from[currAnim->category] && nextAnim->customFrom != currAnim->name) 
                 continue;
-            }
 
             // Check if the last motion matches between the strings
             string lastMotion[2] {"", ""};
@@ -297,29 +261,38 @@ void Player::advanceFrame(vector<Player> others) {
         }   
     }
 
-    // Clamp position within the camera
-    state.position.x = std::clamp(
-        state.position.x, 
-        g::video.camera.x + 16,
-        g::video.camera.x + g::video.camera.w - 16
-        );
+    if(taggedIn(others)) {
+        // Clamp position within the camera
+        state.position.x = std::clamp(
+            state.position.x, 
+            g::video.camera.x + 16,
+            g::video.camera.x + g::video.camera.w - 16
+            );
 
-    // Clamp position within stage bounds
-    state.position.x = std::clamp(
-        state.position.x, 
-        StageBounds.x + 16, 
-        StageBounds.x + StageBounds.w - 16
-        );    
-
+        // Clamp position within stage bounds
+        state.position.x = std::clamp(
+            state.position.x, 
+            StageBounds.x + 16, 
+            StageBounds.x + StageBounds.w - 16
+            );  
+    }
+  
     if(state.position.y <= 0) {
         state.position.y = 0;
         state.velocity.y = 0;
 
-        if(state.velocity.x > 0)
-            state.velocity.x = std::clamp(state.velocity.x - 0.25f, 0.f, state.velocity.x);
+        // Always slide during some custom move
+        if(inMove(Move::Custom00)) {
 
-        if(state.velocity.x < 0)
-            state.velocity.x = std::clamp(state.velocity.x + 0.25f, state.velocity.x, 0.f);
+            if(state.velocity.x > 0)
+                state.velocity.x = std::clamp(state.velocity.x - 0.25f, 0.f, state.velocity.x);
+
+            if(state.velocity.x < 0)
+                state.velocity.x = std::clamp(state.velocity.x + 0.25f, state.velocity.x, 0.f);    
+
+        }else {
+            state.velocity.x = 0;
+        }
 
         // Custom move commit to move until on ground
         if(inMove(Move::Custom00) && doneMove())
@@ -329,45 +302,23 @@ void Player::advanceFrame(vector<Player> others) {
         if(inMove(Move::Jump) && doneMove())
             setMove(Move::Stand);
 
-        // Movement options
-        if(inMove(Move::Stand) || inMove(Move::Crouch)) {
-            state.velocity.x = 0;
-
-            // If on ground look in direction of opponent
-            if(target != -1)
-                state.side = (state.position.x < others[target].state.position.x) ? 1 : -1;
-
-            // Standing
-            if(getSOCD().y == 0) {
-
-                if(getSOCD().x == state.side){
-                    setMove(Move::WalkForwards, true);
-
-                }else if(getSOCD().x == -state.side){
-                    setMove(Move::WalkBackwards, true);
-
-                }else {
-                    setMove(Move::Stand, true);
-                }
-
-            // Jumping
-            }else if(getSOCD().y > 0) {
-
-                if(getSOCD().x == state.side){
-                    setMove(Move::JumpForwards);
-
-                }else if(getSOCD().x == -state.side){
-                    setMove(Move::JumpBackwards);
-
-                }else {
-                    setMove(Move::Jump);
-                }
-
-            // Crouching
-            }else if(getSOCD().y < 0) {
-                setMove(Move::Crouch, true);
-            }      
+        // Taunt cancel
+        if(inMove(Move::Taunt) && doneMove()) {
+            setMove(Move::Stand);
+            state.tagCount ++;
         }
+
+        // Player stay down once defeated
+        if(state.health <= 0) {
+            setMove(Move::KnockDown);
+
+            if(doneMove()) 
+                state.tagCount = -1;
+        }
+
+        // Tag in / out animations
+        if((inMove(Move::TagIn) || inMove(Move::TagOut)) && doneMove())
+            setMove(Move::Stand);    
 
         // Hit States
         if(inMove(Move::JumpCombo)) 
@@ -385,35 +336,133 @@ void Player::advanceFrame(vector<Player> others) {
         if(inMove(Move::GetUp) && doneMove())
             setMove(Move::Stand);
 
+        // Controls
+        if(taggedIn(others)) {
+
+            // Movement options
+            if((inMove(Move::Stand) || inMove(Move::Crouch))) {
+
+                // If on ground look in direction of opponent
+                if(target != -1)
+                    state.side = (state.position.x < others[target].state.position.x) ? 1 : -1;
+
+                // Standing
+                if(getSOCD().y == 0) {
+
+                    if(in.Taunt) {
+                        setMove(Move::Taunt);
+            
+                    }else if(getSOCD().x == state.side){
+                        setMove(Move::WalkForwards, true);
+
+                    }else if(getSOCD().x == -state.side){
+                        setMove(Move::WalkBackwards, true);
+
+                    }else{
+                        setMove(Move::Stand, true);
+                    }
+
+                // Jumping
+                }else if(getSOCD().y > 0) {
+
+                    if(getSOCD().x == state.side){
+                        setMove(Move::JumpForwards);
+
+                    }else if(getSOCD().x == -state.side){
+                        setMove(Move::JumpBackwards);
+
+                    }else {
+                        setMove(Move::Jump);
+                    }
+
+                // Crouching
+                }else if(getSOCD().y < 0) {
+                    setMove(Move::Crouch, true);
+                }      
+            }
+
+        // Always prepare to be tagged in
+        }else if(state.health > 0){
+            bool prepare = false;
+            int curr = -1;
+
+            // Find currently tagged in member
+            for(int i = 0; i < others.size(); i ++) {
+                Player& ply = others[i];
+
+                if(ply.team == team && ply.gameIndex != gameIndex && ply.taggedIn(others)) {
+                    curr = i;
+                    prepare = ply.inMove(Move::Taunt) || ply.state.health <= 0;
+                }
+            }
+
+            // Move in
+            if(prepare) {
+
+                // Run in until up to player
+                if((state.side == 1 && state.position.x < others[curr].state.position.x + 16) ||
+                    (state.side == -1 && state.position.x > others[curr].state.position.x - 16)) {
+
+                    setMove(Move::TagIn, true);
+
+                // Reset to stand once arrived
+                }else{
+                    setMove(Move::Stand);
+                }
+
+            // In camera area, tag out
+            }else if(state.position.x > g::video.camera.x - 16 && state.position.x < g::video.camera.x + g::video.camera.w + 16) {
+                setMove(Move::TagOut, true);
+
+            // Not in camera area, side line and prepare to move in
+            }else if(curr != -1) {
+                state.side = others[curr].state.side;
+
+                // Just off screen
+                state.position = {
+                    (state.side == 1) ? g::video.camera.x - 64 : g::video.camera.x + g::video.camera.w + 64,
+                    0
+                };
+                state.velocity = {0, 0};
+            }
+        }
+
     }else{
         state.velocity.y -= 0.25;
     }
 
     // Look at the target while still alive
-    if(target != -1 && state.health > 0) {
-        Skeleton myPose = getSkeleton();
-        Skeleton opPose = others[target].getSkeleton();
+    if(state.health > 0) {
 
-        state.look = (opPose.head - myPose.head).getAngle();
+        if(target != -1) {
+            Skeleton myPose = getSkeleton();
+            Skeleton opPose = others[target].getSkeleton();
 
-        // Clamp look to side, no 180 degree head turns
-        if(state.side == 1) {
-            
-            if(state.look > PI * 1/4.f)
-                state.look = PI * 1/4.f;
+            state.look = (opPose.head - myPose.head).getAngle();
 
-            if(state.look < -PI * 1/4.f)
-                state.look = -PI * 1/4.f;
+            // Clamp look to side, no 180 degree head turns
+            if(state.side == 1) {
+                
+                if(state.look > PI * 1/4.f)
+                    state.look = PI * 1/4.f;
 
+                if(state.look < -PI * 1/4.f)
+                    state.look = -PI * 1/4.f;
+
+            }else {
+
+                if(state.look < PI * 3/4.f && state.look >= 0)
+                    state.look = PI * 3/4.f;
+
+                if(state.look > -PI * 3/4.f && state.look <= 0)
+                    state.look = -PI * 3/4.f;
+            }   
+
+        // Default head position based on side
         }else {
-
-            if(state.look < PI * 3/4.f && state.look >= 0)
-                state.look = PI * 3/4.f;
-
-            if(state.look > -PI * 3/4.f && state.look <= 0)
-                state.look = -PI * 3/4.f;
-        }   
-    } 
+            state.look = (state.side == 1) ? 0 : PI;
+        }
+    }
 
     // Reset input
     in = Button::Flag();
@@ -429,9 +478,12 @@ void Player::dealDamage(int dmg) {
 
 int Player::getTarget(vector<Player> others) {
 
+    if(!taggedIn(others))
+        return -1;
+
     for(int i = 0; i < others.size(); i ++) {
 
-        if(others[i].state.taggedIn && others[i].team != team) {
+        if(others[i].team != team && others[i].taggedIn(others)) {
             return i;
         }
     }
@@ -504,6 +556,55 @@ void Player::setMove(int move, bool loop) {
 bool Player::doneMove() {
     Animation* anim = g::save.getAnimation(config.moves[state.moveIndex]);
     return (state.moveFrame >= anim->getFrameCount());
+}
+
+bool Player::taggedIn(vector<Player> others) {
+
+    // Indicates out of the game
+    if(state.tagCount < 0)
+        return false;
+
+    for(auto& ply : others) {
+
+        if(ply.gameIndex == gameIndex || ply.state.tagCount < 0)
+            continue;
+
+        if(ply.team == team) {
+
+            if(ply.state.tagCount == state.tagCount)
+                return gameIndex < ply.gameIndex;
+            else
+                return (state.tagCount < ply.state.tagCount);
+        }
+    }
+    return true;
+}
+
+HitBox Player::getCollision(vector<Player> others) {
+
+    if(!taggedIn(others))
+        return {};
+
+    if(state.hitKeyFrame != 0)
+        return {};
+
+    for(auto& ply : others) {
+
+        if(ply.team == team)
+            continue;
+
+        // Check HurtBox <-> HitBox collisions, for only one match
+        for(auto& hit : ply.getHitBoxes()) {
+            for(auto& hurt : getHurtBoxes()) {
+
+                if(Real::rectangleInRectangle(hurt, hit)) {
+                    state.hitKeyFrame = ply.getFrame().duration;
+                    return hit;
+                }
+            }
+        }            
+    }        
+    return {};
 }
 
 int Player::getKeyFrame() {

@@ -78,16 +78,22 @@ void Game::resetRound() {
     // 2 Player Game
     if(playerCount == 2) {
         players[0].state.position = -75;
+        players[0].state.side = 1;
         players[1].state.position = 75; 
+        players[1].state.side = -1;        
 
     // 4 Player Tag Game
     } else if(playerCount == 4) {
         players[0].state.position = -75;
-        players[1].state.position = -100;
+        players[0].state.side = 1;        
+        players[1].state.position = -25;
+        players[1].state.side = 1;        
         players[2].state.position = 75;
-        players[3].state.position = 100;
+        players[2].state.side = -1;       
+        players[3].state.position = 25;
+        players[3].state.side = -1;        
     }	
-    setCamera(players, playerCount);
+    g::video.camera.x = -g::video.camera.w / 2.f;
 }
 
 void Game::nextRound() {
@@ -251,6 +257,23 @@ void Game::draw() {
     	}
     }
 
+    // Draw clock
+    if(state.timer < timerMax * 60 && state.timer >= 0) {
+	    sf::Text txt;
+	    txt.setString(std::to_string(state.timer / 60));
+	    txt.setFont(*g::save.getFont("Anton-Regular"));
+	    txt.setCharacterSize(64);
+	    txt.setFillColor(sf::Color::White);
+		txt.setOutlineThickness(1);	 	    
+	    txt.setOutlineColor(sf::Color::Black);
+	    txt.setPosition({g::video.getSize().x / 2.f - txt.getLocalBounds().width / 2.f, 0});
+	    g::video.draw(txt);    	
+    }
+
+    // Draw Players
+    for(int i = 0; i < playerCount; i ++)
+    	players[i].draw();  
+
     // Draw round header
     if(state.timer > (timerMax + 1) * 60) {
 	    sf::Text txt;
@@ -273,21 +296,5 @@ void Game::draw() {
 	    txt.setOutlineColor(sf::Color::Black);
 	    txt.setPosition({g::video.getSize().x / 2.f - txt.getLocalBounds().width / 2.f, g::video.getSize().y / 2.f});
 	    g::video.draw(txt);  
-    }
-
-    // Draw clock
-    if(state.timer < timerMax * 60 && state.timer >= 0) {
-	    sf::Text txt;
-	    txt.setString(std::to_string(state.timer / 60));
-	    txt.setFont(*g::save.getFont("Anton-Regular"));
-	    txt.setCharacterSize(64);
-	    txt.setFillColor(sf::Color::White);
-		txt.setOutlineThickness(1);	 	    
-	    txt.setOutlineColor(sf::Color::Black);
-	    txt.setPosition({g::video.getSize().x / 2.f - txt.getLocalBounds().width / 2.f, 0});
-	    g::video.draw(txt);    	
-    }
-
-    for(int i = 0; i < playerCount; i ++)
-    	players[i].draw();  
+    }    
 }

@@ -51,9 +51,12 @@ Frame Animation::getFrame(float t) {
                 Skeleton poseA = keyFrames[i].pose;                
                 Skeleton poseB = keyFrames[i + 1].pose;
 
-                float progress = (t - f_pos) / (float)keyFrames[i].duration;
+                // Calculate total remaining duration of frame
+                frame.duration = keyFrames[i].duration - (t - f_pos);
 
                 // Calculate (final - initial) and times by frame progression
+                float progress = (t - f_pos) / (float)keyFrames[i].duration;
+
                 for(int j = 0; j < poseB.jointCount; j ++) {
                     Vector2 mov = (poseB.joints[j] - poseA.joints[j]) * progress;
                     frame.pose.joints[j] += mov;

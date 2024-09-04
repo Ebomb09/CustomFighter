@@ -37,23 +37,23 @@ struct Player {
 	Button::Flag in;
 
 	struct Config {
-		vector<string>	clothes;
-		string 			moves			[Move::Total];
-		string 			motions			[Move::Total];
+		std::vector<string>	clothes;
+		string 				moves			[Move::Total];
+		string 				motions			[Move::Total];
 
-		void loadFromText(string str);
+		void loadFromText(std::string str);
 		string saveToText();
 		void loadFromFile(std::string fileName);
 		void saveToFile(std::string fileName);
 	}config;
 
 	struct State {
-		bool			taggedIn		= true;
+		int				tagCount		= 0;
 		int				health			= 100;
 		int				accDamage		= 0;
 		int				stun			= 0;
 		int				hitStop			= 0;
-		int				hitKeyFrame		= -1;
+		int				hitKeyFrame		= 0;
 		int				side			= 1;
 		Vector2			position		= {0, 0};
 		Vector2			velocity		= {0, 0};
@@ -65,12 +65,12 @@ struct Player {
 	}state;
 
 	Button::Flag readInput();
-	void advanceFrame(vector<Player> others);
+	void advanceFrame(std::vector<Player> others);
 	void draw();
 
 	void dealDamage(int dmg);
 
-	int getTarget(vector<Player> others);
+	int getTarget(std::vector<Player> others);
 
 	Vector2 getSOCD(int index = 0);
 	string getMotion(int index = 0);
@@ -78,6 +78,10 @@ struct Player {
 	bool inMove(int move);
 	void setMove(int move, bool loop = false);
 	bool doneMove();
+
+	bool taggedIn(std::vector<Player> others);
+
+	HitBox getCollision(vector<Player> others);
 
 	int getKeyFrame();
 	Frame getFrame();

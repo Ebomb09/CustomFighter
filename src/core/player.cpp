@@ -281,17 +281,19 @@ void Player::advanceFrame(vector<Player> others) {
         state.position.y = 0;
         state.velocity.y = 0;
 
+        // Don't move while in full movement control
+        if(inMove(Move::Stand) || inMove(Move::Crouch) || inMove(Move::TagIn) || inMove(Move::TagOut) ||
+            inMove(Move::Jump)) {
+            state.velocity.x = 0;
+
         // Always slide during some custom move
-        if(inMove(Move::Custom00)) {
+        } else {
 
             if(state.velocity.x > 0)
                 state.velocity.x = std::clamp(state.velocity.x - 0.25f, 0.f, state.velocity.x);
 
             if(state.velocity.x < 0)
                 state.velocity.x = std::clamp(state.velocity.x + 0.25f, state.velocity.x, 0.f);    
-
-        }else {
-            state.velocity.x = 0;
         }
 
         // Custom move commit to move until on ground
@@ -340,7 +342,7 @@ void Player::advanceFrame(vector<Player> others) {
         if(taggedIn(others)) {
 
             // Movement options
-            if((inMove(Move::Stand) || inMove(Move::Crouch))) {
+            if(inMove(Move::Stand) || inMove(Move::Crouch)) {
 
                 // If on ground look in direction of opponent
                 if(target != -1)

@@ -4,6 +4,7 @@
 #include "core/save.h"
 #include "core/render_instance.h"
 #include "core/input_interpreter.h"
+#include "core/audio.h"
 #include "core/player.h"
 #include "core/net_tools.h"
 
@@ -30,10 +31,16 @@ bool advanceFrame(int flags) {
 
     if(result == GGPO_OK) {
 
+        // Mute sounds while in rollback to prevent repeats
+        g::audio.setVolume(0);
+
         for(int i = 0; i < game.playerCount; i ++) 
             game.players[i].in = in[i];
 
         game.advanceFrame();
+
+        // Restore default volume
+        g::audio.setVolume(100);
 
 	    ggpo_advance_frame(ggpo);
 	}

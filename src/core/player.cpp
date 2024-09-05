@@ -5,6 +5,7 @@
 #include "save.h"
 #include "math.h"
 #include "save.h"
+#include "audio.h"
 
 #include <fstream>
 #include <cmath>
@@ -131,6 +132,7 @@ void Player::advanceFrame(vector<Player> others) {
             }else{
                 setMove(Move::CrouchBlock);
             }
+            g::audio.playSound(g::save.getSound("block"));
 
         }else{
             dealDamage(hit.damage);
@@ -151,6 +153,7 @@ void Player::advanceFrame(vector<Player> others) {
                 setMove(Move::StandCombo);
                 state.stun = hit.hitStun;
             }
+            g::audio.playSound(g::save.getSound("hurt"));
         }
     }
 

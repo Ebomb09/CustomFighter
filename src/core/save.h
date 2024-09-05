@@ -4,6 +4,7 @@
 #include <map>
 #include <string>
 #include <filesystem>
+#include <SFML/Audio.hpp>
 #include <SFML/Graphics.hpp>
 
 #include "clothing.h"
@@ -24,6 +25,16 @@ public:
 
 private:
 	std::map<std::string, sf::Texture*> textures;
+
+
+/* Audio Assets */
+public:
+	sf::SoundBuffer* getSound(std::filesystem::path path);
+	std::string getMusic(std::filesystem::path path);
+
+private:
+	std::map<std::string, sf::SoundBuffer*> sounds;
+	std::map<std::string, std::string> musics;
 
 
 /* Clothing Assets */

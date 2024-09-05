@@ -24,6 +24,12 @@ SaveManager::SaveManager() {
 	for(auto& entry : std::filesystem::directory_iterator("data/moves"))
 		getAnimation(entry);
 
+	for(auto& entry : std::filesystem::directory_iterator("data/sounds"))
+		getSound(entry);
+
+	for(auto& entry : std::filesystem::directory_iterator("data/musics"))
+		getMusic(entry);
+
 	// Animation used for testing purposes
 	animations["test"] = new Animation();
 
@@ -72,11 +78,17 @@ SaveManager::~SaveManager() {
 	for(auto& it : textures)
 		delete it.second;
 
+	for(auto& it : sounds)
+		delete it.second;
+
 	for(auto& it : clothes)
 		delete it.second;
 
 	for(auto& it : animations)
 		delete it.second;
+
+	for(auto& it : fonts)
+		delete it.second;	
 }
 
 sf::Texture* SaveManager::getTexture(std::filesystem::path path) {
@@ -97,6 +109,44 @@ sf::Texture* SaveManager::getTexture(std::filesystem::path path) {
 		ptr = textures[path.string()];
 	}
 	return ptr;
+}
+
+sf::SoundBuffer* SaveManager::getSound(std::filesystem::path path) {
+	sf::SoundBuffer* ptr = NULL;
+
+	if(sounds.find(path.string()) == sounds.end()) {
+		ptr = new sf::SoundBuffer();
+
+		if(ptr->loadFromFile(path.string())) {
+			sounds[path.stem().string()] = ptr;
+
+		}else {
+			delete ptr;
+			ptr = NULL;
+		}
+
+	}else {
+		ptr = sounds[path.string()];
+	}
+	return ptr;
+}
+
+std::string SaveManager::getMusic(std::filesystem::path path) {
+	std::string realPath = "";
+
+	if(musics.find(path.string()) == musics.end()) {
+		std::fstream file(path);
+
+		if(file.good()) {
+			musics[path.stem().string()] = path.string();
+			realPath = path.string();
+		}
+		file.close();
+
+	}else {
+		realPath = musics[path.string()];
+	}
+	return realPath;
 }
 
 sf::Font* SaveManager::getFont(std::filesystem::path path) {

@@ -250,6 +250,8 @@ int Menu::Text(std::string* str, int user, Rectangle area) {
 	return Wait;
 }
 
+static int motionData[4];
+
 int Menu::Motion(std::string* str, int user, Rectangle area) {
 	Button::Config b = g::save.getButtonConfig(user);
 
@@ -327,7 +329,26 @@ int Menu::Motion(std::string* str, int user, Rectangle area) {
     	(*str) += motion;
     }
 
-	if(str->size() > 0 && (g::input.keyReleased[b.A] || g::input.keyReleased[b.B] || g::input.keyReleased[b.C] || g::input.keyReleased[b.D]))
+    // Return when no more buttons are being held
+    bool held = false;
+
+    for(int i = 0; i < Button::Total; i ++) {
+
+    	if(g::input.keyHeld[b.button[i]]) {
+    		held = true;
+    		break;
+    	}
+    }
+
+    // Wait a couple frames before returning
+    if(held) {
+    	motionData[user] = 20;
+
+    }else {
+    	motionData[user] --;
+    }
+
+	if(str->size() > 0 && motionData[user] <= 0)
 		return Accept;
 
 	return Wait;

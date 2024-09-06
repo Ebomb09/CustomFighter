@@ -1,8 +1,7 @@
 #include "skeleton.h"
 #include "render_instance.h"
 
-#include <cmath>
-#include <iostream>
+using std::vector;
 
 Skeleton::Skeleton() :
 	// Unique bones

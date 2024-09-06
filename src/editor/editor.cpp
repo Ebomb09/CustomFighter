@@ -8,6 +8,8 @@
 #include "core/math.h"
 #include "editor.h"
 
+using std::vector, std::string;
+
 void Editor::drawGrid() {
 
     if(!settings.drawGrid)

@@ -7,6 +7,8 @@
 #include <json.hpp>
 #include <curl/curl.h>
 
+using std::vector, std::string;
+
 SaveManager g::save = SaveManager();
 
 size_t write_callbackz(char *ptr, size_t size, size_t nmemb, void *userdata) {

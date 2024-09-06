@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-using std::vector;
+using std::vector, std::string;
 
 void Game::init(int _playerCount, int _roundMax, int _timerMax) {
 	playerCount = _playerCount;

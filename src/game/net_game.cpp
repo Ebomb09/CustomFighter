@@ -12,7 +12,7 @@
 #include <cstdio>
 #include <ggponet.h>
 
-using std::string;
+using std::vector, std::string;
 
 GGPOSession* 		ggpo;
 GGPOPlayerHandle    handle[MAX_PLAYERS];

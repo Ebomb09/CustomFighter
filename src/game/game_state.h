@@ -3,8 +3,6 @@
 
 #include "core/player.h"
 
-#define MAX_PLAYERS 4
-
 struct Game {
 	int playerCount;
 	int roundMax;

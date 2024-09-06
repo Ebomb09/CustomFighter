@@ -3,7 +3,7 @@
 #include "core/render_instance.h"
 #include "core/save.h"
 
-using std::vector;
+using std::vector, std::string;
 
 void setCamera(Player* players, int count) {
 	vector<Player> vec;

@@ -4,6 +4,8 @@
 #include "core/input_interpreter.h"
 #include "core/render_instance.h"
 
+using std::vector;
+
 bool LocalGame::run(vector<Player::Config> configs) {
 	Game game;
     game.init(configs.size());

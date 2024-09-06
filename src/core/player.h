@@ -11,8 +11,7 @@
 
 #include "button.h"
 
-using std::vector;
-using std::string;
+#define MAX_PLAYERS 4
 
 const Rectangle StageBounds = {
 	-384,
@@ -37,12 +36,12 @@ struct Player {
 	Button::Flag in;
 
 	struct Config {
-		std::vector<string>	clothes;
-		string 				moves			[Move::Total];
-		string 				motions			[Move::Total];
+		std::vector<std::string>	clothes;
+		std::string 				moves			[Move::Total];
+		std::string 				motions			[Move::Total];
 
 		void loadFromText(std::string str);
-		string saveToText();
+		std::string saveToText();
 		void loadFromFile(std::string fileName);
 		void saveToFile(std::string fileName);
 	}config;
@@ -53,7 +52,7 @@ struct Player {
 		int				accDamage		= 0;
 		int				stun			= 0;
 		int				hitStop			= 0;
-		int				hitKeyFrame		= 0;
+		int				hitKeyFrame		[MAX_PLAYERS] {-1, -1, -1, -1};
 		int				side			= 1;
 		Vector2			position		= {0, 0};
 		Vector2			velocity		= {0, 0};
@@ -73,7 +72,8 @@ struct Player {
 	int getTarget(std::vector<Player> others);
 
 	Vector2 getSOCD(int index = 0);
-	string getMotion(int index = 0);
+	std::string getInputBuffer();
+	int searchBestMove(std::string buffer);
 
 	bool inMove(int move);
 	void setMove(int move, bool loop = false);
@@ -81,16 +81,16 @@ struct Player {
 
 	bool taggedIn(std::vector<Player> others);
 
-	HitBox getCollision(vector<Player> others);
+	HitBox getCollision(std::vector<Player> others);
 
 	int getKeyFrame();
 	Frame getFrame();
 	
 	Skeleton getSkeleton();
-	vector<HitBox> getHitBoxes();
-	vector<HurtBox> getHurtBoxes();	
+	std::vector<HitBox> getHitBoxes();
+	std::vector<HurtBox> getHurtBoxes();	
 
-	vector<Clothing*> getClothes();	
+	std::vector<Clothing*> getClothes();	
 
 	Rectangle getRealBoundingBox();
 	Rectangle getScreenBoundingBox();	

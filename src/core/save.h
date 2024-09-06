@@ -104,7 +104,7 @@ public:
 
 private:
 	std::vector<std::string> serverList;
-	string ip;
+	std::string ip;
 	int port;
 };
 

@@ -5,6 +5,8 @@
 #include "render_instance.h"
 #include "save.h"
 
+using std::vector, std::string;
+
 static void cycleIndex(std::vector<Menu::Option> options, int* index, int quantity) {
 	int beg = *index;
 

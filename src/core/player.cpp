@@ -10,7 +10,8 @@
 #include <fstream>
 #include <cmath>
 #include <json.hpp>
-#include <iostream>
+
+using std::vector, std::string;
 
 void Player::draw() {
     Skeleton pose = getSkeleton();
@@ -101,9 +102,6 @@ void Player::advanceFrame(vector<Player> others) {
     if(state.stun > 0)
         state.stun --;
 
-    if(state.hitKeyFrame > 0)
-        state.hitKeyFrame --;
-
     // Check Hit/Hurtbox Collisions
     HitBox hit = getCollision(others);
 
@@ -158,88 +156,16 @@ void Player::advanceFrame(vector<Player> others) {
     }
 
     // Special Move Check
-    if(getFrame().cancel && taggedIn(others)){
-        string motion = "";
-        for(int i = 0; i < 30; i ++) 
-            motion = getMotion(i) + motion;
+    if(getFrame().cancel && taggedIn(others)) {
+        int move = searchBestMove(getInputBuffer());
 
-        int best = -1;
-
-        for(int i = Move::Custom00; i < Move::Total; i ++) {
-            string str = config.motions[i];
-            int u = 0;
-            int v = 0;
-            bool match = false;
-
-            // Validate both animations
-            Animation* currAnim = g::save.getAnimation(config.moves[state.moveIndex]);
-            Animation* nextAnim = g::save.getAnimation(config.moves[i]);
-
-            if(!currAnim || !nextAnim)
-                continue;
-
-            // Check valid to cancel into the next anim
-            if(!nextAnim->from[currAnim->category] && nextAnim->customFrom != currAnim->name) 
-                continue;
-
-            // Check if the last motion matches between the strings
-            string lastMotion[2] {"", ""};
-
-            for(int j = motion.size() - 1; j >= 0; j --) {
-
-                if(motion[j] >= '0' && motion[j] <= '9'){
-                    lastMotion[0] = motion[j];
-                    break;
-                }
-            }
-
-            for(int j = str.size() - 1; j >= 0; j --) {
-                
-                if(str[j] >= '0' && str[j] <= '9'){
-                    lastMotion[1] = str[j];
-                    break;
-                }
-            }
-
-            if(lastMotion[0] != lastMotion[1] && lastMotion[1].size() > 0)
-                continue;
-
-            // Scan the motion strings for matching inputs
-            while(u < str.size() && v < motion.size()) {
-
-                if(str[u] == motion[v]) {
-                    u ++;
-                    v ++;
-
-                    if(u == str.size()) {
-                        match = true;
-                        break;
-                    }
-
-                }else {
-                    v ++;
-                }
-            }
-
-            // A correctly matching move was found
-            if(match) {
-
-                if(best == -1)
-                    best = i;
-
-                else if(config.motions[i].size() > config.motions[best].size()) 
-                    best = i;
-            }
-        }
-
-        // Force reset of the moveFrame, so cancels into the same move work
-        if(best != -1) {
+        if(move != -1) {
             state.moveFrame = 0;
-            setMove(best);
+            setMove(move);
 
             // Clear input history to prevent misinputs
             for(int i = 0; i < Button::History; i ++)
-                state.button[i] = (Button::Flag)0;
+                state.button[i] = Button::Flag();
         }
     }
 
@@ -495,32 +421,6 @@ int Player::getTarget(vector<Player> others) {
     return -1;
 }
 
-string Player::getMotion(int index) {
-    string out = "";
-
-    Vector2 socd = getSOCD(index);
-    socd.x *= state.side;
-
-    out += ('5' + (int)socd.x + (int)socd.y * 3);
-
-    if(state.button[index].A)
-        out += (out.size() == 1) ? "A" : "+A";
-
-    if(state.button[index].B)
-        out += (out.size() == 1) ? "B" : "+B";
-
-    if(state.button[index].C)
-        out += (out.size() == 1) ? "C" : "+C";
-
-    if(state.button[index].D)
-        out += (out.size() == 1) ? "D" : "+D";
-
-    if(state.button[index].Taunt)
-        out += (out.size() == 1) ? "P" : "+P";
-
-    return out;
-}
-
 bool Player::inMove(int move) {
     int current = state.moveIndex;
 
@@ -563,6 +463,104 @@ bool Player::doneMove() {
     return (state.moveFrame >= anim->getFrameCount());
 }
 
+string Player::getInputBuffer() {
+    string buffer = "";
+
+    for(int i = 0; i < Button::History-1; i ++) {
+
+        // Directional presses
+        string motion = "";
+        Vector2 socd;
+
+        bool press =    (state.button[i].Up && !state.button[i+1].Up) ||
+                        (state.button[i].Down && !state.button[i+1].Down) ||
+                        (state.button[i].Right && !state.button[i+1].Right) ||
+                        (state.button[i].Left && !state.button[i+1].Left);
+
+        if(press && state.button[i].Up)      socd.y += 1;
+        if(press && state.button[i].Down)    socd.y -= 1;
+        if(press && state.button[i].Right)   socd.x += 1 * state.side;
+        if(press && state.button[i].Left)    socd.x -= 1 * state.side;
+
+        motion = ('5' + (int)socd.x + (int)socd.y * 3);
+
+        // Button presses
+        string button = "";
+
+        if(state.button[i].A)       button += (button.size() == 0) ? "A" : "+A";
+        if(state.button[i].B)       button += (button.size() == 0) ? "B" : "+B";
+        if(state.button[i].C)       button += (button.size() == 0) ? "C" : "+C";
+        if(state.button[i].D)       button += (button.size() == 0) ? "D" : "+D";
+        if(state.button[i].Taunt)   button += (button.size() == 0) ? "P" : "+P";
+
+        buffer = motion + button + '|' + buffer;
+    }
+
+    return buffer;
+}
+
+int Player::searchBestMove(string buffer) {
+    int best = -1;
+
+    for(int i = Move::Custom00; i < Move::Total; i ++) {
+
+        // Validate both animations
+        Animation* currAnim = g::save.getAnimation(config.moves[state.moveIndex]);
+        Animation* nextAnim = g::save.getAnimation(config.moves[i]);
+
+        if(!currAnim || !nextAnim)
+            continue;
+
+        // Check valid to cancel into the next anim
+        if(!nextAnim->from[currAnim->category] && nextAnim->customFrom != currAnim->name) 
+            continue;
+
+        // Get the motion of the move
+        string motion = config.motions[i];
+
+        // Scan the motion strings for matching inputs
+        bool match = false;
+        int u = 0;
+        int v = 0;
+        int decay = 10;
+
+        while(u < motion.size() && v < buffer.size()) {
+
+            // Each input delimitted by a pipe
+            if(buffer[v] == '|') {
+                decay --;
+
+                // Only search up to a few inputs to prevent misfiring
+                if(decay <= 0)
+                    u = 0;
+            }
+
+            if(motion[u] == buffer[v]) {
+                u ++;
+                decay = 10;
+
+                if(u == motion.size()) {
+                    match = true;
+                    break;
+                }
+            }
+
+            v ++;
+        }
+
+        // A correctly matching move was found
+        if(match) {
+
+            if(best == -1)
+                best = i;
+
+            else if(config.motions[i].size() > config.motions[best].size()) 
+                best = i;
+        }
+    }
+    return best;
+}
+
 bool Player::taggedIn(vector<Player> others) {
 
     // Indicates out of the game
@@ -590,24 +588,26 @@ HitBox Player::getCollision(vector<Player> others) {
     if(!taggedIn(others))
         return {};
 
-    if(state.hitKeyFrame != 0)
-        return {};
+    for(int i = 0; i < others.size(); i ++) {
 
-    for(auto& ply : others) {
-
-        if(ply.team == team)
+        if(others[i].team == team)
             continue;
 
-        // Check HurtBox <-> HitBox collisions, for only one match
-        for(auto& hit : ply.getHitBoxes()) {
-            for(auto& hurt : getHurtBoxes()) {
+        // Valid collision
+        if(state.hitKeyFrame[i] != others[i].getKeyFrame() || state.hitKeyFrame[i] == -1) {
+            state.hitKeyFrame[i] = -1;
 
-                if(Real::rectangleInRectangle(hurt, hit)) {
-                    state.hitKeyFrame = ply.getFrame().duration;
-                    return hit;
+            // Check HurtBox <-> HitBox collisions, for only one match
+            for(auto& hit : others[i].getHitBoxes()) {
+                for(auto& hurt : getHurtBoxes()) {
+
+                    if(Real::rectangleInRectangle(hurt, hit)) {
+                        state.hitKeyFrame[i] = others[i].getKeyFrame();
+                        return hit;
+                    }
                 }
-            }
-        }            
+            }  
+        }          
     }        
     return {};
 }

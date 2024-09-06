@@ -2,6 +2,7 @@
 #define GAME_PLAYER_BUTTON_LAYOUT_H
 
 #include <string>
+#include <filesystem>
 
 namespace Button {
 
@@ -33,19 +34,26 @@ namespace Button {
 
 	const int History = 30;
 
-	union Config {
-		struct {
-			int Up		= 0;
-			int Down	= 0;
-			int Left	= 0;
-			int Right	= 0;
-			int A		= 0;
-			int B		= 0;
-			int C		= 0;
-			int D		= 0;
-			int Taunt	= 0;	
+	struct Config {
+		int index = -1;
+
+		union {
+			struct {
+				int Up		= 0;
+				int Down	= 0;
+				int Left	= 0;
+				int Right	= 0;
+				int A		= 0;
+				int B		= 0;
+				int C		= 0;
+				int D		= 0;
+				int Taunt	= 0;	
+			};
+			int button[Button::Total];
 		};
-		int button[Button::Total];
+
+		void loadFromFile(std::filesystem::path path);
+		void saveToFile(std::filesystem::path path);		
 	};	
 
 	struct Flag {

@@ -35,26 +35,26 @@ Button::Flag Player::readInput() {
 
     Button::Config buttonConfig = g::save.getButtonConfig(seatIndex);
 
-    out.A       = g::input.keyPressed[buttonConfig.A];
-    out.B       = g::input.keyPressed[buttonConfig.B];
-    out.C       = g::input.keyPressed[buttonConfig.C];
-    out.D       = g::input.keyPressed[buttonConfig.D];   
-    out.Taunt   = g::input.keyPressed[buttonConfig.Taunt];   
+    out.A       = g::input.pressed(buttonConfig.index, buttonConfig.A);
+    out.B       = g::input.pressed(buttonConfig.index, buttonConfig.B);
+    out.C       = g::input.pressed(buttonConfig.index, buttonConfig.C);
+    out.D       = g::input.pressed(buttonConfig.index, buttonConfig.D);
+    out.Taunt   = g::input.pressed(buttonConfig.index, buttonConfig.Taunt);
 
     // Any attack button is pressed then retrigger all held attack buttons
     if(out.A || out.B || out.C || out.D || out.Taunt) {
-        out.A       = g::input.keyHeld[buttonConfig.A];
-        out.B       = g::input.keyHeld[buttonConfig.B];        
-        out.C       = g::input.keyHeld[buttonConfig.C];
-        out.D       = g::input.keyHeld[buttonConfig.D];   
-        out.Taunt   = g::input.keyHeld[buttonConfig.Taunt];         
+        out.A       = g::input.held(buttonConfig.index, buttonConfig.A);
+        out.B       = g::input.held(buttonConfig.index, buttonConfig.B);
+        out.C       = g::input.held(buttonConfig.index, buttonConfig.C);
+        out.D       = g::input.held(buttonConfig.index, buttonConfig.D);
+        out.Taunt   = g::input.held(buttonConfig.index, buttonConfig.Taunt);      
     }
 
     // Movement keys always held down
-    out.Up      = g::input.keyHeld[buttonConfig.Up];
-    out.Down    = g::input.keyHeld[buttonConfig.Down];
-    out.Left    = g::input.keyHeld[buttonConfig.Left];
-    out.Right   = g::input.keyHeld[buttonConfig.Right];
+    out.Up      = g::input.held(buttonConfig.index, buttonConfig.Up);
+    out.Down    = g::input.held(buttonConfig.index, buttonConfig.Down);
+    out.Left    = g::input.held(buttonConfig.index, buttonConfig.Left);
+    out.Right   = g::input.held(buttonConfig.index, buttonConfig.Right);
 
     return out;
 }
@@ -96,9 +96,11 @@ void Player::advanceFrame(vector<Player> others) {
     if(state.hitStop != 0) 
         return;
 
-    // Play sound effect related to frame of animation
-    if(getFrame().sound != "")
-        g::audio.playSound(g::save.getSound(getFrame().sound));
+    // Increment frames
+    state.moveFrame ++;
+
+    if(state.stun > 0)
+        state.stun --;
 
     // Special Move Check
     if(getFrame().cancel && taggedIn(others)) {
@@ -113,12 +115,6 @@ void Player::advanceFrame(vector<Player> others) {
                 state.button[i] = Button::Flag();
         }
     }
-
-    // Increment frames
-    state.moveFrame ++;
-
-    if(state.stun > 0)
-        state.stun --;
 
     // Check Hit/Hurtbox Collisions
     HitBox hit = getCollision(others);
@@ -405,6 +401,10 @@ void Player::advanceFrame(vector<Player> others) {
         }
     }
 
+    // Play sound effect related to frame of animation
+    if(getFrame().sound != "")
+        g::audio.playSound(g::save.getSound(getFrame().sound));
+
     // Reset input
     in = Button::Flag();
 }
@@ -455,7 +455,7 @@ bool Player::inMove(int move) {
 }
 
 void Player::setMove(int move, bool loop) {
-    Animation* anim = g::save.getAnimation(config.moves[state.moveIndex]);
+    Animation* anim = g::save.getAnimation(config.moves[move]);
 
     if(!anim)
         return;
@@ -473,6 +473,10 @@ void Player::setMove(int move, bool loop) {
 
 bool Player::doneMove() {
     Animation* anim = g::save.getAnimation(config.moves[state.moveIndex]);
+
+    if(!anim)
+        return true;
+
     return (state.moveFrame >= anim->getFrameCount());
 }
 

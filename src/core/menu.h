@@ -25,7 +25,9 @@ namespace Menu {
 	int Table(std::vector<Option> options, int columns, bool selectByRow, int* hover, int user, Rectangle area);
 	int List(std::vector<Option> options, int* hover, int user, Rectangle area);
 	int Text(std::string* str, int user, Rectangle area);
-	int Motion(std::string* str, int user, Rectangle area);	
+	int Motion(std::string* str, int user, Rectangle area);
+	int WaitForController(int* input, int user, Rectangle area);
+	int WaitForInput(int* input, int user, Rectangle area);
 };
 
 #endif

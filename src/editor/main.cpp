@@ -25,7 +25,7 @@ int main() {
         // Draw editor grid
         editor.update();
 
-        if(g::input.mouseHeld[sf::Mouse::Button::Middle]) {
+        if(g::input.held(MOUSE_INDEX, sf::Mouse::Button::Middle)) {
             g::video.camera.x += -g::input.mouseMove.x * g::video.camera.getScreenScale().x;
             g::video.camera.y += g::input.mouseMove.y * g::video.camera.getScreenScale().y;
         }

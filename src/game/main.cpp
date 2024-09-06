@@ -2,6 +2,7 @@
 #include "local_game.h"
 #include "net_game.h"
 #include "character_select.h"
+#include "options.h"
 
 #include "core/menu.h"
 #include "core/save.h"
@@ -12,15 +13,17 @@ using std::vector, std::string;
 
 enum {
     LocalFight2P,
-    LocalFight4P,    
+    LocalFight4P,
     NetPlay,
+    OptionMenu,
     Exit
 };
 
 vector<Menu::Option> menuOptions = {
+    {"NetPlay", NetPlay},    
     {"Local 2P Fight", LocalFight2P},
-    {"Local 4P Fight", LocalFight4P},    
-    {"NetPlay", NetPlay},
+    {"Local 4P Fight", LocalFight4P},
+    {"Options", OptionMenu},
     {"Exit", Exit}
 };
 int menuHover = 0;
@@ -65,6 +68,9 @@ int main(int argc, char* argv[]) {
                     }
                 }
 
+            }else if(menuOptions[menuHover].id == OptionMenu) {
+                Options::run();
+            
             }else if(menuOptions[menuHover].id == Exit) {
                 g::video.close();
             }

@@ -266,7 +266,7 @@ void Editor::selectJoint() {
     if(selected >= 0) {
         Vector2 j = g::video.camera.getScreen(skele.getJoint(selected));
 
-        if(g::input.mousePressed[sf::Mouse::Button::Left]) {
+        if(g::input.pressed(MOUSE_INDEX, sf::Mouse::Button::Left)) {
             setDragZone(-1);
 
             if(Screen::pointInCircle(g::input.mousePosition, {j.x, j.y, 8}))
@@ -274,7 +274,7 @@ void Editor::selectJoint() {
         }
     }
 
-    if(g::input.mousePressed[sf::Mouse::Button::Left] && dragZone == -1) {
+    if(g::input.pressed(MOUSE_INDEX, sf::Mouse::Button::Left) && dragZone == -1) {
         bool pick_same = false;
 
         if(selected >= 0) {
@@ -297,12 +297,12 @@ void Editor::selectJoint() {
     }
 
     // Rotate Joint
-    if(g::input.mouseHeld[sf::Mouse::Button::Right] && selected >= 0) {
+    if(g::input.held(MOUSE_INDEX, sf::Mouse::Button::Right) && selected >= 0) {
         skele.rotateJoint(selected, -g::input.mouseMove.x * PI / 180);   
     }
 
     // Move Joint
-    if(g::input.mouseHeld[sf::Mouse::Button::Left] && selected >= 0 && dragZone == 1) {
+    if(g::input.held(MOUSE_INDEX, sf::Mouse::Button::Left) && selected >= 0 && dragZone == 1) {
 
         skele.moveJoint(selected,
             {
@@ -330,7 +330,7 @@ void Editor::selectJoint() {
 void Editor::selectRectangle() {
 
     // Create Rectangles
-    if(g::input.mousePressed[sf::Mouse::Button::Right]) {
+    if(g::input.pressed(MOUSE_INDEX, sf::Mouse::Button::Right)) {
         Vector2 pos = g::video.camera.getReal(g::input.mousePosition);
         
         if(settings.mode == Mode::HitBoxes) {
@@ -374,7 +374,7 @@ void Editor::selectRectangle() {
             g::video.draw(rect);
         }
 
-        if(g::input.mousePressed[sf::Mouse::Button::Left]) {
+        if(g::input.pressed(MOUSE_INDEX, sf::Mouse::Button::Left)) {
             setDragZone(-1);
 
             if(Screen::pointInRectangle(g::input.mousePosition, g::video.camera.getScreen(*boxes[selected])))
@@ -392,7 +392,7 @@ void Editor::selectRectangle() {
     }
 
     // Mouse in rectangle area
-    if(g::input.mousePressed[sf::Mouse::Button::Left] && dragZone == -1) {
+    if(g::input.pressed(MOUSE_INDEX, sf::Mouse::Button::Left) && dragZone == -1) {
         std::vector<Rectangle*> boxes = getBoxes();        
         bool pick_same = false;
 
@@ -412,7 +412,7 @@ void Editor::selectRectangle() {
         }
     }
 
-    if(g::input.mouseHeld[sf::Mouse::Button::Left] && selected >= 0) {
+    if(g::input.held(MOUSE_INDEX, sf::Mouse::Button::Left) && selected >= 0) {
         std::vector<Rectangle*> boxes = getBoxes();
         Vector2 mov = g::input.mouseMove * g::video.camera.getScreenScale();
 
@@ -468,7 +468,7 @@ void Editor::selectRectangle() {
         }
     }   
 
-    if(g::input.keyPressed[sf::Keyboard::Delete] && selected >= 0) {
+    if(g::input.pressed(KEYBOARD_INDEX, sf::Keyboard::Delete) && selected >= 0) {
 
         if(settings.mode == Mode::HitBoxes) 
             getHitBoxes().erase(getHitBoxes().begin() + selected);

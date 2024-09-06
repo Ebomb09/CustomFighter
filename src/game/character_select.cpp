@@ -120,7 +120,7 @@ struct Creator {
         out.push_back({"ADD", ID::Insert});
         out.push_back({"BACK", ID::Cancel});
 
-        return out;    
+        return out;
     }
 
     vector<Menu::Option> getClothingOptions() {

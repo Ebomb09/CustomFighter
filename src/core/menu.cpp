@@ -2,6 +2,7 @@
 
 #include "button.h"
 #include "input_interpreter.h"
+#include "math.h"
 #include "render_instance.h"
 #include "save.h"
 
@@ -76,10 +77,10 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 	Button::Config b = g::save.getButtonConfig(user);
 
 	// Move cursor
-	if(g::input.keyPressed[b.Up]) 
+	if(g::input.pressed(b.index, b.Up))
 		cycleIndex(options, hover, -columns);
 
-	if(g::input.keyPressed[b.Down]) 
+	if(g::input.pressed(b.index, b.Down)) 
 		cycleIndex(options, hover, columns);
 
 	if(selectByRow) {
@@ -90,20 +91,20 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 
 	}else {
 
-		if(g::input.keyPressed[b.Left] && !selectByRow) 
+		if(g::input.pressed(b.index, b.Left) && !selectByRow) 
 			cycleIndex(options, hover, -1);
 
-		if(g::input.keyPressed[b.Right] && !selectByRow) 
+		if(g::input.pressed(b.index, b.Right) && !selectByRow) 
 			cycleIndex(options, hover, 1);		
 	}
 
 	// Safe check index, can be bad on the first table call
 	cycleIndex(options, hover, 0);
 
-	if(g::input.keyPressed[b.B]){
+	if(g::input.pressed(b.index, b.B)){
 		status = Accept;
 
-	}else if(g::input.keyPressed[b.D]) {
+	}else if(g::input.pressed(b.index, b.D)) {
 		status = Decline;
 	}
 
@@ -163,7 +164,19 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 					color = sf::Color::Yellow;
 			}
 
-	        renderText(options[i+j].name, options[i+j].font, color, {pos.x + j * (area.w / columns), pos.y, area.w / columns, fontHeight}, 0);
+			Rectangle renderBox = {pos.x + j * (area.w / columns), pos.y, area.w / columns, fontHeight};
+	        renderText(options[i+j].name, options[i+j].font, color, renderBox, 0);
+
+	        // Mouse controls
+	        if(Screen::pointInRectangle(g::input.mousePosition, renderBox)) {
+
+	        	if(options[i+j].name != "") {
+	        		*hover = i+j;
+
+	       			if(g::input.pressed(MOUSE_INDEX, sf::Mouse::Left))
+	       				status = Menu::Accept;    		
+	        	}        	
+	        }
 		}
         pos.y += fontHeight;
 	}
@@ -275,60 +288,29 @@ int Menu::Motion(std::string* str, int user, Rectangle area) {
 	test.seatIndex = user;
 	test.state.button[0] = test.readInput();
 
+	// Emulate player input buffer by check press / release
 	string motion = "";
 
-	// Key pressed / released and someother key is also being concurrently held
-	if((g::input.keyPressed[b.Up] || g::input.keyPressed[b.Down] ||
-		g::input.keyPressed[b.Left] || g::input.keyPressed[b.Right] ||
-		g::input.keyReleased[b.Up] || g::input.keyReleased[b.Down] ||
-		g::input.keyReleased[b.Left] || g::input.keyReleased[b.Right]) &&
-
-		(g::input.keyHeld[b.Up] || g::input.keyHeld[b.Down] ||
-		g::input.keyHeld[b.Left] || g::input.keyHeld[b.Right])
-		) {
+	if(	g::input.pressed(b.index, b.Up) 	|| g::input.released(b.index, b.Left) ||
+		g::input.pressed(b.index, b.Left) 	|| g::input.released(b.index, b.Left) ||
+		g::input.pressed(b.index, b.Up) 	|| g::input.released(b.index, b.Left) ||
+		g::input.pressed(b.index, b.Left) 	|| g::input.released(b.index, b.Left)) {
 
 	    Vector2 socd = test.getSOCD();
 	    motion += ('5' + (int)socd.x + (int)socd.y * 3);
 	}
 
-    if(g::input.keyPressed[b.A]) {
+	// Get button states
+	string button = "";
 
-    	if(g::input.keyHeld[b.B] || g::input.keyHeld[b.C] || g::input.keyHeld[b.D]) {
-        	motion += "+A"; 
-    	}else {
-        	motion += "A";    		
-    	}
-    }
+    if(g::input.pressed(b.index, b.A)) button = (button.size() == 0) ? "A" : "+A";
+    if(g::input.pressed(b.index, b.B)) button = (button.size() == 0) ? "B" : "+B";
+    if(g::input.pressed(b.index, b.C)) button = (button.size() == 0) ? "C" : "+C";
+    if(g::input.pressed(b.index, b.D)) button = (button.size() == 0) ? "D" : "+D";
 
-    if(g::input.keyPressed[b.B]) {
-
-    	if(g::input.keyHeld[b.A] || g::input.keyHeld[b.C] || g::input.keyHeld[b.D]) {
-        	motion += "+B"; 
-    	}else {
-        	motion += "B";    		
-    	}
-    }
-
-    if(g::input.keyPressed[b.C]) {
-
-    	if(g::input.keyHeld[b.A] || g::input.keyHeld[b.B] || g::input.keyHeld[b.D]) {
-        	motion += "+C"; 
-    	}else {
-        	motion += "C";
-    	}
-    }
-
-    if(g::input.keyPressed[b.D]) {
-
-    	if(g::input.keyHeld[b.A] || g::input.keyHeld[b.B] || g::input.keyHeld[b.C]) {
-        	motion += "+D";
-    	}else {
-        	motion += "D";
-    	}
-    }
 
     if(motion.size() > 0) {
-    	(*str) += motion;
+    	(*str) += motion + button;
     }
 
     // Return when no more buttons are being held
@@ -336,7 +318,7 @@ int Menu::Motion(std::string* str, int user, Rectangle area) {
 
     for(int i = 0; i < Button::Total; i ++) {
 
-    	if(g::input.keyHeld[b.button[i]]) {
+    	if(g::input.pressed(b.index, b.button[i])) {
     		held = true;
     		break;
     	}
@@ -353,5 +335,45 @@ int Menu::Motion(std::string* str, int user, Rectangle area) {
 	if(str->size() > 0 && motionData[user] <= 0)
 		return Accept;
 
+	return Wait;
+}
+
+int Menu::WaitForController(int* input, int user, Rectangle area) {
+	Button::Config b = g::save.getButtonConfig(user);
+
+	// Draw the header
+	sf::RectangleShape rect({area.w, fontHeight});
+	rect.setPosition({area.x, area.y});
+	rect.setFillColor(sf::Color(128, 128, 128));
+	g::video.draw(rect);
+
+	renderText("Press any button...", "Anton-Regular", sf::Color::Black, {area.x, area.y, area.w, fontHeight}, 0);
+
+	int index = g::input.lastController;
+
+	if(g::input.pressed(index, g::input.controller[index].lastInput)) {
+		*input = index;
+		return Accept;
+	}
+	return Wait;
+}
+
+int Menu::WaitForInput(int* input, int user, Rectangle area) {
+	Button::Config b = g::save.getButtonConfig(user);
+
+	// Draw the header
+	sf::RectangleShape rect({area.w, fontHeight});
+	rect.setPosition({area.x, area.y});
+	rect.setFillColor(sf::Color(128, 128, 128));
+	g::video.draw(rect);
+
+	renderText("Press any button...", "Anton-Regular", sf::Color::Black, {area.x, area.y, area.w, fontHeight}, 0);
+
+	int last = g::input.controller[b.index].lastInput;
+
+	if(g::input.pressed(b.index, last)) {
+		*input = last;
+		return Accept;
+	}
 	return Wait;
 }

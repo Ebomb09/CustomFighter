@@ -77,9 +77,9 @@ private:
 
 /* Button Configs */
 public:
-	void 										loadButtonConfig(int index);
-	void 										saveButtonConfig(int index, Button::Config config);
 	Button::Config 								getButtonConfig(int index);
+	void 										loadButtonConfig(int index);
+	void 										saveButtonConfig(int index, Button::Config config);	
 
 private:
 	static const int 							maxButtonConfigs = 4;

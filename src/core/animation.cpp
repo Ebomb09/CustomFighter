@@ -32,13 +32,10 @@ int Animation::getKeyFrameCount() {
 
 Frame Animation::getFrame(int t) {
     Frame frame;
-    float f_pos = 0;
+    int f_pos = 0;
 
     // Clamp frame value
-    if(t < 0)
-        t = 0;
-    else if(t >= getFrameCount()-1)
-        t = getFrameCount()-1;
+    t = std::clamp(t, 0, getFrameCount()-1);
 
     for(int i = 0; i < getKeyFrameCount(); i ++) {
 
@@ -49,6 +46,10 @@ Frame Animation::getFrame(int t) {
             // Only play sound effect on first active frame
             if(t != f_pos)
                 frame.sound = "";
+            
+            // Prevent cancelling first active hit frame
+            if(t == f_pos && keyFrames[i].duration > 1 && keyFrames[i].hitBoxes.size() > 0)
+                frame.cancel = false;
 
             // If there's a next frame interpolate
             if(i + 1 < getKeyFrameCount()) {

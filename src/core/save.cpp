@@ -1,4 +1,6 @@
 #include "save.h"
+#include "button.h"
+#include "input_interpreter.h"
 
 #include <algorithm>
 #include <cstdlib>
@@ -46,7 +48,7 @@ SaveManager::SaveManager() {
 	}
 
 	for(int i = 0; i < maxButtonConfigs; i ++)
-		loadButtonConfig(i);
+		getButtonConfig(i);
 
 	for(int i = 0; i < maxPlayerConfigs; i ++)
 		loadPlayerConfig(i);
@@ -263,87 +265,83 @@ vector<string> SaveManager::getAnimationsByFilter(vector<int> filters) {
 }
 
 void SaveManager::loadButtonConfig(int index) {
-	std::fstream file("save/inputPlayer" + std::to_string(index) + ".json", std::fstream::in);
 
-	if(!file.good()) {
-		file.close();
-
-		if(index == 0) {
-			buttonConfig[index].Up 		= sf::Keyboard::W;
-			buttonConfig[index].Down 	= sf::Keyboard::S;
-			buttonConfig[index].Left 	= sf::Keyboard::A;
-			buttonConfig[index].Right 	= sf::Keyboard::D;
-			buttonConfig[index].A 		= sf::Keyboard::U;
-			buttonConfig[index].B 		= sf::Keyboard::J;
-			buttonConfig[index].C 		= sf::Keyboard::I;
-			buttonConfig[index].D 		= sf::Keyboard::O;
-			buttonConfig[index].Taunt 	= sf::Keyboard::Semicolon;		
-		}
-
-		if(index == 1) {
-			buttonConfig[index].Up 		= sf::Keyboard::Up;
-			buttonConfig[index].Down 	= sf::Keyboard::Down;
-			buttonConfig[index].Left 	= sf::Keyboard::Left;
-			buttonConfig[index].Right 	= sf::Keyboard::Right;
-			buttonConfig[index].A 		= sf::Keyboard::Numpad4;
-			buttonConfig[index].B 		= sf::Keyboard::Numpad1;
-			buttonConfig[index].C 		= sf::Keyboard::Numpad5;
-			buttonConfig[index].D 		= sf::Keyboard::Numpad6;
-			buttonConfig[index].Taunt 	= sf::Keyboard::Enter;
-		}
-
+	if(index < 0 || index >= maxButtonConfigs)
 		return;
+
+	// Default configs
+	if(index == 0) {
+		buttonConfig[index].index	= KEYBOARD_INDEX;
+		buttonConfig[index].Up 		= sf::Keyboard::W;
+		buttonConfig[index].Down 	= sf::Keyboard::S;
+		buttonConfig[index].Left 	= sf::Keyboard::A;
+		buttonConfig[index].Right 	= sf::Keyboard::D;
+		buttonConfig[index].A 		= sf::Keyboard::U;
+		buttonConfig[index].B 		= sf::Keyboard::J;
+		buttonConfig[index].C 		= sf::Keyboard::I;
+		buttonConfig[index].D 		= sf::Keyboard::O;
+		buttonConfig[index].Taunt 	= sf::Keyboard::Semicolon;	
+
+	}else if(index == 1) {
+		buttonConfig[index].index	= KEYBOARD_INDEX;
+		buttonConfig[index].Up 		= sf::Keyboard::Up;
+		buttonConfig[index].Down 	= sf::Keyboard::Down;
+		buttonConfig[index].Left 	= sf::Keyboard::Left;
+		buttonConfig[index].Right 	= sf::Keyboard::Right;
+		buttonConfig[index].A 		= sf::Keyboard::Numpad4;
+		buttonConfig[index].B 		= sf::Keyboard::Numpad1;
+		buttonConfig[index].C 		= sf::Keyboard::Numpad5;
+		buttonConfig[index].D 		= sf::Keyboard::Numpad6;
+		buttonConfig[index].Taunt 	= sf::Keyboard::Enter;	
 	}
 
-	nlohmann::json json = nlohmann::json::parse(file);
-	buttonConfig[index].Up 		= json["Up"];
-	buttonConfig[index].Down 	= json["Down"];
-	buttonConfig[index].Left 	= json["Left"];
-	buttonConfig[index].Right 	= json["Right"];
-	buttonConfig[index].A 		= json["A"];
-	buttonConfig[index].B 		= json["B"];
-	buttonConfig[index].C 		= json["C"];
-	buttonConfig[index].D 		= json["D"];
-	buttonConfig[index].Taunt 	= json["Taunt"];
-
-	file.close();
-	return;
+	buttonConfig[index].loadFromFile("save/inputPlayer" + std::to_string(index) + ".json");
 }
 
 void SaveManager::saveButtonConfig(int index, Button::Config config) {
+
+	if(index < 0 || index >= maxButtonConfigs)
+		return;
+
 	buttonConfig[index] = config;
-	std::fstream file("save/inputPlayer" + std::to_string(index) + ".json", std::fstream::out);
-
-	nlohmann::json json;
-	json["Up"] 		= buttonConfig[index].Up;
-	json["Down"] 	= buttonConfig[index].Down; 
-	json["Left"] 	= buttonConfig[index].Left; 
-	json["Right"] 	= buttonConfig[index].Right;
-	json["A"] 		= buttonConfig[index].A; 	
-	json["B"] 		= buttonConfig[index].B; 	
-	json["C"] 		= buttonConfig[index].C; 	
-	json["D"] 		= buttonConfig[index].D; 	
-	json["Taunt"] 	= buttonConfig[index].Taunt;
-
-	file.close();
+	buttonConfig[index].saveToFile("save/inputPlayer" + std::to_string(index) + ".json");
 }
 
 Button::Config SaveManager::getButtonConfig(int index) {
+	
+	if(index < 0 || index >= maxButtonConfigs)
+		return {};
+
+	if(buttonConfig[index].index == -1)
+		loadButtonConfig(index);
+	
 	return buttonConfig[index];
 }
 
 void SaveManager::loadPlayerConfig(int index) {
+
+	if(index < 0 || index >= maxPlayerConfigs)
+		return;
+
 	std::string path = "save/player" + std::to_string(index) + ".json";
 	playerConfig[index].loadFromFile(path);
 }
 
 void SaveManager::savePlayerConfig(int index, Player::Config config) {
+
+	if(index < 0 || index >= maxPlayerConfigs)
+		return;
+
 	std::string path = "save/player" + std::to_string(index) + ".json";
 	playerConfig[index] = config;
 	playerConfig[index].saveToFile(path);
 }
 
 Player::Config SaveManager::getPlayerConfig(int index) {	
+
+	if(index < 0 || index >= maxPlayerConfigs)
+		return {};
+
 	return playerConfig[index];
 }
 

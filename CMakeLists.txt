@@ -18,6 +18,7 @@ set(Core
 	src/core/move.cpp
 	src/core/net_tools.cpp
 	src/core/menu.cpp
+	src/core/button.cpp
 	)
 
 set(ImGui
@@ -88,6 +89,8 @@ add_executable(Game
 	src/game/character_select.cpp
 	src/game/game_tools.cpp
 	src/game/game_state.cpp
+	src/game/options.cpp
+	src/game/button_config.cpp
 
 	${Core}
 	${ImGui}

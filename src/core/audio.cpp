@@ -13,11 +13,16 @@ int AudioManager::getFreeSound() {
 }
 
 void AudioManager::playSound(sf::SoundBuffer* buffer) {
+
+	if(!buffer)
+		return;
+
 	int slot = getFreeSound();
 
 	if(slot != -1) {
 		sounds[slot].setBuffer(*buffer);
 		sounds[slot].setPlayingOffset(sf::seconds(0));
+		sounds[slot].setPitch(1.f + (rand() % 100 + 1 - 50) / 200.f);
 		sounds[slot].play();
 	}
 }

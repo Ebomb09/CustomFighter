@@ -1,9 +1,14 @@
+#include "editor.h"
+
+#include "core/save.h"
 #include "core/input_interpreter.h"
 #include "core/render_instance.h"
 #include "core/math.h"
 
-#include "editor.h"
+#include <vector>
 #include <string>
+
+using std::vector, std::string;
 
 int main() {
     Editor editor;
@@ -220,7 +225,21 @@ int main() {
                 for(int i = 0; i < MoveCategory::Total; i ++)
                     ImGui::Checkbox((MoveCategory::String[i] + "##FROM").c_str(), &editor.anim.from[i]);
 
-                ImGui::InputText("Custom From", &editor.anim.customFrom);
+                if(ImGui::BeginCombo("Custom From", editor.anim.customFrom.c_str())) {
+                    vector<string> list = g::save.getAnimationsList();
+                    list.insert(list.begin(), "##_NO_CUSTOM_CANCEL_");
+
+                    for(auto& anim : list) {
+
+                        if(ImGui::Selectable(anim.c_str(), editor.anim.customFrom == anim))
+                            editor.anim.customFrom = anim;
+                    }
+
+                    if(editor.anim.customFrom == "##_NO_CUSTOM_CANCEL_")
+                        editor.anim.customFrom = "";
+
+                    ImGui::EndCombo();
+                }
             }
 
             if(ImGui::CollapsingHeader("Skeleton Draw Order")) {
@@ -249,6 +268,22 @@ int main() {
                 ImGui::InputFloat("Impulse X", &keyFrame.impulse.x);
                 ImGui::InputFloat("Impulse Y", &keyFrame.impulse.y);
                 ImGui::Checkbox("Cancel", &keyFrame.cancel);
+
+                if(ImGui::BeginCombo("Sound Effect", keyFrame.sound.c_str())) {
+                    vector<string> list = g::save.getSoundList();
+                    list.insert(list.begin(), "##__NO_SOUND__");
+
+                    for(auto& sound : list) {
+
+                        if(ImGui::Selectable(sound.c_str(), keyFrame.sound == sound))
+                            keyFrame.sound = sound;
+                    }
+
+                    if(keyFrame.sound == "##__NO_SOUND__")
+                        keyFrame.sound = "";
+
+                    ImGui::EndCombo();
+                }
             }
 
             if(ImGui::CollapsingHeader("Selection")) {

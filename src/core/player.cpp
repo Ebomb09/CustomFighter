@@ -96,6 +96,24 @@ void Player::advanceFrame(vector<Player> others) {
     if(state.hitStop != 0) 
         return;
 
+    // Play sound effect related to frame of animation
+    if(getFrame().sound != "")
+        g::audio.playSound(g::save.getSound(getFrame().sound));
+
+    // Special Move Check
+    if(getFrame().cancel && taggedIn(others)) {
+        int move = searchBestMove(getInputBuffer());
+
+        if(move != -1) {
+            state.moveFrame = 0;
+            setMove(move);
+
+            // Clear input history to prevent misinputs
+            for(int i = 0; i < Button::History; i ++)
+                state.button[i] = Button::Flag();
+        }
+    }
+
     // Increment frames
     state.moveFrame ++;
 
@@ -151,21 +169,13 @@ void Player::advanceFrame(vector<Player> others) {
                 setMove(Move::StandCombo);
                 state.stun = hit.hitStun;
             }
-            g::audio.playSound(g::save.getSound("hurt"));
-        }
-    }
 
-    // Special Move Check
-    if(getFrame().cancel && taggedIn(others)) {
-        int move = searchBestMove(getInputBuffer());
+            if(hit.damage <= 10) {
+                g::audio.playSound(g::save.getSound("hit_light"));      
 
-        if(move != -1) {
-            state.moveFrame = 0;
-            setMove(move);
-
-            // Clear input history to prevent misinputs
-            for(int i = 0; i < Button::History; i ++)
-                state.button[i] = Button::Flag();
+            }else {
+                g::audio.playSound(g::save.getSound("hit_hard"));      
+            }
         }
     }
 
@@ -445,13 +455,16 @@ bool Player::inMove(int move) {
 }
 
 void Player::setMove(int move, bool loop) {
+    Animation* anim = g::save.getAnimation(config.moves[state.moveIndex]);
+
+    if(!anim)
+        return;
 
     if(state.moveIndex != move) {
         state.moveIndex = move;
         state.moveFrame = 0;
 
     }else if(loop) {
-        Animation* anim = g::save.getAnimation(config.moves[state.moveIndex]);
 
         if(state.moveFrame >= anim->getFrameCount())
             state.moveFrame = 0;
@@ -472,10 +485,10 @@ string Player::getInputBuffer() {
         string motion = "";
         Vector2 socd;
 
-        bool press =    (state.button[i].Up && !state.button[i+1].Up) ||
-                        (state.button[i].Down && !state.button[i+1].Down) ||
-                        (state.button[i].Right && !state.button[i+1].Right) ||
-                        (state.button[i].Left && !state.button[i+1].Left);
+        bool press =    (state.button[i].Up != state.button[i+1].Up) ||
+                        (state.button[i].Down != state.button[i+1].Down) ||
+                        (state.button[i].Right != state.button[i+1].Right) ||
+                        (state.button[i].Left != state.button[i+1].Left);
 
         if(press && state.button[i].Up)      socd.y += 1;
         if(press && state.button[i].Down)    socd.y -= 1;
@@ -616,14 +629,17 @@ int Player::getKeyFrame() {
     Animation* anim = g::save.getAnimation(config.moves[state.moveIndex]);
 
     int key = 0;
-    int time = 0;
 
-    for(int i = 0; i < anim->keyFrames.size(); i ++) {
+    if(anim) {
+        int time = 0;
 
-        if(state.moveFrame >= time)
-            key = i;
+        for(int i = 0; i < anim->keyFrames.size(); i ++) {
 
-        time += anim->keyFrames[i].duration;
+            if(state.moveFrame >= time)
+                key = i;
+
+            time += anim->keyFrames[i].duration;
+        }        
     }
     return key;
 }

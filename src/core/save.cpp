@@ -133,6 +133,15 @@ sf::SoundBuffer* SaveManager::getSound(std::filesystem::path path) {
 	return ptr;
 }
 
+vector<string> SaveManager::getSoundList() {
+	vector<string> list;
+
+	for(auto& it : sounds) 
+		list.push_back(it.first);
+
+	return list;
+}
+
 std::string SaveManager::getMusic(std::filesystem::path path) {
 	std::string realPath = "";
 
@@ -149,6 +158,15 @@ std::string SaveManager::getMusic(std::filesystem::path path) {
 		realPath = musics[path.string()];
 	}
 	return realPath;
+}
+
+vector<string> SaveManager::getMusicList() {
+	vector<string> list;
+
+	for(auto& it : musics) 
+		list.push_back(it.first);
+
+	return list;
 }
 
 sf::Font* SaveManager::getFont(std::filesystem::path path) {
@@ -176,31 +194,22 @@ Clothing* SaveManager::getClothing(std::filesystem::path path) {
 
 	if(clothes.find(path.string()) == clothes.end()) {
 
-		// Find from list by name
-		for(auto& clothing : getClothingList()) {
-			if(clothing->name == path.string()) {
-				ptr = clothing;
-			}
-		}
-
 		// Load from file
-		if(!ptr) {
-			ptr = new Clothing;
-			ptr->name		= path.stem().string();
-			ptr->torsoFront	= getTexture(path/"torsoFront.png");
-			ptr->torsoBack	= getTexture(path/"torsoBack.png");
-			ptr->neck 		= getTexture(path/"neck.png");
-			ptr->upperArm 	= getTexture(path/"upperArm.png");
-			ptr->foreArm 	= getTexture(path/"foreArm.png");
-			ptr->pelvis 	= getTexture(path/"pelvis.png");
-			ptr->thigh 		= getTexture(path/"thigh.png");
-			ptr->calf 		= getTexture(path/"calf.png");
-			ptr->handFront 	= getTexture(path/"handFront.png");
-			ptr->handBack 	= getTexture(path/"handBack.png");					
-			ptr->foot 		= getTexture(path/"foot.png");
-			ptr->head 		= getTexture(path/"head.png");
-			clothes[path.string()] = ptr;			
-		}
+		ptr = new Clothing;
+		ptr->name		= path.stem().string();
+		ptr->torsoFront	= getTexture(path/"torsoFront.png");
+		ptr->torsoBack	= getTexture(path/"torsoBack.png");
+		ptr->neck 		= getTexture(path/"neck.png");
+		ptr->upperArm 	= getTexture(path/"upperArm.png");
+		ptr->foreArm 	= getTexture(path/"foreArm.png");
+		ptr->pelvis 	= getTexture(path/"pelvis.png");
+		ptr->thigh 		= getTexture(path/"thigh.png");
+		ptr->calf 		= getTexture(path/"calf.png");
+		ptr->handFront 	= getTexture(path/"handFront.png");
+		ptr->handBack 	= getTexture(path/"handBack.png");					
+		ptr->foot 		= getTexture(path/"foot.png");
+		ptr->head 		= getTexture(path/"head.png");
+		clothes[path.stem().string()] = ptr;			
 	
 	}else {
 		ptr = clothes.at(path.string());
@@ -208,13 +217,13 @@ Clothing* SaveManager::getClothing(std::filesystem::path path) {
 	return ptr;
 }
 
-vector<Clothing*> SaveManager::getClothingList() {
-	vector<Clothing*> list;
+vector<string> SaveManager::getClothingList() {
+	vector<string> list;
 
-    for(auto it = g::save.clothes.begin(); it != g::save.clothes.end(); it ++) 
-        list.push_back(it->second);
-    
-    return list;
+	for(auto& it : clothes) 
+		list.push_back(it.first);
+	
+	return list;
 }
 
 Animation* SaveManager::getAnimation(std::filesystem::path path) {
@@ -232,24 +241,25 @@ Animation* SaveManager::getAnimation(std::filesystem::path path) {
 	return ptr;	
 }
 
-vector<Animation*> SaveManager::getAnimationsList() {
-	vector<Animation*> list;
+vector<string> SaveManager::getAnimationsList() {
+	vector<string> list;
 
-    for(auto it = g::save.animations.begin(); it != g::save.animations.end(); it ++) 
-        list.push_back(it->second);
-    
-    return list;
+	for(auto& it : animations) 
+		list.push_back(it.first);
+	
+	return list;
 }
 
-vector<Animation*> SaveManager::getAnimationsByFilter(std::vector<int> filters) {
-	vector<Animation*> out;
 
-	for(std::pair<string, Animation*> it : animations) {
+vector<string> SaveManager::getAnimationsByFilter(vector<int> filters) {
+	vector<string> list;
+
+	for(auto& it : animations) {
 
 		if(std::find(filters.begin(), filters.end(), it.second->category) != filters.end())
-			out.push_back(it.second);
+			list.push_back(it.first);
 	}
-	return out;
+	return list;
 }
 
 void SaveManager::loadButtonConfig(int index) {

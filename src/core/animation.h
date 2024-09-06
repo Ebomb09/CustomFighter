@@ -14,13 +14,13 @@ struct Frame {
     Skeleton pose       = Skeleton();
     Vector2 impulse     = Vector2(0, 0);
     bool cancel         = false;
+    std::string sound   = "";
 
     std::vector<HitBox> hitBoxes;
     std::vector<HurtBox> hurtBoxes;
 };
 
 struct Animation {
-
     Animation();
 
     // What the animation is
@@ -44,7 +44,7 @@ struct Animation {
     Frame& getKeyFrame(int index);
     int getKeyFrameCount();
 
-    Frame getFrame(float frame);
+    Frame getFrame(int frame);
     int getFrameCount();
 };
 

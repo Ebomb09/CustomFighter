@@ -30,7 +30,7 @@ int Animation::getKeyFrameCount() {
     return keyFrames.size();
 }
 
-Frame Animation::getFrame(float t) {
+Frame Animation::getFrame(int t) {
     Frame frame;
     float f_pos = 0;
 
@@ -45,6 +45,10 @@ Frame Animation::getFrame(float t) {
         // Within KeyFrame timing
         if(t >= f_pos && t < f_pos + keyFrames[i].duration) {
             frame = keyFrames[i];
+
+            // Only play sound effect on first active frame
+            if(t != f_pos)
+                frame.sound = "";
 
             // If there's a next frame interpolate
             if(i + 1 < getKeyFrameCount()) {
@@ -104,6 +108,7 @@ void Animation::saveToFile(std::filesystem::path path) {
         // Key Frame Properties
         newFrame["duration"] = keyFrames[i].duration;
         newFrame["cancel"]   = keyFrames[i].cancel;
+        newFrame["sound"]    = keyFrames[i].sound;
 
         newFrame["impulse"]["x"] = keyFrames[i].impulse.x;
         newFrame["impulse"]["y"] = keyFrames[i].impulse.y;
@@ -214,6 +219,7 @@ void Animation::loadFromFile(std::filesystem::path path) {
         // Key Frame Properties
         if(frame["duration"].is_number_integer())       newFrame.duration = frame["duration"];
         if(frame["cancel"].is_boolean())                newFrame.cancel = frame["cancel"];
+        if(frame["sound"].is_string())                  newFrame.sound = frame["sound"];
 
         if(frame["impulse"]["x"].is_number_float())     newFrame.impulse.x = frame["impulse"]["x"];
         if(frame["impulse"]["y"].is_number_float())     newFrame.impulse.y = frame["impulse"]["y"];

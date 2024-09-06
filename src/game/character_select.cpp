@@ -99,7 +99,7 @@ struct Creator {
         vector<Menu::Option> out;
 
         for(auto anim : g::save.getAnimationsByFilter(Move::getValidCategories(moveSelected)))
-            out.push_back({anim->name, ID::Disregard});
+            out.push_back({anim, ID::Disregard});
 
         out.push_back({"", ID::Disregard});
 
@@ -127,7 +127,7 @@ struct Creator {
         vector<Menu::Option> out;
         
         for(auto& clothing : g::save.getClothingList())
-            out.push_back({clothing->name, 0});
+            out.push_back({clothing, 0});
         
         out.push_back({"", ID::Disregard});
         out.push_back({"REMOVE", ID::Delete});

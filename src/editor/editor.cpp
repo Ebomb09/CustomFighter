@@ -148,6 +148,7 @@ void Editor::drawHurtBox() {
 void Editor::resetPlayer() {
     timer = 0;
     player.state.position = {0, 0};
+    player.state.velocity = {0, 0};
 
     // Set player to test and copy in the save
     player.config.moves[Move::Stand] = "";

@@ -28,6 +28,7 @@ namespace Menu {
 	int Motion(std::string* str, int user, Rectangle area);
 	int WaitForController(int* input, int user, Rectangle area);
 	int WaitForInput(int* input, int user, Rectangle area);
+	int ColorPicker(sf::Color* color, int user, Rectangle area);
 };
 
 #endif

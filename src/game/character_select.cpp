@@ -5,7 +5,10 @@
 #include "core/save.h"
 #include "core/menu.h"
 
-using std::vector, std::string;
+#include <vector>
+#include <stack>
+
+using std::vector, std::string, std::stack;
 
 struct Creator {
 
@@ -28,6 +31,7 @@ struct Creator {
         Animation,
         Motion,
         WornClothes,
+        ColorClothes,
         ListClothes
     };
 
@@ -41,11 +45,12 @@ struct Creator {
     int animHover       = 0;
     int wornHover       = 0;
     int clothHover      = 0;
+    int clothColor      = 0;
     int listSelected    = 0;
     int moveSelected    = 0;
     int wornSelected    = 0;
-    string animSave     = "";
-    string wornSave     = "";
+    string moveSave     = "";
+    Player::Config::Cloth wornSave;
     int mode            = Mode::List;
 
     vector<Menu::Option> getListOptions() {
@@ -61,13 +66,15 @@ struct Creator {
         vector<Menu::Option> out;
 
         out.push_back({"Confirm", ID::Confirm});
+
         out.push_back({"", ID::Disregard});
 
         out.push_back({"Costume", ID::Costume});
         out.push_back({"MoveList", ID::MoveList});
-        out.push_back({"Test", ID::Test});
+
         out.push_back({"", ID::Disregard});
 
+        out.push_back({"Test", ID::Test});
         out.push_back({"Save", ID::Save});
         out.push_back({"Cancel", ID::Cancel});
 
@@ -99,7 +106,7 @@ struct Creator {
         vector<Menu::Option> out;
 
         for(auto anim : g::save.getAnimationsByFilter(Move::getValidCategories(moveSelected)))
-            out.push_back({anim, ID::Disregard});
+            out.push_back({anim, ID::Test});
 
         out.push_back({"", ID::Disregard});
 
@@ -113,7 +120,7 @@ struct Creator {
         vector<Menu::Option> out;    
         
         for(int i = 0; i < dummy.config.clothes.size(); i ++) {
-            out.push_back({dummy.config.clothes[i], i});
+            out.push_back({dummy.config.clothes[i].name, i});
         }
 
         out.push_back({"", ID::Disregard});
@@ -146,43 +153,17 @@ struct Creator {
             dummy.advanceFrame({});
 
         }else {
-            dummy.state.moveFrame ++;
 
-            switch(mode) {
-
-            case Creator::Mode::List:
-                dummy.config = g::save.getPlayerConfig(getListOptions()[listHover].id);
+            if(dummy.doneMove())
                 dummy.setMove(Move::Stand, true);
-                break;
 
-            case Creator::Mode::ListClothes:
-
-                if(getClothingOptions()[clothHover].id >= 0)
-                    dummy.config.clothes[wornSelected] = getClothingOptions()[clothHover].name;
-
-            case Creator::Mode::WornClothes:
-            case Creator::Mode::Config:
-                dummy.setMove(Move::Stand, true);
-                break;
-
-            case Creator::Mode::Move:
-
-                if(getMoveOptions()[moveHover].id >= 0)
-                    dummy.setMove(getMoveOptions()[moveHover].id, true);  
-                break;       
-
-            case Creator::Mode::Animation:
-                dummy.config.moves[moveSelected] = getAnimationOptions()[animHover].name;
-                dummy.setMove(moveSelected, true);
-                break;
-
-            case Creator::Mode::Motion:
-                dummy.setMove(moveSelected, true);
-                break;                
-            }
+            dummy.state.moveFrame ++;            
         }   
 
         // Reset state
+        g::video.camera.w = CameraBounds.w;
+        g::video.camera.h = CameraBounds.w * g::video.getSize().y / g::video.getSize().x;
+
         dummy.state.position.x = 0;
 
         // Get the position of the skeleton
@@ -208,10 +189,10 @@ struct Creator {
         g::video.setView(g::video.getDefaultView());
 
         Rectangle area {
-            (g::video.camera.screen_w / total * dummy.seatIndex) + 8, 
-            g::video.camera.screen_h * 2.f / 3.f + 8,
-            (g::video.camera.screen_w / total) - 16, 
-            g::video.camera.screen_h * 1.f / 3.f - 16
+            ((float)g::video.getSize().x / total * dummy.seatIndex) + 8, 
+            (float)g::video.getSize().y * 2.f / 3.f + 8,
+            ((float)g::video.getSize().x / total) - 16, 
+            (float)g::video.getSize().y * 1.f / 3.f - 16
         };
 
         if(test) {
@@ -226,9 +207,10 @@ struct Creator {
 
             int res = Menu::Table(options, 5, false, &listHover, dummy.seatIndex, area);
 
+            dummy.config = g::save.getPlayerConfig(options[listHover].id);
+
             if(res == Menu::Accept) {
                 listSelected = options[listHover].id;
-                dummy.config = g::save.getPlayerConfig(listSelected);
                 mode = Mode::Config;
 
             // Exiting the character select
@@ -255,7 +237,6 @@ struct Creator {
                     test = true;
 
                 }else if(options[confHover].id == ID::MoveList) {
-                    moveHover = 0;
                     mode = Mode::Move;
 
                 }else if(options[confHover].id == ID::Cancel) {
@@ -277,9 +258,9 @@ struct Creator {
             if(res == Menu::Accept) {
 
                 if(options[wornHover].id == ID::Insert) {
-                    dummy.config.clothes.push_back("");
+                    dummy.config.clothes.push_back({""});
                     wornSelected = dummy.config.clothes.size()-1;
-                    wornSave = "";
+                    wornSave = Player::Config::Cloth();
                     mode = Mode::ListClothes;
 
                 }else if(options[wornHover].id == ID::Cancel) {
@@ -300,6 +281,9 @@ struct Creator {
 
             int res = Menu::List(options, &clothHover, dummy.seatIndex, area);
 
+            if(options[clothHover].id >= 0)
+                dummy.config.clothes[wornSelected].name = options[clothHover].name;
+
             if(res == Menu::Accept) {
 
                 if(options[clothHover].id == ID::Delete) {
@@ -309,7 +293,7 @@ struct Creator {
                 }else if(options[clothHover].id == ID::Cancel) {
 
                     // Rollback changes
-                    if(wornSave.size() == 0)
+                    if(wornSave.name.size() == 0)
                         dummy.config.clothes.erase(dummy.config.clothes.begin() + wornSelected);
                     else
                         dummy.config.clothes[wornSelected] = wornSave;
@@ -317,19 +301,36 @@ struct Creator {
                     mode = Mode::WornClothes;
 
                 }else {
-                    dummy.config.clothes[wornSelected] = options[clothHover].name;
-                    mode = Mode::WornClothes;
+                    mode = Mode::ColorClothes;
                 }
 
             }else if(res == Menu::Decline) {
 
                 // Rollback changes
-                if(wornSave.size() == 0)
+                if(wornSave.name.size() == 0)
                     dummy.config.clothes.erase(dummy.config.clothes.begin() + wornSelected);
                 else
                     dummy.config.clothes[wornSelected] = wornSave;
 
                 mode = Mode::WornClothes;
+            }
+
+        }else if(mode == Mode::ColorClothes) {
+
+            sf::Color color(dummy.config.clothes[wornSelected].r, dummy.config.clothes[wornSelected].g, dummy.config.clothes[wornSelected].b);
+
+            int res = Menu::ColorPicker(&color, dummy.seatIndex, area);
+
+            dummy.config.clothes[wornSelected].r = color.r;
+            dummy.config.clothes[wornSelected].g = color.g;
+            dummy.config.clothes[wornSelected].b = color.b;
+
+            if(res == Menu::Accept) {
+                dummy.config.clothes[wornSelected].name = getClothingOptions()[clothHover].name;
+                mode = WornClothes;
+
+            }else if(res == Menu::Decline) {
+                mode = Mode::ListClothes;
             }
 
         // Draw the movelist selection
@@ -338,6 +339,9 @@ struct Creator {
 
             int res = Menu::Table(options, 3, true, &moveHover, dummy.seatIndex, area);
 
+            if(options[moveHover].id >= 0)
+                dummy.setMove(getMoveOptions()[moveHover].id, true); 
+
             if(res == Menu::Accept) {
 
                 if(options[moveHover].id == ID::Cancel) {
@@ -345,9 +349,8 @@ struct Creator {
 
                 }else if(options[moveHover].id >= 0) {
                     moveSelected = options[moveHover].id;
-                    animSave = dummy.config.moves[moveSelected];
+                    moveSave = dummy.config.moves[moveSelected];
                     mode = Mode::Animation;
-                    animHover = 0;
                 }
 
             }else if(res == Menu::Decline) {
@@ -360,6 +363,11 @@ struct Creator {
 
             int res = Menu::List(options, &animHover, dummy.seatIndex, area);
 
+            if(options[animHover].id == ID::Test) {
+                dummy.config.moves[moveSelected] = options[animHover].name;
+                dummy.setMove(getMoveOptions()[moveHover].id, true);
+            }
+
             if(res == Menu::Accept) {
 
                 if(options[animHover].id == ID::Delete) {
@@ -368,7 +376,7 @@ struct Creator {
                     mode = Mode::Move;
 
                 }else if(options[animHover].id == ID::Cancel) {
-                    dummy.config.moves[moveSelected] = animSave;
+                    dummy.config.moves[moveSelected] = moveSave;
                     mode = Mode::Move;
 
                 }else {
@@ -379,7 +387,7 @@ struct Creator {
 
             }else if(res == Menu::Decline) {
                 mode = Mode::Move;
-                dummy.config.moves[moveSelected] = animSave;
+                dummy.config.moves[moveSelected] = moveSave;
             }
 
         // Draw the motion interpreter

@@ -62,11 +62,7 @@ void Editor::drawModel() {
     else
         copy = getSkeleton();
 
-    std::vector<Clothing*> clothes = {
-        g::save.getClothing("realistic")
-    };
-
-    copy.draw(clothes);	
+    copy.draw(player.getClothes());	
 }
 
 void Editor::drawSkeleton() {

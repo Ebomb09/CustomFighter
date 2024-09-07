@@ -5,7 +5,8 @@
 
 struct Clothing {
 	std::string name = "";
-	
+	sf::Color blend = sf::Color(255, 255, 255);
+
 	enum {
 		TorsoFront,
 		TorsoBack,

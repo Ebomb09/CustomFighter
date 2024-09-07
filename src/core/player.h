@@ -36,7 +36,15 @@ struct Player {
 	Button::Flag in;
 
 	struct Config {
-		std::vector<std::string>	clothes;
+
+		struct Cloth {
+			std::string name	= "";
+			int r 				= 128;
+			int g				= 128;
+			int b				= 128;
+		};
+
+		std::vector<Cloth>			clothes;
 		std::string 				moves			[Move::Total];
 		std::string 				motions			[Move::Total];
 
@@ -92,7 +100,7 @@ struct Player {
 	std::vector<HitBox> getHitBoxes();
 	std::vector<HurtBox> getHurtBoxes();	
 
-	std::vector<Clothing*> getClothes();	
+	std::vector<Clothing> getClothes();	
 
 	Rectangle getRealBoundingBox();
 	Rectangle getScreenBoundingBox();	

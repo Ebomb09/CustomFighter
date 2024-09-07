@@ -745,18 +745,21 @@ vector<HitBox> Player::getHitBoxes() {
 }
 
 vector<HurtBox> Player::getHurtBoxes() {
-    return getFrame().hurtBoxes;   
+    return getFrame().hurtBoxes;
 }
 
-vector<Clothing*> Player::getClothes() {
-    vector<Clothing*> out;
+vector<Clothing> Player::getClothes() {
+    vector<Clothing> out;
 
     // Implied clothing... skin
-    out.push_back(g::save.getClothing("realistic"));
+    out.push_back(*g::save.getClothing("realistic"));
 
-    for(auto& it : config.clothes)
-        out.push_back(g::save.getClothing(it));
+    for(int i = 0; i < config.clothes.size(); i ++) {
+        Clothing cloth = *g::save.getClothing(config.clothes[i].name);
+        cloth.blend = sf::Color(config.clothes[i].r, config.clothes[i].g, config.clothes[i].b);
 
+        out.push_back(cloth);
+    }
     return out;
 }
 
@@ -791,26 +794,49 @@ void Player::Config::loadFromText(string str) {
     if(json["clothes"].is_array()) {
         clothes.clear();
 
-        for(int i = 0; i < json["clothes"].size(); i ++) 
-            clothes.push_back(json["clothes"][i]);
+        for(auto& cloth : json["clothes"]) {
+            Cloth add;
+
+            if(cloth.is_object()) {
+
+                if(cloth["name"].is_string()) {
+                    add.name = cloth["name"];
+
+                    if(cloth["r"].is_number_integer())
+                        add.r = cloth["r"];
+
+                    if(cloth["g"].is_number_integer())
+                        add.g = cloth["g"];
+
+                    if(cloth["b"].is_number_integer())
+                        add.b = cloth["b"];                    
+                }
+                clothes.push_back(add);                
+            }
+        }
     }
 
-    if(json["moves"].is_array()) {
-
-        for(int i = 0; i < json["moves"].size(); i ++) 
+    for(int i = 0; i < json["moves"].size(); i ++) 
+        if(json["moves"][i].is_string())
             moves[i] = json["moves"][i];
-    }
 
-    if(json["motions"].is_array()) {
-
-        for(int i = 0; i < json["motions"].size(); i ++) 
-            motions[i] = json["motions"][i];   
-    }       
+    for(int i = 0; i < json["motions"].size(); i ++) 
+        if(json["motions"][i].is_string())
+            motions[i] = json["motions"][i];        
 }
 
 string Player::Config::saveToText() {
     nlohmann::json json;
-    json["clothes"] = clothes;
+
+    for(int i = 0; i < clothes.size(); i ++) {
+        nlohmann::json cloth;
+        cloth["name"] = clothes[i].name;
+        cloth["r"] = clothes[i].r;
+        cloth["g"] = clothes[i].g;
+        cloth["b"] = clothes[i].b;
+        json["clothes"][i] = cloth;
+    }
+
     json["moves"] = moves;   
     json["motions"] = motions;     
 

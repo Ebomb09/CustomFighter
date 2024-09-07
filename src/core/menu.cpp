@@ -3,9 +3,11 @@
 #include "button.h"
 #include "input_interpreter.h"
 #include "math.h"
+#include "player.h"
 #include "render_instance.h"
 #include "audio.h"
 #include "save.h"
+#include <string>
 
 using std::vector, std::string;
 
@@ -198,7 +200,7 @@ int Menu::List(std::vector<Option> options, int* hover, int user, Rectangle area
 	return Table(options, 1, true, hover, user, area);
 }
 
-static int keyboardData[4];
+static int keyboardData[MAX_PLAYERS];
 
 int Menu::Text(std::string* str, int user, Rectangle area) {
 
@@ -273,7 +275,7 @@ int Menu::Text(std::string* str, int user, Rectangle area) {
 	return Wait;
 }
 
-static int motionData[4];
+static int motionData[MAX_PLAYERS];
 
 int Menu::Motion(std::string* str, int user, Rectangle area) {
 	Button::Config b = g::save.getButtonConfig(user);
@@ -299,10 +301,10 @@ int Menu::Motion(std::string* str, int user, Rectangle area) {
 	// Emulate player input buffer by check press / release
 	string motion = "";
 
-	if(	g::input.pressed(b.index, b.Up) 	|| g::input.released(b.index, b.Left) ||
+	if(	g::input.pressed(b.index, b.Up) 	|| g::input.released(b.index, b.Up) ||
 		g::input.pressed(b.index, b.Left) 	|| g::input.released(b.index, b.Left) ||
-		g::input.pressed(b.index, b.Up) 	|| g::input.released(b.index, b.Left) ||
-		g::input.pressed(b.index, b.Left) 	|| g::input.released(b.index, b.Left)) {
+		g::input.pressed(b.index, b.Down) 	|| g::input.released(b.index, b.Down) ||
+		g::input.pressed(b.index, b.Right) 	|| g::input.released(b.index, b.Right)) {
 
 	    Vector2 socd = test.getSOCD();
 	    motion += ('5' + (int)socd.x + (int)socd.y * 3);
@@ -316,10 +318,7 @@ int Menu::Motion(std::string* str, int user, Rectangle area) {
     if(g::input.pressed(b.index, b.C)) button = (button.size() == 0) ? "C" : "+C";
     if(g::input.pressed(b.index, b.D)) button = (button.size() == 0) ? "D" : "+D";
 
-
-    if(motion.size() > 0) {
-    	(*str) += motion + button;
-    }
+    (*str) += motion + button;
 
     // Return when no more buttons are being held
     bool held = false;
@@ -383,5 +382,103 @@ int Menu::WaitForInput(int* input, int user, Rectangle area) {
 		*input = last;
 		return Accept;
 	}
+	return Wait;
+}
+
+static int colorSelect[MAX_PLAYERS];
+
+int Menu::ColorPicker(sf::Color* color, int user, Rectangle area) {
+	Button::Config b = g::save.getButtonConfig(user);
+
+	float scroll = 0;
+
+	for(int i = 0; i < 3; i ++) {
+		Rectangle box = {area.x, area.y + scroll, area.w, fontHeight};
+
+		sf::Vertex vert[4];
+		vert[0].position = {box.x, box.y};
+		vert[0].color = *color;		
+		vert[1].position = {box.x, box.y + box.h};
+		vert[1].color = *color;
+		vert[2].position = {box.x + box.w, box.y + box.h};
+		vert[2].color = *color;
+		vert[3].position = {box.x + box.w, box.y};
+		vert[3].color = *color;
+
+		string edit = "";
+		int value = 0;
+
+		if(i == 0) {
+			edit = "Red: " + std::to_string(color->r);
+			value = color->r;
+			vert[0].color.r = 0;
+			vert[1].color.r = 0;
+			vert[2].color.r = 255;
+			vert[3].color.r = 255;	
+
+		}else if(i == 1){
+			edit = "Green: " + std::to_string(color->g);	
+			value = color->g;					
+			vert[0].color.g = 0;
+			vert[1].color.g = 0;
+			vert[2].color.g = 255;
+			vert[3].color.g = 255;	
+
+		}else {
+			edit = "Blue: " + std::to_string(color->b);
+			value = color->b;						
+			vert[0].color.b = 0;
+			vert[1].color.b = 0;
+			vert[2].color.b = 255;
+			vert[3].color.b = 255;	
+		}
+
+		// Draw the bars
+		g::video.draw(vert, 4, sf::PrimitiveType::Quads);
+
+		// Draw the color position
+		sf::RectangleShape rect;
+		rect.setPosition({box.x + (value / 255.f) * box.w - 1, box.y});
+		rect.setSize({2, fontHeight});
+		rect.setFillColor(sf::Color::White);
+		rect.setOutlineThickness(3);
+		rect.setOutlineColor(sf::Color::Black);
+		g::video.draw(rect);
+
+		renderText(edit, "Anton-Regular", (colorSelect[user] == i) ? sf::Color::Yellow : sf::Color::Black, box, 0);
+
+		scroll += 64;		
+	}
+
+	// Select R,G,B to modify
+	if(g::input.pressed(b.index, b.Up))		colorSelect[user] --;
+	if(g::input.pressed(b.index, b.Down))	colorSelect[user] ++;
+	if(colorSelect[user] < 0)				colorSelect[user] = 2;
+	if(colorSelect[user] > 2)				colorSelect[user] = 0;
+
+	// Modify color values
+	unsigned char* val = NULL;	
+	int adjust = 0;
+
+	if(g::input.held(b.index, b.Left))		adjust = -1;
+	if(g::input.held(b.index, b.Right))		adjust = 1;
+
+	switch(colorSelect[user]) {
+		case 0: val = &color->r; break;
+		case 1: val = &color->g; break;
+		case 2: val = &color->b; break;
+	}
+
+	if(val) {
+		if((adjust < 0 && *val > 0) || (adjust > 0 && *val < 255))
+			*val += adjust;
+	}
+
+	if(g::input.pressed(b.index, b.B))
+		return Accept;
+
+	if(g::input.pressed(b.index, b.D))
+		return Decline;
+
 	return Wait;
 }

@@ -90,20 +90,20 @@ struct Skeleton {
 	void rotateJoint(int index, float rotate);
 	void rotateJoint(Vector2& joint, Vector2& origin, float rotate);
 
-	void draw(std::vector<Clothing*> clothes, float headAngle = 0.f);
+	void draw(std::vector<Clothing> clothes, float headAngle = 0.f);
 
 private:
 
-	void drawBone(std::vector<Clothing*> list, int part, Bone& bone, float width = 2, bool flip = false);
-	void drawTorso(std::vector<Clothing*> list);
-	void drawNeck(std::vector<Clothing*> list);	
-	void drawHead(std::vector<Clothing*> list, float headAngle = 0.f);
-	void drawUpperArm(std::vector<Clothing*> list, int side);
-	void drawForeArm(std::vector<Clothing*> list, int side);
-	void drawHand(std::vector<Clothing*> list, int side);
-	void drawThigh(std::vector<Clothing*> list, int side);
-	void drawCalf(std::vector<Clothing*> list, int side);
-	void drawFoot(std::vector<Clothing*> list, int side);
+	void drawBone(std::vector<Clothing> list, int part, Bone& bone, float width = 2, bool flip = false);
+	void drawTorso(std::vector<Clothing> list);
+	void drawNeck(std::vector<Clothing> list);	
+	void drawHead(std::vector<Clothing> list, float headAngle = 0.f);
+	void drawUpperArm(std::vector<Clothing> list, int side);
+	void drawForeArm(std::vector<Clothing> list, int side);
+	void drawHand(std::vector<Clothing> list, int side);
+	void drawThigh(std::vector<Clothing> list, int side);
+	void drawCalf(std::vector<Clothing> list, int side);
+	void drawFoot(std::vector<Clothing> list, int side);
 
 	bool torsoTopFlipped();
 	bool torsoBottomFlipped();

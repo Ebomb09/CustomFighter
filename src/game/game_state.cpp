@@ -95,8 +95,8 @@ void Game::resetRound() {
     }	
 
 	// Set camera size
-	g::video.camera.w = 192.f * g::video.getSize().x / g::video.getSize().y;
-	g::video.camera.h = 192.f;
+	g::video.camera.w = CameraBounds.w;
+	g::video.camera.h = CameraBounds.w * g::video.getSize().y / g::video.getSize().x;
 
 	// Center camera
     g::video.camera.x = -g::video.camera.w / 2.f;

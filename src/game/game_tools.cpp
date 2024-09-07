@@ -3,6 +3,8 @@
 #include "core/render_instance.h"
 #include "core/save.h"
 
+#include <cmath>
+
 using std::vector, std::string;
 
 void setCamera(Player* players, int count) {
@@ -15,23 +17,34 @@ void setCamera(Player* players, int count) {
 }
 
 void setCamera(std::vector<Player> players) {
-	float pos = 0.f;
+	Vector2 pos = 0.f;
 	int n = 0;
 
 	for(int i = 0; i < players.size(); i ++) {
 
 		if(players[i].taggedIn(players)) {
-			pos += players[i].state.position.x;
+			Rectangle area = players[i].getRealBoundingBox();
+			pos += {area.x + area.w / 2, area.y - area.h / 2 + g::video.camera.h / 6};
 			n ++;
 		}
 	}
 
 	// Smooth motion towards players
-    g::video.camera.x = g::video.camera.x + (((pos / n) - (g::video.camera.w / 2.f)) - g::video.camera.x) * 0.10f;
-    g::video.camera.y = StageBounds.y - StageBounds.h + g::video.camera.h;	
+    g::video.camera.x += (((pos.x / n) - (g::video.camera.w / 2.f)) - g::video.camera.x) * 0.10f;
+    g::video.camera.y += (((pos.y / n) + (g::video.camera.h / 2.f)) - g::video.camera.y) * 0.10f;
 
     // Clamp camera within stage bounds
     g::video.camera.x = std::clamp(g::video.camera.x, StageBounds.x, StageBounds.x + StageBounds.w - g::video.camera.w);
+    g::video.camera.y = std::clamp(g::video.camera.y, StageBounds.y - StageBounds.h + g::video.camera.h, StageBounds.y);
+}
+
+void drawHealthBars(Player* players, int count) {
+	vector<Player> vec;
+
+	for(int i = 0; i < count; i ++)
+		vec.push_back(players[i]);
+
+	drawHealthBars(vec);
 }
 
 void drawHealthBars(vector<Player> players) {
@@ -65,17 +78,8 @@ void drawHealthBars(vector<Player> players) {
     outline.setPosition(64 + width, 32);
     fill.setPosition(64 + width, 32);
     fill.setSize({width * health[1] / 100, 32});
-    g::video.draw(fill);        
-    g::video.draw(outline);    
-}
-
-void drawHealthBars(Player* players, int count) {
-	vector<Player> vec;
-
-	for(int i = 0; i < count; i ++)
-		vec.push_back(players[i]);
-
-	drawHealthBars(vec);
+    g::video.draw(fill);
+    g::video.draw(outline);
 }
 
 void drawRoundTokens(int lWin, int rWin, int winMax) {

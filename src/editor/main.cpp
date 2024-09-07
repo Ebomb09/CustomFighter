@@ -123,6 +123,7 @@ int main() {
                     if(result == NFD_OKAY) {
                         editor.fileName = outPath;
                         editor.anim.loadFromFile(outPath);
+                        editor.setKeyFrame((editor.anim.getKeyFrameCount() == 0) ? -1 : 0);
                         NFD_FreePath(outPath);
                     }
                 }

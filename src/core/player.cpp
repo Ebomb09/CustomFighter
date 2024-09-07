@@ -159,10 +159,10 @@ void Player::advanceFrame(vector<Player> others) {
                 setMove(Move::KnockDown);
 
             }else if(state.position.y > 0 || state.velocity.y > 0){
-                setMove(Move::JumpCombo);
+                setMove(Move::JumpCombo, true);
 
             }else if(inMove(Move::Crouch) || inMove(Move::CrouchBlock) || inMove(Move::CrouchCombo)){
-                setMove(Move::CrouchCombo);
+                setMove(Move::CrouchCombo, true);
                 state.stun = hit.hitStun;
 
             }else{
@@ -379,7 +379,7 @@ void Player::advanceFrame(vector<Player> others) {
     // Look at the target while still alive
     if(state.health > 0) {
 
-        if(target != -1) {
+        if(target != -1 && state.stun == 0) {
             Skeleton myPose = getSkeleton();
             Skeleton opPose = others[target].getSkeleton();
 
@@ -671,6 +671,31 @@ Frame Player::getFrame() {
 
     Frame frame;
 
+    // Special case knockdown
+    if(state.moveIndex == Move::KnockDown) {
+
+        if(state.position.y == 0) {
+
+            if(state.moveFrame > 15)
+                state.moveFrame = 15;
+
+        }else if(std::abs(state.velocity.y) <= 1) {
+
+            if(state.moveFrame > 4)
+                state.moveFrame = 4;
+
+        }else if(state.velocity.y > 0) {
+
+            if(state.moveFrame > 3)
+                state.moveFrame = 3;
+
+        }else if(state.velocity.y < 0) {
+
+            if(state.moveFrame > 11)
+                state.moveFrame = 11;
+        }
+    }
+
     if(anim) {
         frame = anim->getFrame(state.moveFrame);
 
@@ -821,11 +846,9 @@ void Player::Config::saveToFile(string path) {
 Rectangle Player::getRealBoundingBox() {
     // Get the position of the skeleton
     Skeleton pose = getSkeleton();
-    Vector2 min;
-    Vector2 max;
-
-    min = {std::min(min.x, 0.f), std::min(min.y, 0.f)};
-    max = {std::max(max.x, 0.f), std::max(max.y, 0.f)};
+    Vector2 min, max;
+    
+    min = max = state.position;
 
     for(int i = 0; i < pose.jointCount; i ++) {
         min = {std::min(min.x, pose.joints[i].x), std::min(min.y, pose.joints[i].y)};

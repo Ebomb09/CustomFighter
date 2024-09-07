@@ -4,6 +4,7 @@
 #include "input_interpreter.h"
 #include "math.h"
 #include "render_instance.h"
+#include "audio.h"
 #include "save.h"
 
 using std::vector, std::string;
@@ -73,6 +74,7 @@ static void renderText(string str, string font, sf::Color color, Rectangle area,
 
 int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int* hover, int user, Rectangle area) {
 	int status = Wait;
+	int initial = *hover;
 
 	Button::Config b = g::save.getButtonConfig(user);
 
@@ -180,8 +182,14 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 		}
         pos.y += fontHeight;
 	}
-
 	g::video.setView(g::video.getDefaultView());
+
+	// Play sound when changes
+	if(initial != *hover)
+		g::audio.playSound(g::save.getSound("cycle"));
+
+	if(status == Accept)
+		g::audio.playSound(g::save.getSound("select"));
 
 	return status;
 }

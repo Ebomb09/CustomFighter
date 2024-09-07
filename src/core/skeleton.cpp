@@ -427,7 +427,7 @@ bool Skeleton::torsoTopFlipped() {
     float rotate = PI/2 - (torso[0] - torso[1]).getAngle();
 
     for(int i = 0; i < jointCount; i ++) {
-        copy.joints[i].rotate(rotate, torso[1]);
+        copy.joints[i] = copy.joints[i].rotate(rotate, torso[1]);
     }
 
     return copy.shoulder[0].x < copy.shoulder[1].x;
@@ -438,7 +438,7 @@ bool Skeleton::torsoBottomFlipped() {
     float rotate = PI/2 - (torso[0] - torso[1]).getAngle();
 
     for(int i = 0; i < jointCount; i ++) {
-        copy.joints[i].rotate(rotate, torso[1]);
+        copy.joints[i] = copy.joints[i].rotate(rotate, torso[1]);
     }
 
     return copy.hip[0].x < copy.hip[1].x;

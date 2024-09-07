@@ -93,6 +93,12 @@ void Game::resetRound() {
         players[3].state.position = 25;
         players[3].state.side = -1;        
     }	
+
+	// Set camera size
+	g::video.camera.w = 192.f * g::video.getSize().x / g::video.getSize().y;
+	g::video.camera.h = 192.f;
+
+	// Center camera
     g::video.camera.x = -g::video.camera.w / 2.f;
 }
 

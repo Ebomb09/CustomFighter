@@ -1,5 +1,6 @@
 #include "save.h"
 #include "button.h"
+#include "render_instance.h"
 #include "input_interpreter.h"
 
 #include <algorithm>
@@ -54,6 +55,7 @@ SaveManager::SaveManager() {
 		loadPlayerConfig(i);
 
 	loadServerList();
+	loadVideoConfig();
 
 	// Get network address
 	port = 50000 + std::rand() % 1000;
@@ -295,7 +297,7 @@ void SaveManager::loadButtonConfig(int index) {
 		buttonConfig[index].Taunt 	= sf::Keyboard::Enter;	
 	}
 
-	buttonConfig[index].loadFromFile("save/inputPlayer" + std::to_string(index) + ".json");
+	buttonConfig[index].loadFromFile("save/input" + std::to_string(index) + ".json");
 }
 
 void SaveManager::saveButtonConfig(int index, Button::Config config) {
@@ -304,7 +306,7 @@ void SaveManager::saveButtonConfig(int index, Button::Config config) {
 		return;
 
 	buttonConfig[index] = config;
-	buttonConfig[index].saveToFile("save/inputPlayer" + std::to_string(index) + ".json");
+	buttonConfig[index].saveToFile("save/input" + std::to_string(index) + ".json");
 }
 
 Button::Config SaveManager::getButtonConfig(int index) {
@@ -383,4 +385,54 @@ int SaveManager::getRandomStage() {
 sf::Texture* SaveManager::getStage(int index) {
 	index = std::clamp(index, 0, (int)stages.size()-1);
 	return stages[index];
+}
+
+void SaveManager::loadVideoConfig() {
+
+	// Default video config
+	resolutionWidth = sf::VideoMode::getFullscreenModes()[0].width;
+	resolutionHeight = sf::VideoMode::getFullscreenModes()[0].height;
+	displayMode = DisplayMode::Borderless;
+	vsync = true;
+
+	// Open file config
+	std::fstream file("save/video.json", std::fstream::in);
+
+	if(!file.good()) {
+		file.close();
+		return;
+	}
+
+	nlohmann::json json = nlohmann::json::parse(file);
+	file.close();
+
+	if(json["width"].is_number_integer())
+		resolutionWidth = json["width"];
+
+	if(json["height"].is_number_integer())
+		resolutionHeight = json["height"];
+
+	if(json["displayMode"].is_number_integer())
+		displayMode = json["displayMode"];
+
+	if(json["vsync"].is_boolean())	
+		json["vsync"] = vsync;
+}
+
+void SaveManager::saveVideoConfig() {
+	std::fstream file("save/video.json", std::fstream::out | std::fstream::trunc);
+
+	if(!file.good()) {
+		file.close();
+		return;
+	}
+
+	nlohmann::json json;
+	json["width"] = resolutionWidth;
+	json["height"] = resolutionHeight;
+	json["displayMode"] = displayMode;
+	json["vsync"] = vsync;
+
+	file << json;
+	file.close();
 }

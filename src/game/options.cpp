@@ -1,59 +1,59 @@
 #include "options.h"
 #include "button_config.h"
+#include "video_config.h"
 
 #include "core/menu.h"
 #include "core/input_interpreter.h"
 #include "core/render_instance.h"
 #include "core/save.h"
 
-#include <stack>
 #include <vector>
 #include <string>
 
-using std::string, std::vector, std::stack;
+using std::string, std::vector;
 
 void Options::run() {
 
 	enum {
-		Main = -1,
-		ControllerSettings = -2,
-		Disregard = -3,
-		Back = -4
+		VideoSettings,
+		ControllerSettings,
+		Disregard,
+		Back
 	};
 
-	int step = Main;
-	std::stack<int> hover({0});
+	int hover = 0;;
 
     while (g::video.isOpen()) {
         g::input.pollEvents();
 
         g::video.clear();
 
-		if(step == Main) {
-			Rectangle area = {0, 0, (float)g::video.getSize().x, (float)g::video.getSize().y};	
-			vector<Menu::Option> options;					
-			options.push_back({"Controller Settings", ControllerSettings});
-			options.push_back({"", Disregard});		
-			options.push_back({"Back", Back});
+		Rectangle area = {0, 0, (float)g::video.getSize().x, (float)g::video.getSize().y};	
+		vector<Menu::Option> options;					
 
-			int res = Menu::Table(options, 1, true, &hover.top(), 0, area);
+		options.push_back({"Video Settings", VideoSettings});	
+		options.push_back({"Controller Settings", ControllerSettings});	
+		options.push_back({"", Disregard});		
+		options.push_back({"Back", Back});
 
-			if(res == Menu::Accept) {
+		int res = Menu::Table(options, 1, true, &hover, 0, area);
 
-				if(options[hover.top()].id == ControllerSettings) {
-					ButtonConfig::run();
+		if(res == Menu::Accept) {
 
-				}else if(options[hover.top()].id == Back) {
-					return;
+			if(options[hover].id == ControllerSettings) {
+				ButtonConfig::run();
 
-				}else {
+			}else if(options[hover].id == VideoSettings) {
+				VideoConfig::run();
 
-				}
-				
-			}else if(res == Menu::Decline) {
+			}else if(options[hover].id == Back) {
 				return;
 			}
+			
+		}else if(res == Menu::Decline) {
+			return;
 		}
+		
         g::video.display();
     }	
 }

@@ -83,6 +83,8 @@ struct Player {
 
 	HitBox getCollision(std::vector<Player> others);
 
+	Vector2 getCameraCenter(std::vector<Player> others);
+
 	int getKeyFrame();
 	Frame getFrame();
 	

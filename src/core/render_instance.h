@@ -1,31 +1,48 @@
 #ifndef GAME_RENDERER_INSTANCE_H
 #define GAME_RENDERER_INSTANCE_H
 
+#include "math.h"
+
 #include <string>
+#include <SFML/Graphics.hpp>
 #include <imgui.h>
 #include <imgui_stdlib.h>
 #include <imgui-SFML.h>
-#include <SFML/Graphics.hpp>
 #include <nfd.h>
 
-#include "math.h"
-#include "player.h"
+namespace DisplayMode {
+	
+	enum {
+		Window,
+		Fullscreen,
+		Borderless,
+		Total
+	};
+
+	static const std::string String[] {
+		"Window",
+		"Fullscreen",
+		"Borderless",
+		"Total"
+	};
+}
+
 
 class RenderInstance : public sf::RenderWindow {
 	bool IMGUI_UPDATE = false;
 
 public:
 	sf::Clock clock;
-
+	std::string title;
 	Camera camera;
 
-	RenderInstance();
 	~RenderInstance();
 
 	void clear();
 	void display();
 
-	bool init(unsigned int w, unsigned int h, std::string title);
+	bool init(std::string title);
+	void reload();
 };
 
 namespace g {

@@ -12,11 +12,20 @@ void InputInterpreter::prepEvents() {
 
 		for(int j = 0; j < MAX_INPUTS; j ++) {
 			controller[i].pressed[j] = false;
-			controller[i].released[j] = false;				
+			controller[i].released[j] = false;
 		}
 	}
 	mouseScroll = 0;
-	mouseMove = {0, 0};
+
+	mouseMove = {
+		sf::Mouse::getPosition(g::video).x - mousePosition.x,
+		sf::Mouse::getPosition(g::video).y - mousePosition.y,		
+	};
+
+	mousePosition = {
+		(float)sf::Mouse::getPosition(g::video).x,
+		(float)sf::Mouse::getPosition(g::video).y
+	};
 }
 
 void InputInterpreter::pollEvents() {
@@ -59,12 +68,6 @@ void InputInterpreter::processEvent(const sf::Event& event) {
 	if(event.type == sf::Event::MouseButtonReleased) {
 		controller[MOUSE_INDEX].released[event.mouseButton.button] = true;
 		controller[MOUSE_INDEX].held[event.mouseButton.button] = false;	
-	}
-
-	if(event.type == sf::Event::MouseMoved){
-		mouseLastPosition = mousePosition;
-		mousePosition = {(float)event.mouseMove.x, (float)event.mouseMove.y};
-		mouseMove = {mousePosition.x - mouseLastPosition.x, mousePosition.y - mouseLastPosition.y};
 	}
 
 	if(event.type == sf::Event::MouseWheelScrolled)

@@ -96,6 +96,10 @@ void Player::advanceFrame(vector<Player> others) {
     if(state.hitStop != 0) 
         return;
 
+    // Play sound effect related to frame of animation
+    if(getFrame().sound != "")
+        g::audio.playSound(g::save.getSound(getFrame().sound));
+
     // Increment frames
     state.moveFrame ++;
 
@@ -197,11 +201,13 @@ void Player::advanceFrame(vector<Player> others) {
     }
 
     if(taggedIn(others)) {
+        Vector2 center = getCameraCenter(others);
+
         // Clamp position within the camera
         state.position.x = std::clamp(
             state.position.x, 
-            g::video.camera.x + 16,
-            g::video.camera.x + g::video.camera.w - 16
+            center.x - CameraBounds.w / 2 + 16,
+            center.x + CameraBounds.w / 2 - 16
             );
 
         // Clamp position within stage bounds
@@ -333,6 +339,8 @@ void Player::advanceFrame(vector<Player> others) {
                 }
             }
 
+            Vector2 center = getCameraCenter(others);
+
             // Move in
             if(prepare) {
 
@@ -348,7 +356,7 @@ void Player::advanceFrame(vector<Player> others) {
                 }
 
             // In camera area, tag out
-            }else if(state.position.x > g::video.camera.x - 16 && state.position.x < g::video.camera.x + g::video.camera.w + 16) {
+            }else if(state.position.x > center.x - CameraBounds.w / 2 - 16 && state.position.x < center.x + CameraBounds.w / 2 + 16) {
                 setMove(Move::TagOut, true);
 
             // Not in camera area, side line and prepare to move in
@@ -357,7 +365,7 @@ void Player::advanceFrame(vector<Player> others) {
 
                 // Just off screen
                 state.position = {
-                    (state.side == 1) ? g::video.camera.x - 64 : g::video.camera.x + g::video.camera.w + 64,
+                    (state.side == 1) ? center.x - CameraBounds.w / 2 - 64 : center.x + CameraBounds.w / 2 + 64,
                     0
                 };
                 state.velocity = {0, 0};
@@ -400,10 +408,6 @@ void Player::advanceFrame(vector<Player> others) {
             state.look = (state.side == 1) ? 0 : PI;
         }
     }
-
-    // Play sound effect related to frame of animation
-    if(getFrame().sound != "")
-        g::audio.playSound(g::save.getSound(getFrame().sound));
 
     // Reset input
     in = Button::Flag();
@@ -623,10 +627,24 @@ HitBox Player::getCollision(vector<Player> others) {
                         return hit;
                     }
                 }
-            }  
-        }          
-    }        
+            }
+        }
+    }
     return {};
+}
+
+Vector2 Player::getCameraCenter(std::vector<Player> others) {
+    Vector2 pos;
+    int n = 0;
+
+    for(int i = 0; i < others.size(); i ++) {
+
+        if(others[i].taggedIn(others)) {
+            pos += others[i].state.position;
+            n ++;
+        }
+    }
+    return pos / n;
 }
 
 int Player::getKeyFrame() {

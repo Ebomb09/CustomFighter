@@ -26,6 +26,7 @@ void setCamera(std::vector<Player> players) {
 		}
 	}
 
+	// Smooth motion towards players
     g::video.camera.x = g::video.camera.x + (((pos / n) - (g::video.camera.w / 2.f)) - g::video.camera.x) * 0.10f;
     g::video.camera.y = StageBounds.y - StageBounds.h + g::video.camera.h;	
 

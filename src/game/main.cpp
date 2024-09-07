@@ -30,9 +30,7 @@ int menuHover = 0;
 
 int main(int argc, char* argv[]) {
 
-    g::video.init(1024, 768, "Fighting Room Test");
-    g::video.camera.w /= 4;
-    g::video.camera.h /= 4;
+    g::video.init("Custom Fighter");
 
     while (g::video.isOpen()) {
         g::input.pollEvents();

@@ -13,9 +13,9 @@ using std::vector, std::string;
 int main() {
     Editor editor;
 
-    g::video.init(1024, 768, "Skeletal Animation Editor");
-    g::video.camera.x = -1024/2.f;
-    g::video.camera.y = 768/2.f;
+    g::video.init("Skeletal Animation Editor");
+    g::video.camera.x = g::video.getSize().x / -2.f;
+    g::video.camera.y = g::video.getSize().y / 2.f;
 
     while (g::video.isOpen()) {
         g::input.pollEvents();
@@ -40,8 +40,8 @@ int main() {
             g::video.camera.h /= 2.;
         }
 
-        ImGui::SetNextWindowPos({0, 768 - 200});
-        ImGui::SetNextWindowSize({1024, 200});
+        ImGui::SetNextWindowPos({0, (float)g::video.getSize().y - 200});
+        ImGui::SetNextWindowSize({(float)g::video.getSize().x, 200});
         ImGui::Begin("TimeLine");
 
         ImGui::BeginChild("KeyFrames", {0.0f, 96.f}, ImGuiChildFlags_FrameStyle, ImGuiWindowFlags_HorizontalScrollbar);
@@ -198,8 +198,8 @@ int main() {
             ImGui::EndMainMenuBar();
         }
 
-        ImGui::SetNextWindowPos({1024-300, 0});
-        ImGui::SetNextWindowSize({300, 768-200});
+        ImGui::SetNextWindowPos({(float)g::video.getSize().x - 300, 0});
+        ImGui::SetNextWindowSize({300, (float)g::video.getSize().y - 200});
         ImGui::Begin("Properties");
         if(editor.keyFrame >= 0) {  
             Frame& keyFrame = editor.getKeyFrame();    

@@ -3,20 +3,48 @@
 
 RenderInstance g::video = RenderInstance();
 
-using std::vector, std::string;
+using std::string;
 
-RenderInstance::RenderInstance() {
+bool RenderInstance::init(string _title) {
+	title = _title;
+	reload();
 
+	// Initialize subsystems
+	if(NFD_Init() != NFD_OKAY)
+		return false;
+
+	if(ImGui::SFML::Init(*this))
+		return false;
+
+	return true;
 }
 
-bool RenderInstance::init(unsigned int w, unsigned int h, string title) {
-	create(sf::VideoMode(w, h), title);
-	NFD_Init();
-	ImGui::SFML::Init(*this);
-	camera = {0, 0, (float)w, (float)h, (float)w, (float)h};
+void RenderInstance::reload() {
+
+	// Close any previous windows
+	if(isOpen())
+		close();
+
+	float width = g::save.resolutionWidth;
+	float height = g::save.resolutionHeight;
+	int flags = 0;
+
+	if(g::save.displayMode == DisplayMode::Window) {
+		flags = sf::Style::Close;
+
+	}else if(g::save.displayMode == DisplayMode::Borderless) {
+		flags = sf::Style::None;
+
+	}else {
+		flags = sf::Style::Fullscreen;
+	}
+
+	create(sf::VideoMode(width, height), title, flags);
+	camera = {0, 0, width, height, width, height};	
+
+	setVerticalSyncEnabled(g::save.vsync);
 	setFramerateLimit(60);
 	setKeyRepeatEnabled(false);
-	return true;
 }
 
 RenderInstance::~RenderInstance() {

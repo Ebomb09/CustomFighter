@@ -108,6 +108,16 @@ private:
 	std::vector<std::string> 					serverList;
 	std::string 								ip;
 	int 										port;
+
+/* Video Config */
+public:
+	int resolutionWidth;
+	int resolutionHeight;
+	int displayMode;
+	bool vsync;	
+
+	void loadVideoConfig();
+	void saveVideoConfig();
 };
 
 namespace g {

@@ -91,6 +91,7 @@ add_executable(Game
 	src/game/game_state.cpp
 	src/game/options.cpp
 	src/game/button_config.cpp
+	src/game/video_config.cpp
 
 	${Core}
 	${ImGui}

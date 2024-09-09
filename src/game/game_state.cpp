@@ -1,6 +1,7 @@
 #include "game_state.h"
 #include "game_tools.h"
 
+#include "core/audio.h"
 #include "core/render_instance.h"
 #include "core/save.h"
 
@@ -70,6 +71,9 @@ void Game::resetRound() {
 	state.round ++;
 	state.timer = (timerMax + 3) * 60;
 	state.judge = false;
+	state.slomo = 0;
+	state.playJudgement = false;
+	state.playFight = false;
 
 	// Reset players to default states
 	for(int i = 0; i < playerCount; i ++) 
@@ -100,6 +104,39 @@ void Game::resetRound() {
 
 	// Center camera
     g::video.camera.x = -g::video.camera.w / 2.f;
+
+    // Play music
+    vector<string> songs = {
+    	"Metalmania",
+    	"Rocket Power"
+    };
+
+    vector<string> climax = {
+    	"Exhilarate",
+    	"Ready Aim Fire"
+    };
+
+    // One point away
+    if(state.lWins == roundMax - 1 || state.rWins == roundMax - 1) {
+
+    	if(!state.songClimax)
+    		g::audio.playMusic(g::save.getMusic(climax[rand() % climax.size()]));
+
+    	state.songClimax = true;
+
+    }else {
+
+    	if(!state.songNormal) 
+    		g::audio.playMusic(g::save.getMusic(songs[rand() % songs.size()]));
+
+    	state.songNormal = true;
+    }
+
+    // Play announcer round
+    if(state.lWins == roundMax - 1 && state.rWins == roundMax - 1)
+    	g::audio.playSound(g::save.getSound("round_final"));    	
+    else
+        g::audio.playSound(g::save.getSound("round_" + std::to_string(state.round)));    	
 }
 
 void Game::nextRound() {
@@ -116,6 +153,8 @@ void Game::advanceFrame() {
 
 	if(state.done)
 		return;
+
+	state.timer --;
 
 	// Check if want to rematch
 	if(state.gameOver) {
@@ -148,29 +187,46 @@ void Game::advanceFrame() {
 		return;
 	}
 
-	state.timer --;
+	// Slomo every other frame
+	if(state.slomo > 0)
+		state.slomo --;
 
-	// Update players
-	vector<Player> others;
+	if(state.slomo % 2 == 0) {
 
-	for(int i = 0; i < playerCount; i ++) {
-		others.push_back(players[i]);
+		// Update players		
+		vector<Player> others;
 
-		// Still in round start
-		if(state.timer > timerMax * 60) 
-			players[i].in = Button::Flag();
+		for(int i = 0; i < playerCount; i ++) {
+			others.push_back(players[i]);
+
+			// Still in round start
+			if(state.timer > timerMax * 60) 
+				players[i].in = Button::Flag();
+		}		
+
+		for(int i = 0; i < playerCount; i ++) {
+			players[i].advanceFrame(others);
+
+			// Slomo on player KO
+			if(players[i].state.health <= 0 && others[i].state.health > 0) {
+				state.slomo = 120;
+
+				// Hyperbolize the player KO
+				if(std::abs(players[i].state.velocity.x) < 2)
+					players[i].state.velocity.x = -players[i].state.side * 2;
+
+				players[i].state.velocity.y += 3;
+			}
+		}
 	}
 
-	for(int i = 0; i < playerCount; i ++) 
-		players[i].advanceFrame(others);
-
-	setCamera(players, playerCount);	
+	setCamera(players, playerCount);
 
 	// Consider win conditions
 	if(state.timer > 0) {
 
 		// Check alive status of teams
-		if(!state.judge) {
+		if(state.judge == Judgement::None) {
 			int lTeamAlive = 0;
 			int rTeamAlive = 0;
 
@@ -193,12 +249,12 @@ void Game::advanceFrame() {
 			}else if(lTeamAlive == 0) {
 				state.timer = 0;
 				state.rWins ++;
-				state.judge = true;
+				state.judge = Judgement::KO;
 
 			}else if(rTeamAlive == 0) {
 				state.timer = 0;
 				state.lWins ++;
-				state.judge = true;
+				state.judge = Judgement::KO;
 			}
 		}
 
@@ -206,7 +262,7 @@ void Game::advanceFrame() {
 	}else {
 
 		// Check which team has the most health
-		if(!state.judge) {
+		if(state.judge == Judgement::None) {
 			int lTeamHP = 0;
 			int rTeamHP = 0;
 
@@ -224,11 +280,11 @@ void Game::advanceFrame() {
 			else if(rTeamHP > lTeamHP)
 				state.rWins ++;
 
-			state.judge = true;
+			state.judge = Judgement::TimeUp;
 		}
 
 		// Wait a couple seconds after judgement to go next
-		if(state.timer < -3 * 60)
+		if(state.timer < -4 * 60)
 			nextRound();
 	}
 }
@@ -277,7 +333,7 @@ void Game::draw() {
     }
 
     // Draw Players
-    for(int i = 0; i < playerCount; i ++)
+    for(int i = 0; i < playerCount; i ++) 
     	players[i].draw();  
 
     // Draw round header
@@ -302,5 +358,40 @@ void Game::draw() {
 	    txt.setOutlineColor(sf::Color::Black);
 	    txt.setPosition({g::video.getSize().x / 2.f - txt.getLocalBounds().width / 2.f, g::video.getSize().y / 2.f});
 	    g::video.draw(txt);  
-    }    
+
+	    if(!state.playFight) {
+	    	g::audio.playSound(g::save.getSound("announcer_fight"));
+	    	state.playFight = true;
+	    }
+
+    }else if(state.judge) {
+
+	    sf::Text txt;
+
+	    if(state.judge == Judgement::KO) {
+	    	txt.setString("KO");
+
+		    if(!state.playJudgement) {
+		    	g::audio.playSound(g::save.getSound("announcer_ko"));
+		    	state.playJudgement = true;
+		    }	    	
+	    }
+	    
+	    else if(state.judge == Judgement::TimeUp) {
+	    	txt.setString("Time Up");
+
+		    if(!state.playJudgement) {
+		    	g::audio.playSound(g::save.getSound("announcer_timeup"));
+		    	state.playJudgement = true;
+		    }	    	    	
+	    }
+
+	    txt.setFont(*g::save.getFont("Anton-Regular"));
+	    txt.setCharacterSize(64);
+	    txt.setFillColor(sf::Color::Red);
+		txt.setOutlineThickness(1);
+	    txt.setOutlineColor(sf::Color::Black);
+	    txt.setPosition({g::video.getSize().x / 2.f - txt.getLocalBounds().width / 2.f, g::video.getSize().y / 2.f});
+	    g::video.draw(txt);  
+    }
 }

@@ -42,6 +42,8 @@ struct Circle {
 struct Rectangle {
 	float x, y, w, h; 
 
+	Rectangle getScreenRatio();
+
 	operator sf::RectangleShape();
 	operator sf::FloatRect();
 };
@@ -58,8 +60,7 @@ struct HitBox : Rectangle {
 	bool knockdown = false;
 };
 
-struct Camera {
-	float x, y, w, h, screen_w, screen_h;
+struct Camera : Rectangle {
 
 	Vector2 getScreenScale();
 

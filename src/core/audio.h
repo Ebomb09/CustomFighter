@@ -2,20 +2,16 @@
 #define GAME_SOUND_H
 
 #include <SFML/Audio.hpp>
-#include <string>
 
-#define SOUND_LIMIT 256
+#define SOUND_LIMIT 255
 
 struct AudioManager {
 	sf::Sound sounds[SOUND_LIMIT];
-	sf::Music music;
+	sf::Sound music;
 
 	int getFreeSound();
-	void playSound(sf::SoundBuffer* buffer);
-
-	void playMusic(std::string musicFile, bool loop = false);
-	void resumeMusic();
-	void stopMusic();
+	sf::Sound* playSound(sf::SoundBuffer* buffer, bool variety = false);
+	sf::Sound* playMusic(sf::SoundBuffer* buffer);
 
 	void setVolume(float volume);
 };

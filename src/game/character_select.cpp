@@ -6,9 +6,9 @@
 #include "core/menu.h"
 
 #include <vector>
-#include <stack>
+#include <string>
 
-using std::vector, std::string, std::stack;
+using std::vector, std::string;
 
 struct Creator {
 
@@ -25,35 +25,34 @@ struct Creator {
     };
 
     enum Mode {
-        List,
-        Config,
-        Move,
-        Animation,
-        Motion,
-        WornClothes,
-        ColorClothes,
-        ListClothes
+        ChooseConfig,
+        ModifyConfig,
+        ListConfigMoves,
+        ListAnimations,
+        SetConfigMotion,
+        ListConfigItems,
+        ListClothes,        
+        SetConfigItemColor
     };
 
     Player dummy        = Player();
     bool test           = false;
     bool done           = false;
     bool exit           = false;
-    int listHover       = 0;
-    int confHover       = 0;
+    int configHover     = 0;
+    int modifyHover     = 0;
     int moveHover       = 0;
     int animHover       = 0;
-    int wornHover       = 0;
+    int itemHover       = 0;
     int clothHover      = 0;
-    int clothColor      = 0;
-    int listSelected    = 0;
+    int configSelected  = 0;
     int moveSelected    = 0;
-    int wornSelected    = 0;
+    int itemSelected    = 0;
     string moveSave     = "";
-    Player::Config::Cloth wornSave;
-    int mode            = Mode::List;
+    Player::Config::Cloth itemSave;
+    int mode            = Mode::ChooseConfig;
 
-    vector<Menu::Option> getListOptions() {
+    vector<Menu::Option> getPlayerConfigOptions() {
         vector<Menu::Option> out;
 
         for(int i = 0; i < g::save.maxPlayerConfigs; i ++) {
@@ -62,7 +61,7 @@ struct Creator {
         return out;
     }
 
-    vector<Menu::Option> getConfigOptions() {
+    vector<Menu::Option> getModificationOptions() {
         vector<Menu::Option> out;
 
         out.push_back({"Confirm", ID::Confirm});
@@ -81,7 +80,7 @@ struct Creator {
         return out;
     }
 
-    vector<Menu::Option> getMoveOptions() {
+    vector<Menu::Option> getConfigMoves() {
         vector<Menu::Option> out;
 
         for(int i = 0; i < Move::Total; i ++) {
@@ -160,39 +159,60 @@ struct Creator {
             dummy.state.moveFrame ++;            
         }   
 
-        // Reset state
-        g::video.camera.w = CameraBounds.w;
-        g::video.camera.h = CameraBounds.w * g::video.getSize().y / g::video.getSize().x;
+        Rectangle div {
+            16.f + (float)g::video.getSize().x / total * dummy.seatIndex,
+            16.f,
+            -32.f + (float)g::video.getSize().x / total,
+            -32.f + (float)g::video.getSize().y
+        };
 
+        // Capture player
         dummy.state.position.x = 0;
 
-        // Get the position of the skeleton
-        Rectangle box = dummy.getScreenBoundingBox();
-        box.x -= 64;
-        box.y -= 64;
-        box.w += 128;
-        box.h += 128;
+        Rectangle playerDiv = {
+            div.x,
+            div.y,
+            div.w,
+            div.h / 2
+        };
 
-        // Capture the player position
-        sf::View view = sf::View(sf::FloatRect(box.x, box.y, box.w, box.h));
+        Rectangle boundingBox = dummy.getRealBoundingBox();
+        boundingBox.x -= 16.f;
+        boundingBox.y += 16.f;
+        boundingBox.w += 32.f;
+        boundingBox.h += 32.f;
 
-        // Draw to the view port and maintain aspect ratio
-        float w = (1.f / 3.f) * (box.w / box.h);
-        float h = (1.f / 3.f);
-        float x = (1.f + dummy.seatIndex * 2.f) / (2.f * total) - w / 2.f;
-        float y = 1.f / 3.f;
+        // Scale bounding box to proper aspect ratio
+        Vector2 center = {boundingBox.x + boundingBox.w / 2, boundingBox.y - boundingBox.h / 2};
 
-        view.setViewport(sf::FloatRect(x, y, w, h));
+        if(boundingBox.w / boundingBox.h < playerDiv.w / playerDiv.h) {
+            boundingBox.w = boundingBox.h * playerDiv.w / playerDiv.h;
 
+        }else {
+            boundingBox.h = boundingBox.w * playerDiv.h / playerDiv.w;
+        }
+
+        g::video.camera = {
+            center.x - boundingBox.w / 2,
+            center.y + boundingBox.h / 2,
+            boundingBox.w,
+            boundingBox.h
+        };
+
+        sf::View view = g::video.getDefaultView();
+        view.setViewport(playerDiv.getScreenRatio());
         g::video.setView(view);
+
         dummy.draw();
+
         g::video.setView(g::video.getDefaultView());
 
-        Rectangle area {
-            ((float)g::video.getSize().x / total * dummy.seatIndex) + 8, 
-            (float)g::video.getSize().y * 2.f / 3.f + 8,
-            ((float)g::video.getSize().x / total) - 16, 
-            (float)g::video.getSize().y * 1.f / 3.f - 16
+        // Draw Menus / Features
+        Rectangle menuDiv {
+            div.x,
+            div.y + div.h / 2,
+            div.w,
+            div.h / 2
         };
 
         if(test) {
@@ -202,170 +222,170 @@ struct Creator {
                 done = false;
             }
 
-        }else if(mode == Mode::List) {
-            auto options = getListOptions();
+        }else if(mode == Mode::ChooseConfig) {
+            auto options = getPlayerConfigOptions();
 
-            int res = Menu::Table(options, 5, false, &listHover, dummy.seatIndex, area);
+            int res = Menu::Table(options, 5, false, &configHover, dummy.seatIndex, menuDiv);
 
-            dummy.config = g::save.getPlayerConfig(options[listHover].id);
+            dummy.config = g::save.getPlayerConfig(options[configHover].id);
 
             if(res == Menu::Accept) {
-                listSelected = options[listHover].id;
-                mode = Mode::Config;
+                configSelected = options[configHover].id;
+                mode = Mode::ModifyConfig;
 
             // Exiting the character select
             }else if(res == Menu::Decline) {
                 exit = true;
             }
 
-        }else if(mode == Mode::Config) {
-            auto options = getConfigOptions();
+        }else if(mode == Mode::ModifyConfig) {
+            auto options = getModificationOptions();
 
-            int res = Menu::List(options, &confHover, dummy.seatIndex, area);
+            int res = Menu::List(options, &modifyHover, dummy.seatIndex, menuDiv);
 
             if(res == Menu::Accept) {
 
                 // Toggle test
-                if(options[confHover].id == ID::Test) {
+                if(options[modifyHover].id == ID::Test) {
                     test = true;
 
-                }else if(options[confHover].id == ID::Save) {
-                    g::save.savePlayerConfig(listSelected, dummy.config);
+                }else if(options[modifyHover].id == ID::Save) {
+                    g::save.savePlayerConfig(configSelected, dummy.config);
 
-                }else if(options[confHover].id == ID::Confirm) {
+                }else if(options[modifyHover].id == ID::Confirm) {
                     done = true;
                     test = true;
 
-                }else if(options[confHover].id == ID::MoveList) {
-                    mode = Mode::Move;
+                }else if(options[modifyHover].id == ID::MoveList) {
+                    mode = Mode::ListConfigMoves;
 
-                }else if(options[confHover].id == ID::Cancel) {
-                    mode = Mode::List;
+                }else if(options[modifyHover].id == ID::Cancel) {
+                    mode = Mode::ChooseConfig;
 
-                }else if(options[confHover].id == ID::Costume) {
-                    mode = Mode::WornClothes;
+                }else if(options[modifyHover].id == ID::Costume) {
+                    mode = Mode::ListConfigItems;
                 }
 
             }else if(res == Menu::Decline) {
-                mode = Mode::List;
+                mode = Mode::ChooseConfig;
             }
 
-        }else if(mode == Mode::WornClothes) {
+        }else if(mode == Mode::ListConfigItems) {
             auto options = getConfigClothes();
 
-            int res = Menu::List(options, &wornHover, dummy.seatIndex, area);
+            int res = Menu::List(options, &itemHover, dummy.seatIndex, menuDiv);
 
             if(res == Menu::Accept) {
 
-                if(options[wornHover].id == ID::Insert) {
+                if(options[itemHover].id == ID::Insert) {
                     dummy.config.clothes.push_back({""});
-                    wornSelected = dummy.config.clothes.size()-1;
-                    wornSave = Player::Config::Cloth();
+                    itemSelected = dummy.config.clothes.size()-1;
+                    itemSave = Player::Config::Cloth();
                     mode = Mode::ListClothes;
 
-                }else if(options[wornHover].id == ID::Cancel) {
-                    mode = Mode::Config;
+                }else if(options[itemHover].id == ID::Cancel) {
+                    mode = Mode::ModifyConfig;
 
                 }else {
-                    wornSelected = options[wornHover].id;
-                    wornSave = dummy.config.clothes[wornSelected];
+                    itemSelected = options[itemHover].id;
+                    itemSave = dummy.config.clothes[itemSelected];
                     mode = Mode::ListClothes;
                 }
 
             }else if(res == Menu::Decline) {
-                mode = Mode::Config;
+                mode = Mode::ModifyConfig;
             }
 
         }else if(mode == Mode::ListClothes) {
             auto options = getClothingOptions();
 
-            int res = Menu::List(options, &clothHover, dummy.seatIndex, area);
+            int res = Menu::List(options, &clothHover, dummy.seatIndex, menuDiv);
 
             if(options[clothHover].id >= 0)
-                dummy.config.clothes[wornSelected].name = options[clothHover].name;
+                dummy.config.clothes[itemSelected].name = options[clothHover].name;
 
             if(res == Menu::Accept) {
 
                 if(options[clothHover].id == ID::Delete) {
-                    dummy.config.clothes.erase(dummy.config.clothes.begin() + wornSelected);
-                    mode = Mode::WornClothes;  
+                    dummy.config.clothes.erase(dummy.config.clothes.begin() + itemSelected);
+                    mode = Mode::ListConfigItems;  
 
                 }else if(options[clothHover].id == ID::Cancel) {
 
                     // Rollback changes
-                    if(wornSave.name.size() == 0)
-                        dummy.config.clothes.erase(dummy.config.clothes.begin() + wornSelected);
+                    if(itemSave.name.size() == 0)
+                        dummy.config.clothes.erase(dummy.config.clothes.begin() + itemSelected);
                     else
-                        dummy.config.clothes[wornSelected] = wornSave;
+                        dummy.config.clothes[itemSelected] = itemSave;
 
-                    mode = Mode::WornClothes;
+                    mode = Mode::ListConfigItems;
 
                 }else {
-                    mode = Mode::ColorClothes;
+                    mode = Mode::SetConfigItemColor;
                 }
 
             }else if(res == Menu::Decline) {
 
                 // Rollback changes
-                if(wornSave.name.size() == 0)
-                    dummy.config.clothes.erase(dummy.config.clothes.begin() + wornSelected);
+                if(itemSave.name.size() == 0)
+                    dummy.config.clothes.erase(dummy.config.clothes.begin() + itemSelected);
                 else
-                    dummy.config.clothes[wornSelected] = wornSave;
+                    dummy.config.clothes[itemSelected] = itemSave;
 
-                mode = Mode::WornClothes;
+                mode = Mode::ListConfigItems;
             }
 
-        }else if(mode == Mode::ColorClothes) {
+        }else if(mode == Mode::SetConfigItemColor) {
 
-            sf::Color color(dummy.config.clothes[wornSelected].r, dummy.config.clothes[wornSelected].g, dummy.config.clothes[wornSelected].b);
+            sf::Color color(dummy.config.clothes[itemSelected].r, dummy.config.clothes[itemSelected].g, dummy.config.clothes[itemSelected].b);
 
-            int res = Menu::ColorPicker(&color, dummy.seatIndex, area);
+            int res = Menu::ColorPicker(&color, dummy.seatIndex, menuDiv);
 
-            dummy.config.clothes[wornSelected].r = color.r;
-            dummy.config.clothes[wornSelected].g = color.g;
-            dummy.config.clothes[wornSelected].b = color.b;
+            dummy.config.clothes[itemSelected].r = color.r;
+            dummy.config.clothes[itemSelected].g = color.g;
+            dummy.config.clothes[itemSelected].b = color.b;
 
             if(res == Menu::Accept) {
-                dummy.config.clothes[wornSelected].name = getClothingOptions()[clothHover].name;
-                mode = WornClothes;
+                dummy.config.clothes[itemSelected].name = getClothingOptions()[clothHover].name;
+                mode = ListConfigItems;
 
             }else if(res == Menu::Decline) {
                 mode = Mode::ListClothes;
             }
 
         // Draw the movelist selection
-        }else if(mode == Mode::Move) {
-            auto options = getMoveOptions();
+        }else if(mode == Mode::ListConfigMoves) {
+            auto options = getConfigMoves();
 
-            int res = Menu::Table(options, 3, true, &moveHover, dummy.seatIndex, area);
+            int res = Menu::Table(options, 3, true, &moveHover, dummy.seatIndex, menuDiv);
 
             if(options[moveHover].id >= 0)
-                dummy.setMove(getMoveOptions()[moveHover].id, true); 
+                dummy.setMove(getConfigMoves()[moveHover].id, true); 
 
             if(res == Menu::Accept) {
 
                 if(options[moveHover].id == ID::Cancel) {
-                    mode = Mode::Config;
+                    mode = Mode::ModifyConfig;
 
                 }else if(options[moveHover].id >= 0) {
                     moveSelected = options[moveHover].id;
                     moveSave = dummy.config.moves[moveSelected];
-                    mode = Mode::Animation;
+                    mode = Mode::ListAnimations;
                 }
 
             }else if(res == Menu::Decline) {
-                mode = Mode::Config;
+                mode = Mode::ModifyConfig;
             }
 
         // Draw the animation selection
-        }else if(mode == Mode::Animation) {
+        }else if(mode == Mode::ListAnimations) {
             auto options = getAnimationOptions();
 
-            int res = Menu::List(options, &animHover, dummy.seatIndex, area);
+            int res = Menu::List(options, &animHover, dummy.seatIndex, menuDiv);
 
             if(options[animHover].id == ID::Test) {
                 dummy.config.moves[moveSelected] = options[animHover].name;
-                dummy.setMove(getMoveOptions()[moveHover].id, true);
+                dummy.setMove(getConfigMoves()[moveHover].id, true);
             }
 
             if(res == Menu::Accept) {
@@ -373,35 +393,35 @@ struct Creator {
                 if(options[animHover].id == ID::Delete) {
                     dummy.config.moves[moveSelected] = "";
                     dummy.config.motions[moveSelected] = "";
-                    mode = Mode::Move;
+                    mode = Mode::ListConfigMoves;
 
                 }else if(options[animHover].id == ID::Cancel) {
                     dummy.config.moves[moveSelected] = moveSave;
-                    mode = Mode::Move;
+                    mode = Mode::ListConfigMoves;
 
                 }else {
                     dummy.config.moves[moveSelected] = options[animHover].name;
                     dummy.config.motions[moveSelected] = "";
-                    mode = Mode::Motion;
+                    mode = Mode::SetConfigMotion;
                 }
 
             }else if(res == Menu::Decline) {
-                mode = Mode::Move;
+                mode = Mode::ListConfigMoves;
                 dummy.config.moves[moveSelected] = moveSave;
             }
 
         // Draw the motion interpreter
-        }else if(mode == Mode::Motion) {
+        }else if(mode == Mode::SetConfigMotion) {
 
             if(moveSelected >= Move::Custom00) {
-                int res = Menu::Motion(&dummy.config.motions[moveSelected], dummy.seatIndex, area);
+                int res = Menu::Motion(&dummy.config.motions[moveSelected], dummy.seatIndex, menuDiv);
 
                 if(res == Menu::Accept) 
-                    mode = Mode::Move;
+                    mode = Mode::ListConfigMoves;
 
             }else {
                 dummy.config.motions[moveSelected] = "";
-                mode = Mode::Move;
+                mode = Mode::ListConfigMoves;
             }
         }
     }

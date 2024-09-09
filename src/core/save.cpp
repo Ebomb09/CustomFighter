@@ -146,22 +146,24 @@ vector<string> SaveManager::getSoundList() {
 	return list;
 }
 
-std::string SaveManager::getMusic(std::filesystem::path path) {
-	std::string realPath = "";
+sf::SoundBuffer* SaveManager::getMusic(std::filesystem::path path) {
+	sf::SoundBuffer* ptr = NULL;
 
 	if(musics.find(path.string()) == musics.end()) {
-		std::fstream file(path);
+		ptr = new sf::SoundBuffer();
 
-		if(file.good()) {
-			musics[path.stem().string()] = path.string();
-			realPath = path.string();
+		if(ptr->loadFromFile(path.string())) {
+			musics[path.stem().string()] = ptr;
+
+		}else {
+			delete ptr;
+			ptr = NULL;
 		}
-		file.close();
 
 	}else {
-		realPath = musics[path.string()];
+		ptr = musics[path.string()];
 	}
-	return realPath;
+	return ptr;
 }
 
 vector<string> SaveManager::getMusicList() {

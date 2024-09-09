@@ -82,10 +82,10 @@ void VideoConfig::run() {
 				}
 
 				if(g::input.pressed(b.index, b.Right)) 
-					index ++;
+					index --;
 
 				if(g::input.pressed(b.index, b.Left))
-					index --;
+					index ++;
 
 				if(index < 0)
 					index = sf::VideoMode::getFullscreenModes().size() - 1;

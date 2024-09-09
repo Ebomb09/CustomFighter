@@ -31,12 +31,12 @@ private:
 public:
 	sf::SoundBuffer* 							getSound(std::filesystem::path path);
 	std::vector<std::string> 					getSoundList();
-	std::string 								getMusic(std::filesystem::path path);
+	sf::SoundBuffer*  							getMusic(std::filesystem::path path);
 	std::vector<std::string> 					getMusicList();
 
 private:
 	std::map<std::string, sf::SoundBuffer*> 	sounds;
-	std::map<std::string, std::string> 			musics;
+	std::map<std::string, sf::SoundBuffer*> 	musics;
 
 
 /* Clothing Assets */

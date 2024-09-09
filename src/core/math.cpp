@@ -1,5 +1,7 @@
-#include <cmath>
 #include "math.h"
+#include "render_instance.h"
+
+#include <cmath>
 
 Vector2::Vector2(float _x, float _y) {
 	x = _x;
@@ -121,11 +123,11 @@ bool Screen::rectangleInRectangle(const Rectangle& r1, const Rectangle& r2) {
 }
 
 Vector2 Camera::getScreenScale() {
-	return {w / screen_w, h / screen_h};
+	return {w / g::video.getSize().x, h / g::video.getSize().y};
 }
 
 Vector2 Camera::getReal(Vector2 pos) {
-	Vector2 percent = {pos.x / screen_w, pos.y / screen_h};
+	Vector2 percent = {pos.x / g::video.getSize().x, pos.y / g::video.getSize().y};
 	return {x + percent.x * w, y - percent.y * h};
 }
 
@@ -139,7 +141,7 @@ Rectangle Camera::getReal(Rectangle rect) {
 
 Vector2 Camera::getScreen(Vector2 pos) {
 	Vector2 percent = {(pos.x - x) / w, (y - pos.y) / h};
-	return {percent.x * screen_w, percent.y * screen_h};
+	return {percent.x * g::video.getSize().x, percent.y * g::video.getSize().y};
 }
 
 Rectangle Camera::getScreen(Rectangle rect) {
@@ -166,4 +168,14 @@ Rectangle::operator sf::RectangleShape() {
 
 Rectangle::operator sf::FloatRect() {
 	return sf::FloatRect(x, y, w, h);
+}
+
+Rectangle Rectangle::getScreenRatio() {
+
+	return {
+		x / g::video.getSize().x, 
+		y / g::video.getSize().y,
+		w / g::video.getSize().x, 
+		h / g::video.getSize().y		
+	};
 }

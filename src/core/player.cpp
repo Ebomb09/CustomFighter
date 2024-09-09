@@ -98,7 +98,7 @@ void Player::advanceFrame(vector<Player> others) {
 
     // Play sound effect related to frame of animation
     if(getFrame().sound != "")
-        g::audio.playSound(g::save.getSound(getFrame().sound));
+        g::audio.playSound(g::save.getSound(getFrame().sound), true);
 
     // Increment frames
     state.moveFrame ++;
@@ -148,7 +148,7 @@ void Player::advanceFrame(vector<Player> others) {
             }else{
                 setMove(Move::CrouchBlock);
             }
-            g::audio.playSound(g::save.getSound("block"));
+            g::audio.playSound(g::save.getSound("block"), true);
 
         }else{
             dealDamage(hit.damage);
@@ -171,10 +171,10 @@ void Player::advanceFrame(vector<Player> others) {
             }
 
             if(hit.damage <= 10) {
-                g::audio.playSound(g::save.getSound("hit_light"));      
+                g::audio.playSound(g::save.getSound("hit_light"), true);      
 
             }else {
-                g::audio.playSound(g::save.getSound("hit_hard"));      
+                g::audio.playSound(g::save.getSound("hit_hard"), true);      
             }
         }
     }
@@ -344,6 +344,9 @@ void Player::advanceFrame(vector<Player> others) {
             // Move in
             if(prepare) {
 
+                // Clamp within the camera once ready
+                state.position.x = std::clamp(state.position.x, center.x - CameraBounds.w / 2 - 16, center.x + CameraBounds.w / 2 + 16);
+
                 // Run in until up to player
                 if((state.side == 1 && state.position.x < others[curr].state.position.x + 16) ||
                     (state.side == -1 && state.position.x > others[curr].state.position.x - 16)) {
@@ -365,7 +368,7 @@ void Player::advanceFrame(vector<Player> others) {
 
                 // Just off screen
                 state.position = {
-                    (state.side == 1) ? center.x - CameraBounds.w / 2 - 64 : center.x + CameraBounds.w / 2 + 64,
+                    (state.side == 1) ? StageBounds.x - 64 : StageBounds.x + StageBounds.w + 64,
                     0
                 };
                 state.velocity = {0, 0};
@@ -874,7 +877,8 @@ Rectangle Player::getRealBoundingBox() {
     Skeleton pose = getSkeleton();
     Vector2 min, max;
     
-    min = max = state.position;
+    min = {state.position.x, 0};
+    max = state.position;
 
     for(int i = 0; i < pose.jointCount; i ++) {
         min = {std::min(min.x, pose.joints[i].x), std::min(min.y, pose.joints[i].y)};

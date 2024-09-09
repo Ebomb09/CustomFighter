@@ -133,7 +133,7 @@ Lobby::Room Lobby::run(Player::Config config) {
         g::video.clear();
 
         ImGui::SetNextWindowPos({64, 64});
-        ImGui::SetNextWindowSize({g::video.camera.screen_w - 128, g::video.camera.screen_h - 128});
+        ImGui::SetNextWindowSize({(float)g::video.getSize().x - 128, (float)g::video.getSize().y - 128});
         ImGui::Begin("Browser", &stayOpen);
 
         // Room Browser

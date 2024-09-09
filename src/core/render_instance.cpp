@@ -40,7 +40,7 @@ void RenderInstance::reload() {
 	}
 
 	create(sf::VideoMode(width, height), title, flags);
-	camera = {0, 0, width, height, width, height};	
+	camera = {0, 0, width, height};	
 
 	setVerticalSyncEnabled(g::save.vsync);
 	setFramerateLimit(60);

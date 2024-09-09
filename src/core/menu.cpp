@@ -143,10 +143,10 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 
 	// View port is relative of screen coordinates
 	view.setViewport({
-		area.x / g::video.camera.screen_w, 
-		area.y / g::video.camera.screen_h, 
-		area.w / g::video.camera.screen_w, 
-		area.h / g::video.camera.screen_h
+		area.x / g::video.getSize().x, 
+		area.y / g::video.getSize().y, 
+		area.w / g::video.getSize().x, 
+		area.h / g::video.getSize().y
 	});
 
 	g::video.setView(view);
@@ -409,6 +409,13 @@ int Menu::ColorPicker(sf::Color* color, int user, Rectangle area) {
 		int value = 0;
 
 		if(i == 0) {
+
+			if(g::input.held(MOUSE_INDEX, sf::Mouse::Button::Left)) {
+				if(Screen::pointInRectangle(g::input.mousePosition, box)) {
+					color->r = (g::input.mousePosition.x - box.x) / box.w * 255;
+				}
+			}
+
 			edit = "Red: " + std::to_string(color->r);
 			value = color->r;
 			vert[0].color.r = 0;
@@ -417,6 +424,13 @@ int Menu::ColorPicker(sf::Color* color, int user, Rectangle area) {
 			vert[3].color.r = 255;	
 
 		}else if(i == 1){
+
+			if(g::input.held(MOUSE_INDEX, sf::Mouse::Button::Left)) {
+				if(Screen::pointInRectangle(g::input.mousePosition, box)) {
+					color->g = (g::input.mousePosition.x - box.x) / box.w * 255;
+				}
+			}
+
 			edit = "Green: " + std::to_string(color->g);	
 			value = color->g;					
 			vert[0].color.g = 0;
@@ -425,6 +439,13 @@ int Menu::ColorPicker(sf::Color* color, int user, Rectangle area) {
 			vert[3].color.g = 255;	
 
 		}else {
+
+			if(g::input.held(MOUSE_INDEX, sf::Mouse::Button::Left)) {
+				if(Screen::pointInRectangle(g::input.mousePosition, box)) {
+					color->b = (g::input.mousePosition.x - box.x) / box.w * 255;
+				}
+			}
+
 			edit = "Blue: " + std::to_string(color->b);
 			value = color->b;						
 			vert[0].color.b = 0;

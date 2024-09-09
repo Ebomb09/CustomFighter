@@ -4,6 +4,13 @@
 #include "core/player.h"
 
 struct Game {
+
+	enum Judgement {
+		None,
+		KO,
+		TimeUp
+	};
+
 	int playerCount;
 	int roundMax;
 	int timerMax;
@@ -11,14 +18,19 @@ struct Game {
 	Player players[MAX_PLAYERS];
 
 	struct State {
-		bool done 		= false;
-		bool gameOver 	= false;
+		bool done 			= false;
+		bool gameOver 		= false;
+		bool playJudgement 	= false;
+		bool playFight 		= false;
 		int rematch	[MAX_PLAYERS];
-		bool judge		= false;
-		int round		= 0;
-		int lWins		= 0;
-		int rWins		= 0;
-		int timer 		= 0;
+		int judge			= None;
+		int slomo 			= 0;
+		int round			= 0;
+		int lWins			= 0;
+		int rWins			= 0;
+		int timer 			= 0;
+		bool songNormal		= false;
+		bool songClimax		= false;
 	}state;
 
 	struct SaveState {

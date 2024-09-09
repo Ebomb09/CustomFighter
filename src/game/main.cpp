@@ -5,7 +5,6 @@
 #include "options.h"
 
 #include "core/menu.h"
-#include "core/save.h"
 #include "core/input_interpreter.h"
 #include "core/render_instance.h"
 
@@ -37,7 +36,7 @@ int main(int argc, char* argv[]) {
 
         g::video.clear();
 
-        int res = Menu::List(menuOptions, &menuHover, 0, {0, 0, g::video.camera.screen_w, g::video.camera.screen_w});
+        int res = Menu::List(menuOptions, &menuHover, 0, {0, 0, (float)g::video.getSize().x, (float)g::video.getSize().y});
 
         if(res == Menu::Accept) {
 

@@ -35,9 +35,6 @@ SaveManager::SaveManager() {
 	for(auto& entry : std::filesystem::directory_iterator("data/musics"))
 		getMusic(entry);
 
-	// Animation used for testing purposes
-	animations["test"] = new Animation();
-
 	for(auto& entry : std::filesystem::directory_iterator("data/fonts"))
 		getFont(entry);
 
@@ -237,8 +234,14 @@ Animation* SaveManager::getAnimation(std::filesystem::path path) {
 
 	if(animations.find(path.string()) == animations.end()) {
 		ptr = new Animation();
-		ptr->loadFromFile(path.string());
-		animations[path.stem().string()] = ptr;	
+
+		if(ptr->loadFromFile(path.string())) {
+			animations[path.stem().string()] = ptr;	
+	
+		}else {
+			delete ptr;
+			ptr = NULL;
+		}
 
 	}else {
 		ptr = animations.at(path.string());		

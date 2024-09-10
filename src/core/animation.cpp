@@ -165,14 +165,14 @@ void Animation::saveToFile(std::filesystem::path path) {
     file.close();
 }
 
-void Animation::loadFromFile(std::filesystem::path path) {
+bool Animation::loadFromFile(std::filesystem::path path) {
     keyFrames.clear();
 
     std::fstream file(path, std::fstream::in);
 
     if(!file.good()) {
         file.close();
-        return;
+        return false;
     }
 
     // Parse json
@@ -182,7 +182,7 @@ void Animation::loadFromFile(std::filesystem::path path) {
         json = nlohmann::json::parse(file);
 
     }catch(nlohmann::json::exception e) {
-        return;
+        return false;
     }
 
     // Reset to default object
@@ -280,6 +280,7 @@ void Animation::loadFromFile(std::filesystem::path path) {
         keyFrames.push_back(newFrame);
     }
     file.close();
+    return true;
 }
 
 int Animation::getStartup() {

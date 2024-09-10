@@ -26,7 +26,6 @@ struct Animation {
     // What the animation is
     std::string name                = "";
     int category                    = MoveCategory::Normal;
-    int points                      = 0;
 
     // How you can get into the animation
     bool from[MoveCategory::Total];
@@ -34,7 +33,7 @@ struct Animation {
 
     std::vector<Frame> keyFrames;
 
-    void loadFromFile(std::filesystem::path path);
+    bool loadFromFile(std::filesystem::path path);
     void saveToFile(std::filesystem::path path);
 
     void swapKeyFrame(int a, int b);

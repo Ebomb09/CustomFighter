@@ -5,10 +5,13 @@
 #include "core/save.h"
 #include "core/menu.h"
 
+#include <chrono>
+#include <cmath>
 #include <vector>
 #include <string>
 
 using std::vector, std::string;
+using namespace std::chrono;
 
 struct Creator {
 
@@ -51,15 +54,27 @@ struct Creator {
     int configSelected  = 0;
     int moveSelected    = 0;
     int itemSelected    = 0;
-    string moveSave     = "";
-    Player::Config::Cloth itemSave;
+    Player::Config      backup;
     int mode            = Mode::ChooseConfig;
 
     vector<Menu::Option> getPlayerConfigOptions() {
         vector<Menu::Option> out;
 
         for(int i = 0; i < g::save.maxPlayerConfigs; i ++) {
-            out.push_back({std::to_string(i), i});
+
+            Player test;
+            test.config = g::save.getPlayerConfig(i);
+
+            Skeleton pose = test.getSkeleton();
+
+            Rectangle capture {
+                pose.head.x - 0.5f,
+                pose.head.y - 0.5f,
+                1,
+                1
+            };
+
+            out.push_back({i, test, capture});
         }
         return out;
     }
@@ -67,18 +82,18 @@ struct Creator {
     vector<Menu::Option> getModificationOptions() {
         vector<Menu::Option> out;
 
-        out.push_back({"Confirm", ID::Confirm});
+        out.push_back({ID::Confirm, "Confirm"});
 
-        out.push_back({"", ID::Disregard});
+        out.push_back({});
 
-        out.push_back({"Costume", ID::Costume});
-        out.push_back({"MoveList", ID::MoveList});
+        out.push_back({ID::Costume, "Costume"});
+        out.push_back({ID::MoveList, "MoveList"});
 
-        out.push_back({"", ID::Disregard});
+        out.push_back({});
 
-        out.push_back({"Test", ID::Test});
-        out.push_back({"Save", ID::Save});
-        out.push_back({"Cancel", ID::Cancel});
+        out.push_back({ID::Test, "Test"});
+        out.push_back({ID::Save, "Save"});
+        out.push_back({ID::Cancel, "Cancel"});
 
         return out;
     }
@@ -90,34 +105,55 @@ struct Creator {
 
             if((moveCategorySelected == 0 && i < Move::Custom00) ||
                 (moveCategorySelected == 1 && i >= Move::Custom00)) {
-                out.push_back({Move::String[i], i});
-                out.push_back({dummy.config.motions[i], i, "fight"});
-                out.push_back({dummy.config.moves[i], i});                  
+                out.push_back({i, Move::String[i]});
+                out.push_back({i, dummy.config.motions[i], "fight"});
+                out.push_back({i, dummy.config.moves[i]});                  
             }    
         }
           
         // Spacing
-        out.push_back({"", ID::Disregard});
-        out.push_back({"", ID::Disregard});
-        out.push_back({"", ID::Disregard});
+        out.push_back({});
+        out.push_back({});
+        out.push_back({});
 
-        out.push_back({"BACK", ID::Cancel});
-        out.push_back({"", ID::Disregard});
-        out.push_back({"", ID::Disregard});
+        out.push_back({ID::Cancel, "BACK"});
+        out.push_back({});
+        out.push_back({});
 
         return out;
     }
 
     vector<Menu::Option> getAnimationOptions() {
+        auto time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+
         vector<Menu::Option> out;
 
-        for(auto anim : g::save.getAnimationsByFilter({Move::getValidCategories(moveSelected)[animCategorySelected]}))
-            out.push_back({anim, ID::Test});
+        for(auto anim : g::save.getAnimationsByFilter({Move::getValidCategories(moveSelected)[animCategorySelected]})) {
+            out.push_back({ID::Test, anim});
 
-        out.push_back({"", ID::Disregard});
+            Animation* ptr = g::save.getAnimation(anim);
 
-        out.push_back({"REMOVE", ID::Delete});
-        out.push_back({"BACK", ID::Cancel});
+            Player test = dummy;
+            test.config.moves[moveSelected] = anim;
+            test.state.moveIndex = moveSelected;
+
+            if(ptr && ptr->getFrameCount() > 0) 
+                test.state.moveFrame = (time / 17) % ptr->getFrameCount();
+
+            out.push_back({0, test});
+        }
+
+        out.push_back({});
+        out.push_back({});
+
+        // Moves before custom's are required
+        if(moveSelected >= Move::Custom00) {
+            out.push_back({ID::Delete, "REMOVE"});
+            out.push_back({});            
+        }
+
+        out.push_back({ID::Cancel, "BACK"});
+        out.push_back({});
 
         return out;
     }
@@ -126,12 +162,12 @@ struct Creator {
         vector<Menu::Option> out;    
         
         for(int i = 0; i < dummy.config.clothes.size(); i ++) {
-            out.push_back({dummy.config.clothes[i].name, i});
+            out.push_back({i, dummy.config.clothes[i].name});
         }
 
-        out.push_back({"", ID::Disregard});
-        out.push_back({"ADD", ID::Insert});
-        out.push_back({"BACK", ID::Cancel});
+        out.push_back({});
+        out.push_back({ID::Insert, "ADD"});
+        out.push_back({ID::Cancel, "BACK"});
 
         return out;
     }
@@ -140,11 +176,11 @@ struct Creator {
         vector<Menu::Option> out;
         
         for(auto& clothing : g::save.getClothingList())
-            out.push_back({clothing, 0});
+            out.push_back({0, clothing});
         
-        out.push_back({"", ID::Disregard});
-        out.push_back({"REMOVE", ID::Delete});
-        out.push_back({"BACK", ID::Cancel});
+        out.push_back({});
+        out.push_back({ID::Delete, "REMOVE"});
+        out.push_back({ID::Cancel, "BACK"});
 
         return out;    
     }
@@ -155,17 +191,6 @@ struct Creator {
             16.f,
             -32.f + (float)g::video.getSize().x / total,
             -32.f + (float)g::video.getSize().y
-        };
-    }
-
-    Rectangle getPlayerDiv() {
-        Rectangle div = getDiv();
-
-        return {
-            div.x,
-            div.y,
-            div.w,
-            div.h / 2
         };
     }
 
@@ -180,204 +205,212 @@ struct Creator {
         };
     }
 
-    void drawMoveProperties() {
-        Rectangle area = getPlayerDiv();
+    Rectangle getSubMenuDiv() {
+        Rectangle div = getDiv();
+
+        return {
+            div.x,
+            div.y,
+            div.w / 2,
+            div.h / 2
+        };
+    }
+
+    Rectangle getPlayerDiv() {
+        Rectangle div = getDiv();
+
+        return {
+            div.x,
+            div.y,
+            div.w,
+            div.h / 2
+        };
+    }
+
+    void drawMoveProperties(Rectangle area) {
         area.x += 16;
         area.w -= 32;
         area.y += 16;
         area.h -= 32;
 
         // Draw move properties
-        if(mode == Mode::ListConfigMoves || mode == Mode::ListAnimations || mode == Mode::SetConfigMotion) {
-            float pos = 0;
+        float pos = 0;
 
-            Animation* anim = g::save.getAnimation(dummy.config.moves[dummy.state.moveIndex]);
+        Animation* anim = g::save.getAnimation(dummy.config.moves[dummy.state.moveIndex]);
 
-            if(anim) {
-                int startup = anim->getStartup();
-                int damage = anim->getDamage();
-                int onhit = anim->getOnHit();
-                int onblock = anim->getOnBlock();
+        if(anim) {
+            int startup = anim->getStartup();
+            int damage = anim->getDamage();
+            int onhit = anim->getOnHit();
+            int onblock = anim->getOnBlock();
 
-                float width = 0;
-                float fontHeight = 16;
+            float width = 0;
+            float fontHeight = 16;
 
-                sf::Text txt;
-                txt.setFont(*g::save.getFont("Anton-Regular"));                
-                txt.setCharacterSize(fontHeight);
-                txt.setOutlineColor(sf::Color(0, 0, 0));
-                txt.setOutlineThickness(2);
+            sf::Text txt;
+            txt.setFont(*g::save.getFont("Anton-Regular"));                
+            txt.setCharacterSize(fontHeight);
+            txt.setOutlineColor(sf::Color(0, 0, 0));
+            txt.setOutlineThickness(2);
 
-                // Draw properties
-                txt.setString("Category: ");
+            // Draw properties
+            txt.setString("Category: ");
+            txt.setPosition({area.x, area.y + pos});
+            g::video.draw(txt);
+            pos += fontHeight;
+            width = std::max(width, txt.getLocalBounds().width);
+
+            if(startup != -1) {
+                txt.setString("Startup: ");
+                txt.setPosition({area.x, area.y + pos});           
+                g::video.draw(txt);
+                pos += fontHeight;
+                width = std::max(width, txt.getLocalBounds().width);
+
+                txt.setString("On Hit: ");
                 txt.setPosition({area.x, area.y + pos});
                 g::video.draw(txt);
                 pos += fontHeight;
                 width = std::max(width, txt.getLocalBounds().width);
 
-                if(startup != -1) {
-                    txt.setString("Startup: ");
-                    txt.setPosition({area.x, area.y + pos});           
-                    g::video.draw(txt);
-                    pos += fontHeight;
-                    width = std::max(width, txt.getLocalBounds().width);
+                txt.setString("On Block: ");
+                txt.setPosition({area.x, area.y + pos});
+                g::video.draw(txt);
+                pos += fontHeight;
+                width = std::max(width, txt.getLocalBounds().width);
 
-                    txt.setString("On Hit: ");
-                    txt.setPosition({area.x, area.y + pos});
-                    g::video.draw(txt);
-                    pos += fontHeight;
-                    width = std::max(width, txt.getLocalBounds().width);
+                txt.setString("Damage: ");
+                txt.setPosition({area.x, area.y + pos});
+                g::video.draw(txt);
+                pos += fontHeight;
+                width = std::max(width, txt.getLocalBounds().width);                    
+            }    
 
-                    txt.setString("On Block: ");
-                    txt.setPosition({area.x, area.y + pos});
-                    g::video.draw(txt);
-                    pos += fontHeight;
-                    width = std::max(width, txt.getLocalBounds().width);
+            bool customOnly = (anim->customFrom.size() > 0);
 
-                    txt.setString("Damage: ");
-                    txt.setPosition({area.x, area.y + pos});
-                    g::video.draw(txt);
-                    pos += fontHeight;
-                    width = std::max(width, txt.getLocalBounds().width);                    
-                }    
+            if(customOnly) {
 
-                bool customOnly = (anim->customFrom.size() > 0);
+                for(int i = 0; i < MoveCategory::Total; i ++){
 
-                if(customOnly) {
-
-                    for(int i = 0; i < MoveCategory::Total; i ++){
-
-                        if(anim->from[i]){
-                            customOnly = false;
-                            break;
-                        }
+                    if(anim->from[i]){
+                        customOnly = false;
+                        break;
                     }
                 }
+            }
 
-                if(customOnly) {
-                    pos += 32;
-                    txt.setString("Requires: ");
-                    txt.setPosition({area.x, area.y + pos});
-                    g::video.draw(txt);
-                    pos += fontHeight;
-                    width = std::max(width, txt.getLocalBounds().width);                    
-                }
+            if(customOnly) {
+                pos += 32;
+                txt.setString("Requires: ");
+                txt.setPosition({area.x, area.y + pos});
+                g::video.draw(txt);
+                pos += fontHeight;
+                width = std::max(width, txt.getLocalBounds().width);                    
+            }
 
-                // Draw property values
-                pos = 0;
-                txt.setString(MoveCategory::String[anim->category]); 
+            // Draw property values
+            pos = 0;
+            txt.setString(MoveCategory::String[anim->category]); 
+            txt.setPosition({area.x + width, area.y + pos});
+            g::video.draw(txt);
+            pos += fontHeight;    
+
+            if(startup != -1) {
+                txt.setString(std::to_string(startup));
+                txt.setPosition({area.x + width, area.y + pos});
+                txt.setFillColor(sf::Color(255, 255, 255));
+                g::video.draw(txt);
+                pos += fontHeight;
+
+                txt.setString((onhit >= 0) ? "+" + std::to_string(onhit) : std::to_string(onhit));
+                txt.setPosition({area.x + width, area.y + pos});
+                txt.setFillColor((onhit >= 0) ? sf::Color(152, 150, 255) : sf::Color(255, 162, 156));
+                g::video.draw(txt);
+                pos += fontHeight;
+
+                txt.setString((onblock >= 0) ? "+" + std::to_string(onblock) : std::to_string(onblock));
+                txt.setPosition({area.x + width, area.y + pos});
+                txt.setFillColor((onblock >= 0) ? sf::Color(152, 150, 255) : sf::Color(255, 162, 156));
+                g::video.draw(txt);
+                pos += fontHeight;
+
+                txt.setString(std::to_string(damage));
+                txt.setPosition({area.x + width, area.y + pos});
+                txt.setFillColor(sf::Color(255, 0, 0));
+                g::video.draw(txt);
+                pos += fontHeight;               
+            }
+
+            if(customOnly) {
+                pos += 32;
+                txt.setString(anim->customFrom);
+                txt.setColor(sf::Color(255, 255, 255));
                 txt.setPosition({area.x + width, area.y + pos});
                 g::video.draw(txt);
-                pos += fontHeight;    
-
-                if(startup != -1) {
-                    txt.setString(std::to_string(startup));
-                    txt.setPosition({area.x + width, area.y + pos});
-                    txt.setFillColor(sf::Color(255, 255, 255));
-                    g::video.draw(txt);
-                    pos += fontHeight;
-
-                    txt.setString((onhit >= 0) ? "+" + std::to_string(onhit) : std::to_string(onhit));
-                    txt.setPosition({area.x + width, area.y + pos});
-                    txt.setFillColor((onhit >= 0) ? sf::Color(152, 150, 255) : sf::Color(255, 162, 156));
-                    g::video.draw(txt);
-                    pos += fontHeight;
-
-                    txt.setString((onblock >= 0) ? "+" + std::to_string(onblock) : std::to_string(onblock));
-                    txt.setPosition({area.x + width, area.y + pos});
-                    txt.setFillColor((onblock >= 0) ? sf::Color(152, 150, 255) : sf::Color(255, 162, 156));
-                    g::video.draw(txt);
-                    pos += fontHeight;
-
-                    txt.setString(std::to_string(damage));
-                    txt.setPosition({area.x + width, area.y + pos});
-                    txt.setFillColor(sf::Color(255, 0, 0));
-                    g::video.draw(txt);
-                    pos += fontHeight;               
-                }
-
-                if(customOnly) {
-                    pos += 32;
-                    txt.setString(anim->customFrom);
-                    txt.setColor(sf::Color(255, 255, 255));
-                    txt.setPosition({area.x + width, area.y + pos});
-                    g::video.draw(txt);
-                    pos += fontHeight;                 
-                }
+                pos += fontHeight;                 
             }
         }
+        
+    }
+
+    void drawPlayerPoints(Rectangle area) {
+        area.x += 16;
+        area.w -= 32;
+
+        area.y += area.h - 16 - 32;
+        area.h = 32;
+
+        int old = backup.calculatePoints();
+        int current = dummy.config.calculatePoints();
+
+        auto time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+
+        for(int i = 0; i < MAX_POINTS; i ++) {
+            sf::Color color(26, 26, 26);
+
+            if(current > MAX_POINTS) {
+                color = sf::Color(150 + std::sin(time * PI / 180 / 4) * 100, 0, 0);
+
+            }else if(current > old) {
+                
+                if(i < old)
+                    color = sf::Color(255, 255, 255);
+
+                else if(i < current)
+                    color = sf::Color(0, 150 + std::sin(time * PI / 180 / 4) * 100, 0);
+            }else {
+
+                if(i < current)
+                    color = sf::Color(255, 255, 255);
+
+                else if(i < old)
+                    color = sf::Color(150 + std::sin(time * PI / 180 / 4) * 100, 0, 0);
+            }
+
+            sf::RectangleShape rect;
+            rect.setFillColor(color);
+            rect.setOutlineColor(sf::Color::Black);
+            rect.setOutlineThickness(2);
+            rect.setPosition({area.x + ((float)i / MAX_POINTS) * area.w, area.y});
+            rect.setSize({area.w / MAX_POINTS, area.h});
+            g::video.draw(rect);
+        }
+
+        if(current > MAX_POINTS)
+            Menu::renderText("!TOO MANY MOVES!", "Anton-Regular", sf::Color(0,0,0), area, 0);
     }
 
     void update() {
 
-        // Dummy behavior
-        Button::Flag in;
-
         if(test) {
+
+            // Capture player
+            dummy.state.position.x = 0;            
             dummy.in = dummy.readInput();
             dummy.advanceFrame({});
 
-        }else {
-
-            if(dummy.doneMove())
-                dummy.setMove(Move::Stand, true);
-
-            dummy.state.moveFrame ++;            
-        }   
-
-        // Capture player
-        Rectangle playerDiv = getPlayerDiv();
-        dummy.state.position.x = 0;
-
-        Rectangle boundingBox = dummy.getRealBoundingBox();
-        boundingBox.x -= 16.f;
-        boundingBox.y += 16.f;
-        boundingBox.w += 32.f;
-        boundingBox.h += 32.f;
-
-        // Scale bounding box to proper aspect ratio
-        Vector2 center = {boundingBox.x + boundingBox.w / 2, boundingBox.y - boundingBox.h / 2};
-
-        if(boundingBox.w / boundingBox.h < playerDiv.w / playerDiv.h) {
-            boundingBox.w = boundingBox.h * playerDiv.w / playerDiv.h;
-
-        }else {
-            boundingBox.h = boundingBox.w * playerDiv.h / playerDiv.w;
-        }
-
-        g::video.camera = {
-            center.x - boundingBox.w / 2,
-            center.y + boundingBox.h / 2,
-            boundingBox.w,
-            boundingBox.h
-        };
-
-
-        // Clear playerDiv
-        sf::RectangleShape rect = playerDiv;
-        rect.setFillColor(sf::Color(158, 215, 240));
-        g::video.draw(rect);
-
-        sf::View view = g::video.getDefaultView();
-        view.setViewport(playerDiv.getScreenRatio());
-        g::video.setView(view);
-
-        // Draw floor
-        rect = g::video.camera.getScreen(Rectangle{
-            -1000,
-            0,
-            2000,
-            1000
-        });
-        rect.setFillColor(sf::Color(2, 80, 158));
-        g::video.draw(rect);
-
-        // Draw player
-        dummy.draw();
-
-        g::video.setView(g::video.getDefaultView());
-
-        if(test) {
+            Menu::renderPlayer(dummy, dummy.getRealBoundingBox(), getDiv());
+            drawMoveProperties(getSubMenuDiv());
 
             if(dummy.state.button[0].Taunt) {
                 test = false;
@@ -385,10 +418,9 @@ struct Creator {
             }
 
         }else if(mode == Mode::ChooseConfig) {
-            Rectangle menuDiv = getMenuDiv();
-            auto options = getPlayerConfigOptions();
 
-            int res = Menu::Table(options, 5, false, &configHover, dummy.seatIndex, menuDiv);
+            auto options = getPlayerConfigOptions();
+            int res = Menu::Table(options, 5, false, &configHover, dummy.seatIndex, getDiv(), 64);
 
             dummy.config = g::save.getPlayerConfig(options[configHover].id);
 
@@ -402,50 +434,70 @@ struct Creator {
             }
 
         }else if(mode == Mode::ModifyConfig) {
-            Rectangle menuDiv = getMenuDiv();            
-            auto options = getModificationOptions();
 
-            int res = Menu::List(options, &modifyHover, dummy.seatIndex, menuDiv);
+            Menu::renderPlayer(dummy, dummy.getRealBoundingBox(), getPlayerDiv());
+            dummy.advanceFrame({});
+            drawPlayerPoints(getSubMenuDiv());
+        
+            backup = dummy.config;
+
+            auto options = getModificationOptions();
+            int res = Menu::List(options, &modifyHover, dummy.seatIndex, getMenuDiv());
 
             if(res == Menu::Accept) {
 
-                // Toggle test
+                // Let user test their creation
                 if(options[modifyHover].id == ID::Test) {
                     test = true;
 
+                // Save modifications
                 }else if(options[modifyHover].id == ID::Save) {
-                    g::save.savePlayerConfig(configSelected, dummy.config);
 
+                    if(dummy.config.calculatePoints() <= MAX_POINTS) {
+                        g::save.savePlayerConfig(configSelected, dummy.config);
+                    }
+
+                // Confirm character
                 }else if(options[modifyHover].id == ID::Confirm) {
-                    done = true;
-                    test = true;
 
+                    if(dummy.config.calculatePoints() <= MAX_POINTS) {
+                        done = true;
+                        test = true;
+                    }
+
+                // List config moves
                 }else if(options[modifyHover].id == ID::MoveList) {
                     mode = Mode::ListConfigMoves;
 
+                // Return to previous config selection
                 }else if(options[modifyHover].id == ID::Cancel) {
                     mode = Mode::ChooseConfig;
 
+                // List worn items
                 }else if(options[modifyHover].id == ID::Costume) {
                     mode = Mode::ListConfigItems;
                 }
 
+            // Return to previous config selection
             }else if(res == Menu::Decline) {
                 mode = Mode::ChooseConfig;
             }
 
+        // List the worn clothing items
         }else if(mode == Mode::ListConfigItems) {
-            Rectangle menuDiv = getMenuDiv();            
-            auto options = getConfigClothes();
+            Menu::renderPlayer(dummy, dummy.getRealBoundingBox(), getPlayerDiv());
+            dummy.advanceFrame({});
 
-            int res = Menu::List(options, &itemHover, dummy.seatIndex, menuDiv);
+            auto options = getConfigClothes();
+            int res = Menu::List(options, &itemHover, dummy.seatIndex, getMenuDiv());
 
             if(res == Menu::Accept) {
 
                 if(options[itemHover].id == ID::Insert) {
+                    backup = dummy.config;   
+                                     
                     dummy.config.clothes.push_back({""});
                     itemSelected = dummy.config.clothes.size()-1;
-                    itemSave = Player::Config::Cloth();
                     mode = Mode::ListClothes;
 
                 }else if(options[itemHover].id == ID::Cancel) {
@@ -453,7 +505,7 @@ struct Creator {
 
                 }else {
                     itemSelected = options[itemHover].id;
-                    itemSave = dummy.config.clothes[itemSelected];
+                    backup = dummy.config;
                     mode = Mode::ListClothes;
                 }
 
@@ -461,14 +513,23 @@ struct Creator {
                 mode = Mode::ModifyConfig;
             }
 
+        // List all available clothing items
         }else if(mode == Mode::ListClothes) {
-            Rectangle menuDiv = getMenuDiv();            
+            Menu::renderPlayer(dummy, dummy.getRealBoundingBox(), getPlayerDiv());
+            dummy.advanceFrame({});
+
             auto options = getClothingOptions();
+            int res = Menu::List(options, &clothHover, dummy.seatIndex, getMenuDiv());
 
-            int res = Menu::List(options, &clothHover, dummy.seatIndex, menuDiv);
+            if(options[clothHover].id >= 0) {
+                auto time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count(); 
 
-            if(options[clothHover].id >= 0)
-                dummy.config.clothes[itemSelected].name = options[clothHover].name;
+                dummy.config.clothes[itemSelected].name = *options[clothHover].text;
+
+                dummy.config.clothes[itemSelected].r = 255;
+                dummy.config.clothes[itemSelected].g = 200 + std::sin(time * PI / 180 / 4) * 50;
+                dummy.config.clothes[itemSelected].b = 200 + std::sin(time * PI / 180 / 4) * 50;
+            }
 
             if(res == Menu::Accept) {
 
@@ -479,41 +540,39 @@ struct Creator {
                 }else if(options[clothHover].id == ID::Cancel) {
 
                     // Rollback changes
-                    if(itemSave.name.size() == 0)
-                        dummy.config.clothes.erase(dummy.config.clothes.begin() + itemSelected);
-                    else
-                        dummy.config.clothes[itemSelected] = itemSave;
-
+                    dummy.config = backup;
                     mode = Mode::ListConfigItems;
 
                 }else {
+                    dummy.config.clothes[itemSelected].r = backup.clothes[itemSelected].r;
+                    dummy.config.clothes[itemSelected].g = backup.clothes[itemSelected].g;
+                    dummy.config.clothes[itemSelected].b = backup.clothes[itemSelected].b;
                     mode = Mode::SetConfigItemColor;
                 }
 
             }else if(res == Menu::Decline) {
 
                 // Rollback changes
-                if(itemSave.name.size() == 0)
-                    dummy.config.clothes.erase(dummy.config.clothes.begin() + itemSelected);
-                else
-                    dummy.config.clothes[itemSelected] = itemSave;
-
+                dummy.config = backup;
                 mode = Mode::ListConfigItems;
             }
 
         }else if(mode == Mode::SetConfigItemColor) {
-            Rectangle menuDiv = getMenuDiv();
+            Menu::renderPlayer(dummy, dummy.getRealBoundingBox(), getPlayerDiv());
+            dummy.advanceFrame({});
 
+            // Copy color in
             sf::Color color(dummy.config.clothes[itemSelected].r, dummy.config.clothes[itemSelected].g, dummy.config.clothes[itemSelected].b);
 
-            int res = Menu::ColorPicker(&color, dummy.seatIndex, menuDiv);
+            int res = Menu::ColorPicker(&color, dummy.seatIndex, getMenuDiv());
 
+            // Copy color out
             dummy.config.clothes[itemSelected].r = color.r;
             dummy.config.clothes[itemSelected].g = color.g;
             dummy.config.clothes[itemSelected].b = color.b;
 
             if(res == Menu::Accept) {
-                dummy.config.clothes[itemSelected].name = getClothingOptions()[clothHover].name;
+                dummy.config.clothes[itemSelected].name = *getClothingOptions()[clothHover].text;
                 mode = ListConfigItems;
 
             }else if(res == Menu::Decline) {
@@ -522,8 +581,11 @@ struct Creator {
 
         // Draw the movelist selection
         }else if(mode == Mode::ListConfigMoves) {
+            backup = dummy.config;
 
-            drawMoveProperties();
+            Menu::renderPlayer(dummy, dummy.getRealBoundingBox(), getPlayerDiv());
+            drawMoveProperties(getSubMenuDiv());
+            drawPlayerPoints(getSubMenuDiv());
 
             // Select to edit the player stance, or custom input moves
             Button::Config b = g::save.getButtonConfig(dummy.seatIndex);
@@ -541,25 +603,43 @@ struct Creator {
             else if(moveCategorySelected >= categories.size())
                 moveCategorySelected = 0;
 
-            Rectangle menuDiv = getMenuDiv();
+            Rectangle div = getMenuDiv();
+
+            Rectangle headerDiv {
+                div.x,
+                div.y,
+                div.w,
+                div.h * 1/16
+            };
+
+            Rectangle menuDiv {
+                div.x,
+                headerDiv.y + headerDiv.h,
+                div.w,
+                div.h - headerDiv.h
+            };
 
             // Draw which category we selected
-            sf::Text txt;
-            txt.setFont(*g::save.getFont("Anton-Regular"));            
-            txt.setString("< " + categories[moveCategorySelected] + " >");
-            txt.setCharacterSize(48);
-            txt.setPosition({menuDiv.x + menuDiv.w / 2 - txt.getLocalBounds().width / 2, menuDiv.y});            
-            g::video.draw(txt);            
-
-            menuDiv.y += 64;
-            menuDiv.h -= 64;
+            string header = "< " + categories[moveCategorySelected] + " >";
+            Menu::renderText(header, "Anton-Regular", sf::Color::White, headerDiv, 0);
 
             auto options = getConfigMoves();
-
             int res = Menu::Table(options, 3, true, &moveHover, dummy.seatIndex, menuDiv);
 
-            if(options[moveHover].id >= 0)
-                dummy.setMove(getConfigMoves()[moveHover].id, true); 
+            // Set to default animation
+            dummy.setMove(Move::Stand, true);
+            dummy.advanceFrame({});
+
+            // Set the dummys animation
+            if(options[moveHover].id >= 0) {
+                Animation* anim = g::save.getAnimation(dummy.config.moves[options[moveHover].id]);
+
+                if(anim) {
+                    auto time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();  
+                    dummy.state.moveIndex = options[moveHover].id;                                         
+                    dummy.state.moveFrame = (time / 17) % anim->getFrameCount();
+                }
+            }
 
             if(res == Menu::Accept) {
 
@@ -567,8 +647,11 @@ struct Creator {
                     mode = Mode::ModifyConfig;
 
                 }else if(options[moveHover].id >= 0) {
+                    backup = dummy.config;
+
                     moveSelected = options[moveHover].id;
-                    moveSave = dummy.config.moves[moveSelected];
+                    dummy.config.moves[moveSelected] = "";                    
+                    dummy.config.motions[moveSelected] = "";
                     mode = Mode::ListAnimations;
                 }
 
@@ -578,8 +661,6 @@ struct Creator {
 
         // Draw the animation selection
         }else if(mode == Mode::ListAnimations) {
-
-            drawMoveProperties();
 
             // Choose category if multiple available
             Button::Config b = g::save.getButtonConfig(dummy.seatIndex);
@@ -598,57 +679,88 @@ struct Creator {
                 animCategorySelected = 0;
 
             // List the availabile animations
-            Rectangle menuDiv = getMenuDiv();
+            Rectangle div = getDiv();
+
+            Rectangle barDiv {
+                div.x,
+                div.y,
+                div.w,
+                div.h * 1/16
+            };   
+
+            Rectangle headerDiv {
+                div.x,
+                barDiv.y + barDiv.h,
+                div.w,
+                div.h * 1/16
+            };         
+
+            Rectangle menuDiv {
+                div.x,
+                headerDiv.y + headerDiv.h,
+                div.w,
+                div.h - (barDiv.h + headerDiv.h)             
+            };
 
             string category = MoveCategory::String[categories[animCategorySelected]];
-
-            sf::Text txt;
-            txt.setFont(*g::save.getFont("Anton-Regular"));            
-            txt.setString((categories.size() > 1) ? "< " + category + " >" : category);
-            txt.setCharacterSize(48);
-            txt.setPosition({menuDiv.x + menuDiv.w / 2 - txt.getLocalBounds().width / 2, menuDiv.y});            
-            g::video.draw(txt);
-
-            menuDiv.y += 64;
-            menuDiv.h -= 64;
+            Menu::renderText("< " + category + " >", "Anton-Regular", sf::Color::White, headerDiv, 0);
+            drawPlayerPoints(barDiv);
 
             auto options = getAnimationOptions();
+            int res = Menu::Table(options, 2, true, &animHover, dummy.seatIndex, menuDiv, 128);
 
-            int res = Menu::List(options, &animHover, dummy.seatIndex, menuDiv);
-
-            if(options[animHover].id == ID::Test) {
-                dummy.config.moves[moveSelected] = options[animHover].name;
-                dummy.setMove(getConfigMoves()[moveHover].id, true);
-            }
+            // Set the dummy animation
+            if(options[animHover].id == ID::Test)
+                dummy.config.moves[moveSelected] = *options[animHover].text;
+            else
+                dummy.config.moves[moveSelected] = "";
 
             if(res == Menu::Accept) {
 
+                // Delete animation and motions
                 if(options[animHover].id == ID::Delete) {
                     dummy.config.moves[moveSelected] = "";
                     dummy.config.motions[moveSelected] = "";
                     mode = Mode::ListConfigMoves;
 
+                // Restore original, return to moveList
                 }else if(options[animHover].id == ID::Cancel) {
-                    dummy.config.moves[moveSelected] = moveSave;
+                    dummy.config = backup;
                     mode = Mode::ListConfigMoves;
 
-                }else {
-                    dummy.config.moves[moveSelected] = options[animHover].name;
+                // Go to next step and select a motion
+                }else if(options[animHover].id == ID::Test){
                     dummy.config.motions[moveSelected] = "";
                     mode = Mode::SetConfigMotion;
                 }
 
+            // Restore original, return to moveList
             }else if(res == Menu::Decline) {
+                dummy.config = backup;
                 mode = Mode::ListConfigMoves;
-                dummy.config.moves[moveSelected] = moveSave;
             }
 
         // Draw the motion interpreter
         }else if(mode == Mode::SetConfigMotion) {
 
-            drawMoveProperties();
+            // List the availabile animations
+            Rectangle div = getDiv();
 
-            Rectangle menuDiv = getMenuDiv();
+            Rectangle barDiv {
+                div.x,
+                div.y,
+                div.w,
+                div.h * 1/16
+            };           
+
+            Rectangle menuDiv {
+                div.x,
+                div.y + div.h * 2/16,
+                div.w,
+                div.h - (div.h * 2/16)             
+            };
+
+            drawPlayerPoints(barDiv);
 
             if(moveSelected >= Move::Custom00) {
                 int res = Menu::Motion(&dummy.config.motions[moveSelected], dummy.seatIndex, menuDiv);

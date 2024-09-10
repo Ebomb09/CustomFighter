@@ -52,6 +52,8 @@ struct Player {
 		std::string saveToText();
 		void loadFromFile(std::string fileName);
 		void saveToFile(std::string fileName);
+
+		int calculatePoints();
 	}config;
 
 	struct State {
@@ -73,7 +75,7 @@ struct Player {
 
 	Button::Flag readInput();
 	void advanceFrame(std::vector<Player> others);
-	void draw();
+	void draw(sf::RenderTarget* renderer = NULL);
 
 	void dealDamage(int dmg);
 

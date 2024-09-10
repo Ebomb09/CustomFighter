@@ -150,15 +150,17 @@ void Editor::resetPlayer() {
     player.config.moves[Move::Stand] = "";
     player.config.moves[Move::Custom00] = "";    
 
+    string test = g::save.getAnimationsList()[0];
+
     if(anim.category < Move::Custom00) {
-        player.config.moves[Move::Stand] = "test";
+        player.config.moves[Move::Stand] = test;
         player.setMove(Move::Stand);
         
     }else {
-        player.config.moves[Move::Custom00] = "test";
+        player.config.moves[Move::Custom00] = test;
         player.setMove(Move::Custom00);        
     }
-    *g::save.getAnimation("test") = anim;
+    *g::save.getAnimation(test) = anim;
 }
 
 Skeleton Editor::getSkeleton() {

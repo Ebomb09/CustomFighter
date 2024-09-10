@@ -13,7 +13,11 @@
 
 using std::vector, std::string;
 
-void Player::draw() {
+void Player::draw(sf::RenderTarget* renderer) {
+
+    if(!renderer)
+        renderer = &g::video;
+
     Skeleton pose = getSkeleton();
 
     // HitStop shake
@@ -23,7 +27,7 @@ void Player::draw() {
             pose.joints[i].x += std::sin(state.hitStop) * 2;
     }
 
-    pose.draw(getClothes(), state.look);
+    pose.draw(renderer, getClothes(), state.look);
 }
 
 Button::Flag Player::readInput() {
@@ -889,4 +893,45 @@ Rectangle Player::getRealBoundingBox() {
 
 Rectangle Player::getScreenBoundingBox() {
     return g::video.camera.getScreen(getRealBoundingBox());
+}
+
+int Player::Config::calculatePoints() {
+    int points = 0;
+
+    for(int i = Move::Custom00; i < Move::Total; i ++) {
+        Animation* anim = g::save.getAnimation(moves[i]);
+
+        if(anim) {
+            int base = 0;
+
+            switch(anim->category) {
+
+            case MoveCategory::Normal:
+            case MoveCategory::AirNormal:
+            case MoveCategory::Grab:         
+            case MoveCategory::AirGrab:  
+                base = 1;                 
+                break;
+
+            case MoveCategory::CommandNormal:
+            case MoveCategory::AirCommandNormal:
+                base = 2;                 
+                break;
+
+            case MoveCategory::Special:
+            case MoveCategory::AirSpecial:
+                base = 3;                 
+                break;
+
+            case MoveCategory::Super:
+            case MoveCategory::AirSuper:
+                base = 4;
+                break;
+            }
+
+            if(base > 0)
+                points += std::round(base / (1.f + std::floor(motions[i].size() / 4.f)));
+        }
+    }
+    return points;
 }

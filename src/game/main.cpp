@@ -19,13 +19,13 @@ enum {
 };
 
 vector<Menu::Option> menuOptions = {
-    {"NetPlay", NetPlay},    
-    {"Local 2P Fight", LocalFight2P},
-    {"Local 4P Fight", LocalFight4P},
-    {"Options", OptionMenu},
-    {"Exit", Exit}
+    {NetPlay, "NetPlay"},    
+    {LocalFight2P, "Local 2P Fight"},
+    {LocalFight4P, "Local 4P Fight"},
+    {OptionMenu, "Options"},
+    {Exit, "Exit"}
 };
-int menuHover = 0;
+int hover = 0;
 
 int main(int argc, char* argv[]) {
 
@@ -36,25 +36,25 @@ int main(int argc, char* argv[]) {
 
         g::video.clear();
 
-        int res = Menu::List(menuOptions, &menuHover, 0, {0, 0, (float)g::video.getSize().x, (float)g::video.getSize().y});
+        int res = Menu::List(menuOptions, &hover, 0, {0, 0, (float)g::video.getSize().x, (float)g::video.getSize().y});
 
         if(res == Menu::Accept) {
 
-            if(menuOptions[menuHover].id == LocalFight2P) {
+            if(menuOptions[hover].id == LocalFight2P) {
                 vector<Player::Config> configs = CharacterSelect::run(2);
 
                 if(configs.size() == 2) {
                     LocalGame::run(configs);
                 }
                 
-            }else if(menuOptions[menuHover].id == LocalFight4P) {
+            }else if(menuOptions[hover].id == LocalFight4P) {
                 vector<Player::Config> configs = CharacterSelect::run(4);
 
                 if(configs.size() == 4) {
                     LocalGame::run(configs);
                 }
                 
-            }else if(menuOptions[menuHover].id == NetPlay) {
+            }else if(menuOptions[hover].id == NetPlay) {
                 vector<Player::Config> configs = CharacterSelect::run(1);
 
                 if(configs.size() == 1) {
@@ -65,10 +65,10 @@ int main(int argc, char* argv[]) {
                     }
                 }
 
-            }else if(menuOptions[menuHover].id == OptionMenu) {
+            }else if(menuOptions[hover].id == OptionMenu) {
                 Options::run();
             
-            }else if(menuOptions[menuHover].id == Exit) {
+            }else if(menuOptions[hover].id == Exit) {
                 g::video.close();
             }
         }

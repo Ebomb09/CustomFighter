@@ -1,5 +1,4 @@
 #include "menu.h"
-
 #include "button.h"
 #include "input_interpreter.h"
 #include "math.h"
@@ -7,11 +6,97 @@
 #include "render_instance.h"
 #include "audio.h"
 #include "save.h"
+
+#include <utility>
 #include <string>
 
 using std::vector, std::string;
 
-static void cycleIndex(std::vector<Menu::Option> options, int* index, int quantity) {
+Menu::Option::Option() {
+	type = Type::Empty;
+}
+
+Menu::Option::Option(int _id, std::string _text, std::string _font) {
+	type = Type::Text;
+	id = _id;
+	text = new string(_text);
+	font = new string(_font);
+}
+
+Menu::Option::Option(int _id, Player _player, Rectangle _capture) {
+
+	if(_capture.w == 0 || _capture.h == 0)
+		_capture = _player.getRealBoundingBox();
+
+	type = Type::Player;
+	id = _id;
+	player = new Player(_player);
+	capture = new Rectangle(_capture);
+}
+
+Menu::Option::~Option() {
+
+	switch(type) {
+
+	case Type::Text:
+
+		if(text) delete text;
+		if(font) delete font;
+		break;
+
+	case Type::Player:
+		if(player) delete player;
+		if(capture) delete capture;		
+		break;		
+
+	default:
+		break;
+	}
+}
+
+Menu::Option::Option(Option&& move) {
+	id = std::move(move.id);
+	type = std::exchange(move.type, Type::Empty);
+
+	switch(type) {
+
+	case Type::Text:
+		text = std::move(move.text);
+		font = std::move(move.font);
+		break;
+
+	case Type::Player:
+		player = std::move(move.player);
+		capture = std::move(move.capture);		
+		break;		
+
+	default:
+		break;
+	}
+}
+
+Menu::Option::Option(const Option& copy) {
+	id = copy.id;
+	type = copy.type;
+
+	switch(type) {
+
+	case Type::Text:
+		text = new string(*copy.text);
+		font = new string(*copy.font);
+		break;
+
+	case Type::Player:
+		player = new Player(*copy.player);
+		capture = new Rectangle(*copy.capture);		
+		break;		
+
+	default:
+		break;
+	}
+}
+
+void cycleIndex(std::vector<Menu::Option> options, int* index, int quantity) {
 	int beg = *index;
 
 	do {
@@ -35,46 +120,12 @@ static void cycleIndex(std::vector<Menu::Option> options, int* index, int quanti
 		else if(quantity < 0)
 			quantity = -1;
 
-	}while(options[*index].name == "");
+	}while(options[*index].type == Menu::Option::Type::Empty);
 }
 
-static void renderText(string str, string font, sf::Color color, Rectangle area, int align) {
+static float scroll[MAX_PLAYERS] {0, 0, 0, 0};
 
-	sf::Text text;
-	text.setFont(*g::save.getFont(font));
-	text.setCharacterSize(Menu::fontHeight);
-	text.setColor(color);	
-	text.setString(str);
-
-    // Ensure the text isn't overlapping into the next column
-    float testSize = text.getCharacterSize();
-
-    while(text.getLocalBounds().width > area.w || text.getLocalBounds().height > area.h) {
-    	text.setCharacterSize(testSize);
-    	testSize --;
-    }
-
-    // Calculate free space within cell
-    Vector2 freeSpace{
-    	area.w - text.getLocalBounds().width,
-    	area.h - text.getLocalBounds().height
-    };
-
-    // Align text
-    if(align == 0) {
-    	text.setPosition({area.x + freeSpace.x / 2, area.y + freeSpace.y});
-
-    }else if(align == 1){
-    	text.setPosition({area.x + freeSpace.x, area.y + freeSpace.y});
-
-    }else {
-    	text.setPosition({area.x, area.y + freeSpace.y});
-    }
-
-	g::video.draw(text);
-}
-
-int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int* hover, int user, Rectangle area) {
+int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int* hover, int user, Rectangle area, float rowHeight) {
 	int status = Wait;
 	int initial = *hover;
 
@@ -99,7 +150,7 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 			cycleIndex(options, hover, -1);
 
 		if(g::input.pressed(b.index, b.Right) && !selectByRow) 
-			cycleIndex(options, hover, 1);		
+			cycleIndex(options, hover, 1);
 	}
 
 	// Safe check index, can be bad on the first table call
@@ -117,37 +168,39 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 
 	int 	rows 				= options.size() / columns;
 	int 	selectedRow 		= (*hover) / columns;
-	float 	distanceScrolled 	= fontHeight * (selectedRow + 1);
-	float	bottomRow			= rows * fontHeight;
+	float 	distanceScrolled 	= rowHeight * (selectedRow + 1);
+	float	bottomRow			= rows * rowHeight;
 
     // Set view to scrolled distance
-	float scroll = 0;
+	float desiredScroll = 0;
 
 	// If last row extends past the maximum area then activate scroll
 	if(bottomRow > area.h) {
 
 	    if(distanceScrolled > bottomRow - area.h / 2) {
-	        scroll = bottomRow - area.h;
+	        desiredScroll = bottomRow - area.h;
 
 	    }else if(distanceScrolled > area.h / 2) {
-	        scroll = distanceScrolled - area.h / 2;
+	        desiredScroll = distanceScrolled - area.h / 2;
 	    }		
 	}
 
+	// Scroll effect
+	if(scroll[user] < desiredScroll)
+		scroll[user] = std::min(desiredScroll, scroll[user] + (desiredScroll - scroll[user]) / 10);
+
+	if(scroll[user] > desiredScroll)
+		scroll[user] = std::max(desiredScroll, scroll[user] - (scroll[user] - desiredScroll) / 10);
+
 	sf::View view({
 		area.x, 
-		area.y + scroll, 
+		area.y + scroll[user], 
 		area.w, 
 		area.h
 	});
 
 	// View port is relative of screen coordinates
-	view.setViewport({
-		area.x / g::video.getSize().x, 
-		area.y / g::video.getSize().y, 
-		area.w / g::video.getSize().x, 
-		area.h / g::video.getSize().y
-	});
+	view.setViewport(area.getScreenRatio());
 
 	g::video.setView(view);
 
@@ -168,22 +221,66 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 					color = sf::Color::Yellow;
 			}
 
-			Rectangle renderBox = {pos.x + j * (area.w / columns), pos.y, area.w / columns, fontHeight};
-	        renderText(options[i+j].name, options[i+j].font, color, renderBox, 0);
+			Rectangle renderBox = {pos.x + j * (area.w / columns), pos.y, area.w / columns, rowHeight};
+
+			switch(options[i+j].type) {
+
+			case Option::Type::Text:
+	        	renderText(*options[i+j].text, *options[i+j].font, color, renderBox, 0);
+	        	break;
+
+	        case Option::Type::Player: 
+	        	renderPlayer(*options[i+j].player, *options[i+j].capture, renderBox);
+	        	break;
+	        
+	        default:
+	        	break;
+			}
 
 	        // Mouse controls
 	        if(Screen::pointInRectangle(g::input.mousePosition, renderBox)) {
 
-	        	if(options[i+j].name != "") {
-	        		*hover = i+j;
+	        	if(options[i+j].type != Option::Type::Empty) {
+
+	        		if(selectByRow)
+	        			*hover = i;
+	        		else
+	        			*hover = i+j;
 
 	       			if(g::input.pressed(MOUSE_INDEX, sf::Mouse::Left))
 	       				status = Menu::Accept;    		
 	        	}        	
 	        }
 		}
-        pos.y += fontHeight;
+		pos.y += rowHeight;
 	}
+
+	// Draw outlines
+	pos = Vector2(area.x, area.y);
+
+	for(int i = 0; i < options.size(); i += columns) {
+
+		for(int j = 0; j < columns && i + j < options.size(); j ++) {
+			Rectangle renderBox = {pos.x + j * (area.w / columns), pos.y, area.w / columns, rowHeight};
+
+			if(!selectByRow && *hover == i + j) {
+				sf::RectangleShape rect = renderBox;
+				rect.setFillColor(sf::Color::Transparent);
+				rect.setOutlineColor(sf::Color::Yellow);
+				rect.setOutlineThickness(2);
+				g::video.draw(rect);
+			}
+		}
+
+		if(selectByRow && *hover == i) {
+			sf::RectangleShape rect = Rectangle{pos.x, pos.y, area.w, rowHeight};
+			rect.setFillColor(sf::Color::Transparent);
+			rect.setOutlineColor(sf::Color::Yellow);
+			rect.setOutlineThickness(2);
+			g::video.draw(rect);
+		}
+		pos.y += rowHeight;
+	}	
 	g::video.setView(g::video.getDefaultView());
 
 	// Play sound when changes
@@ -196,8 +293,8 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 	return status;
 }
 
-int Menu::List(std::vector<Option> options, int* hover, int user, Rectangle area) {
-	return Table(options, 1, true, hover, user, area);
+int Menu::List(std::vector<Option> options, int* hover, int user, Rectangle area, float rowHeight) {
+	return Table(options, 1, true, hover, user, area, rowHeight);
 }
 
 static int keyboardData[MAX_PLAYERS];
@@ -217,40 +314,40 @@ int Menu::Text(std::string* str, int user, Rectangle area) {
 	};
 
 	vector<Option> options;
-	options.push_back({"Q", 'Q'});
-	options.push_back({"W", 'W'});
-	options.push_back({"E", 'E'});
-	options.push_back({"R", 'R'});
-	options.push_back({"T", 'T'});
-	options.push_back({"Y", 'Y'});
-	options.push_back({"U", 'U'});
-	options.push_back({"I", 'I'});
-	options.push_back({"O", 'O'});
-	options.push_back({"P", 'P'});
+	options.push_back(Option('Q', "Q"));
+	options.push_back(Option('W', "W"));
+	options.push_back(Option('E', "E"));
+	options.push_back(Option('R', "R"));
+	options.push_back(Option('T', "T"));
+	options.push_back(Option('Y', "Y"));
+	options.push_back(Option('U', "U"));
+	options.push_back(Option('I', "I"));
+	options.push_back(Option('O', "O"));
+	options.push_back(Option('P', "P"));
 
-	options.push_back({"A", 'A'});
-	options.push_back({"S", 'S'});
-	options.push_back({"D", 'D'});
-	options.push_back({"F", 'F'});
-	options.push_back({"G", 'G'});
-	options.push_back({"H", 'H'});
-	options.push_back({"J", 'J'});
-	options.push_back({"K", 'K'});
-	options.push_back({"L", 'L'});
-	options.push_back({"Delete", Delete});
+	options.push_back(Option('A', "A"));
+	options.push_back(Option('S', "S"));
+	options.push_back(Option('D', "D"));
+	options.push_back(Option('F', "F"));
+	options.push_back(Option('G', "G"));
+	options.push_back(Option('H', "H"));
+	options.push_back(Option('J', "J"));
+	options.push_back(Option('K', "K"));
+	options.push_back(Option('L', "L"));
+	options.push_back(Option(Delete, "Delete"));
 
-	options.push_back({"Z", 'A'});
-	options.push_back({"X", 'S'});
-	options.push_back({"C", 'D'});
-	options.push_back({"V", 'F'});
-	options.push_back({"B", 'G'});
-	options.push_back({"N", 'H'});
-	options.push_back({"M", 'J'});
-	options.push_back({"K", 'K'});
-	options.push_back({"Space", ' '});
-	options.push_back({"Enter", Enter});
+	options.push_back(Option('Z', "Z"));
+	options.push_back(Option('X', "X"));
+	options.push_back(Option('C', "C"));
+	options.push_back(Option('V', "V"));
+	options.push_back(Option('B', "B"));
+	options.push_back(Option('N', "N"));
+	options.push_back(Option('M', "M"));
+	options.push_back(Option('K', "K"));
+	options.push_back(Option(' ', "Space"));
+	options.push_back(Option(Enter, "Enter"));
 
-	options.push_back({"Cancel", Cancel});
+	options.push_back(Option(Cancel, "Cancel"));
 
 	int res = Table(options, 10, false, &keyboardData[user], user, area);
 
@@ -502,4 +599,99 @@ int Menu::ColorPicker(sf::Color* color, int user, Rectangle area) {
 		return Decline;
 
 	return Wait;
+}
+
+void Menu::renderText(string str, string font, sf::Color color, Rectangle area, int align) {
+
+	sf::Text text;
+	text.setFont(*g::save.getFont(font));
+	text.setCharacterSize(Menu::fontHeight);
+	text.setOutlineColor(sf::Color::Black);
+	text.setOutlineThickness(1);
+	text.setColor(color);	
+	text.setString(str);
+
+    // Ensure the text isn't overlapping into the next column
+    float testSize = text.getCharacterSize();
+
+    while(text.getGlobalBounds().width > area.w || text.getGlobalBounds().height > area.h) {
+    	text.setCharacterSize(testSize);
+    	testSize --;
+    }
+
+    // Calculate free space within cell
+    Vector2 freeSpace{
+    	area.w - text.getGlobalBounds().width,
+    	area.h - text.getGlobalBounds().height
+    };
+
+    // Align text
+    if(align == 0) {
+    	text.setPosition({area.x + freeSpace.x / 2, area.y + freeSpace.y / 2});
+
+    }else if(align == 1){
+    	text.setPosition({area.x + freeSpace.x, area.y + freeSpace.y / 2});
+
+    }else {
+    	text.setPosition({area.x, area.y + freeSpace.y / 2});
+    }
+
+	g::video.draw(text);
+}
+
+static sf::RenderTexture renderer;
+
+void Menu::renderPlayer(Player player, Rectangle capture, Rectangle area) {
+    capture.x -= 16.f;
+    capture.y += 16.f;
+    capture.w += 32.f;
+    capture.h += 32.f;
+
+    // Scale bounding box to proper aspect ratio
+    Vector2 center = {capture.x + capture.w / 2, capture.y - capture.h / 2};
+
+    if(capture.w / capture.h < area.w / area.h) {
+        capture.w = capture.h * area.w / area.h;
+
+    }else {
+        capture.h = capture.w * area.h / area.w;
+    }
+
+    // Set camera to the location of player
+    g::video.camera = {
+        center.x - capture.w / 2,
+        center.y + capture.h / 2,
+        capture.w,
+        capture.h
+    };
+
+    if(renderer.create(g::video.getSize().x, g::video.getSize().y)) {
+    	renderer.clear();
+
+	    // Clear the area
+	    sf::RectangleShape rect;
+	    rect.setSize({(float)g::video.getSize().x, (float)g::video.getSize().y});
+	    rect.setFillColor(sf::Color(158, 215, 240));
+	    renderer.draw(rect);
+
+	    // Draw floor
+        rect = g::video.camera.getScreen(Rectangle{
+            -1000,
+            0,
+            2000,
+            1000
+        });
+        rect.setFillColor(sf::Color(2, 80, 158));
+        renderer.draw(rect);
+
+	    // Draw player
+	    player.draw(&renderer);
+
+	    renderer.display();
+
+	    // Draw the output image
+	    sf::RectangleShape out = area;
+	    out.setTexture(&renderer.getTexture());
+	    g::video.draw(out);
+    }
 }

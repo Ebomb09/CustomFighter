@@ -50,23 +50,23 @@ void ButtonConfig::run() {
 				vector<Menu::Option> options;
 
 				// Show controller name
-				options.push_back({"Controller", ControllerMode});
-				options.push_back({g::input.controllerName(b.index), ControllerMode});
+				options.push_back({ControllerMode, "Controller"});
+				options.push_back({ControllerMode, g::input.controllerName(b.index)});
 
-				options.push_back({"", Disregard});
-				options.push_back({"", Disregard});
+				options.push_back({});
+				options.push_back({});
 
 				// Show all inputs
 				for(int i = 0; i < Button::Total; i ++) {
-					options.push_back({Button::String[i], i});
-					options.push_back({g::input.buttonName(b.index, b.button[i]), i});			
+					options.push_back({i, Button::String[i]});
+					options.push_back({i, g::input.buttonName(b.index, b.button[i])});			
 				}
 
-				options.push_back({"", Disregard});
-				options.push_back({"", Disregard});
+				options.push_back({});
+				options.push_back({});
 
-				options.push_back({"Back", Back});
-				options.push_back({"", Back});
+				options.push_back({Back, "Back"});
+				options.push_back({});
 
 				int res = Menu::Table(options, 2, true, &hover[i].top(), i, area);
 

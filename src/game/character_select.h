@@ -5,6 +5,8 @@
 
 #include <vector>
 
+#define MAX_POINTS 30
+
 namespace CharacterSelect {
 	std::vector<Player::Config> run(int count);
 };

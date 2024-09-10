@@ -5,7 +5,6 @@
 #include "core/render_instance.h"
 #include "core/save.h"
 
-#include <iostream>
 #include <vector>
 #include <string>
 
@@ -25,31 +24,31 @@ void VideoConfig::run() {
 	Button::Config b = g::save.getButtonConfig(0);
 	int hover = 0;
 
-    while (g::video.isOpen()) {
-        g::input.pollEvents();
+	while (g::video.isOpen()) {
+	    g::input.pollEvents();
 
-        g::video.clear();
+	    g::video.clear();
 
 		Rectangle area = {0, 0, (float)g::video.getSize().x, (float)g::video.getSize().y};
 		vector<Menu::Option> options;
 
-		options.push_back({"Resolution", Resolution});
-		options.push_back({std::to_string(g::save.resolutionWidth) + "x" + std::to_string(g::save.resolutionHeight), Resolution});
+		options.push_back({Resolution, "Resolution"});
+		options.push_back({Resolution, std::to_string(g::save.resolutionWidth) + "x" + std::to_string(g::save.resolutionHeight)});
 
-		options.push_back({"Display Mode", DisplayMode});
-		options.push_back({DisplayMode::String[g::save.displayMode], DisplayMode});	
+		options.push_back({DisplayMode, "Display Mode"});
+		options.push_back({DisplayMode, DisplayMode::String[g::save.displayMode]});	
 
-		options.push_back({"V-Sync", VSync});	
-		options.push_back({(g::save.vsync) ? " On" : "Off", VSync});
+		options.push_back({VSync, "V-Sync"});	
+		options.push_back({VSync, (g::save.vsync) ? " On" : "Off"});
 
-		options.push_back({"Apply", Apply});
-		options.push_back({"", Apply});
+		options.push_back({Apply, "Apply"});
+		options.push_back({});
 
-		options.push_back({"", Disregard});
-		options.push_back({"", Disregard});
+		options.push_back({});
+		options.push_back({});
 
-		options.push_back({"Back", Back});
-		options.push_back({"", Back});
+		options.push_back({Back, "Back"});
+		options.push_back({});
 
 		int res = Menu::Table(options, 2, true, &hover, 0, area);
 
@@ -119,6 +118,6 @@ void VideoConfig::run() {
 					g::save.vsync = !g::save.vsync;
 			}
 		}
-        g::video.display();
-    }	
+	    g::video.display();
+	}	
 }

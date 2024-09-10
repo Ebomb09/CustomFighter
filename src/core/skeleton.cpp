@@ -120,7 +120,7 @@ void Skeleton::rotateJoint(Vector2& joint, Vector2& origin, float rotate) {
     }    
 }
 
-void Skeleton::drawBone(std::vector<Clothing> list, int part, Bone& bone, float width, bool flip) {
+void Skeleton::drawBone(sf::RenderTarget* renderer, std::vector<Clothing> list, int part, Bone& bone, float width, bool flip) {
     width /= 2.f;
 
     // Shortcuts
@@ -183,11 +183,11 @@ void Skeleton::drawBone(std::vector<Clothing> list, int part, Bone& bone, float 
         sf::RenderStates states;
         states.texture = tex;
 
-        g::video.draw(vert, 4, sf::PrimitiveType::Quads, states);        
+        renderer->draw(vert, 4, sf::PrimitiveType::Quads, states);        
     }
 }
 
-void Skeleton::drawTorso(std::vector<Clothing> list) {
+void Skeleton::drawTorso(sf::RenderTarget* renderer, std::vector<Clothing> list) {
     Vector2 pt[3][3];
 
     if(!torsoTopFlipped()) {
@@ -276,17 +276,17 @@ void Skeleton::drawTorso(std::vector<Clothing> list) {
                 vert[v].texCoords = texPt[x][y];   
                 vert[v].color = list[i].blend;
             }
-            g::video.draw(vert, 4, sf::PrimitiveType::Quads, states);
+            renderer->draw(vert, 4, sf::PrimitiveType::Quads, states);
         }
     }
 }
 
-void Skeleton::drawNeck(std::vector<Clothing> list) {
+void Skeleton::drawNeck(sf::RenderTarget* renderer, std::vector<Clothing> list) {
     float width = ((shoulder[0] - torso[0]).getDistance() + (shoulder[1] - torso[0]).getDistance()) / 3.f;
-    drawBone(list, Clothing::Neck, neck, width);
+    drawBone(renderer, list, Clothing::Neck, neck, width);
 }
 
-void Skeleton::drawHead(std::vector<Clothing> list, float headAngle) {
+void Skeleton::drawHead(sf::RenderTarget* renderer, std::vector<Clothing> list, float headAngle) {
     float height = (torso[0] - torso[1]).getDistance();   
 
     Vector2 psuedoHeadTop;
@@ -298,10 +298,10 @@ void Skeleton::drawHead(std::vector<Clothing> list, float headAngle) {
 
     Bone psuedoBone {head, psuedoHeadTop};
 
-    drawBone(list, Clothing::Head, psuedoBone, height / 2.f, !(headAngle >= -PI / 2 && headAngle < PI / 2.f));  
+    drawBone(renderer, list, Clothing::Head, psuedoBone, height / 2.f, !(headAngle >= -PI / 2 && headAngle < PI / 2.f));  
 }
 
-void Skeleton::drawUpperArm(std::vector<Clothing> list, int side) {
+void Skeleton::drawUpperArm(sf::RenderTarget* renderer, std::vector<Clothing> list, int side) {
     float width = (torso[1] - torso[0]).getDistance() / 5.f;
 
     Vector2 psuedoShoulder = shoulder[side].translate((hip[side] - shoulder[side]).getAngle(), width / 2);
@@ -309,10 +309,10 @@ void Skeleton::drawUpperArm(std::vector<Clothing> list, int side) {
 
     Bone psuedoBone {psuedoShoulder, psuedoElbow};
 
-    drawBone(list, Clothing::UpperArm, psuedoBone, width, torsoTopFlipped());
+    drawBone(renderer, list, Clothing::UpperArm, psuedoBone, width, torsoTopFlipped());
 }
 
-void Skeleton::drawForeArm(std::vector<Clothing> list, int side) {
+void Skeleton::drawForeArm(sf::RenderTarget* renderer, std::vector<Clothing> list, int side) {
     float width = (torso[1] - torso[0]).getDistance() / 5.f;
 
     Vector2 psuedoShoulder = shoulder[side].translate((hip[side] - shoulder[side]).getAngle(), width / 2);
@@ -321,10 +321,10 @@ void Skeleton::drawForeArm(std::vector<Clothing> list, int side) {
 
     Bone psuedoBone {psuedoElbow, psuedoWrist};
 
-    drawBone(list, Clothing::ForeArm, psuedoBone, width, torsoTopFlipped());   
+    drawBone(renderer, list, Clothing::ForeArm, psuedoBone, width, torsoTopFlipped());   
 }
 
-void Skeleton::drawHand(std::vector<Clothing> list, int side) {
+void Skeleton::drawHand(sf::RenderTarget* renderer, std::vector<Clothing> list, int side) {
     float width = (torso[1] - torso[0]).getDistance() / 5.f;
 
     Vector2 psuedoShoulder = shoulder[side].translate((hip[side] - shoulder[side]).getAngle(), width / 2);
@@ -342,20 +342,20 @@ void Skeleton::drawHand(std::vector<Clothing> list, int side) {
     else if(side == 1 && hand[side].end.x > hand[side].start.x) 
         index = Clothing::HandBack;           
 
-    drawBone(list, index, psuedoBone, width, hand[side].end.x < hand[side].start.x);       
+    drawBone(renderer, list, index, psuedoBone, width, hand[side].end.x < hand[side].start.x);       
 }
 
-void Skeleton::drawThigh(std::vector<Clothing> list, int side) {
+void Skeleton::drawThigh(sf::RenderTarget* renderer, std::vector<Clothing> list, int side) {
     float width = (hip[side] - torso[1]).getDistance();
 
     Vector2 psuedoHip = torso[1] + (hip[side] - torso[1]) / 2.f;
     Vector2 psuedoKnee = psuedoHip + (knee[side] - hip[side]);
 
     Bone psuedoBone {psuedoHip, psuedoKnee};
-    drawBone(list, Clothing::Thigh, psuedoBone, width, torsoBottomFlipped()); 
+    drawBone(renderer, list, Clothing::Thigh, psuedoBone, width, torsoBottomFlipped()); 
 }
 
-void Skeleton::drawCalf(std::vector<Clothing> list, int side) {
+void Skeleton::drawCalf(sf::RenderTarget* renderer, std::vector<Clothing> list, int side) {
     float width = (hip[side] - torso[1]).getDistance();
 
     Vector2 psuedoHip = torso[1] + (hip[side] - torso[1]) / 2.f;
@@ -363,10 +363,10 @@ void Skeleton::drawCalf(std::vector<Clothing> list, int side) {
     Vector2 psuedoHeel = psuedoKnee + (heel[side] - knee[side]);
 
     Bone psuedoBone {psuedoKnee, psuedoHeel};
-    drawBone(list, Clothing::Calf, psuedoBone, width, torsoBottomFlipped());   
+    drawBone(renderer, list, Clothing::Calf, psuedoBone, width, torsoBottomFlipped());   
 }
 
-void Skeleton::drawFoot(std::vector<Clothing> list, int side) {
+void Skeleton::drawFoot(sf::RenderTarget* renderer, std::vector<Clothing> list, int side) {
     float width = (hip[side] - torso[1]).getDistance();
 
     Vector2 psuedoHip = torso[1] + (hip[side] - torso[1]) / 2.f;
@@ -379,46 +379,50 @@ void Skeleton::drawFoot(std::vector<Clothing> list, int side) {
     float rotate = PI/2 - (knee[side] - heel[side]).getAngle();
     Vector2 norm = toes[side].rotate(rotate, heel[side]);
 
-    drawBone(list, Clothing::Foot, psuedoBone, width, norm.x < heel[side].x);    
+    drawBone(renderer, list, Clothing::Foot, psuedoBone, width, norm.x < heel[side].x);    
 }
 
 void Skeleton::draw(vector<Clothing> list, float headAngle) {
+    draw(&g::video, list, headAngle);
+}
+
+void Skeleton::draw(sf::RenderTarget* renderer, vector<Clothing> list, float headAngle) {
 
     for(int i = 0; i < SkeletonDrawOrder::Total; i ++) {
 
         switch(order[i]) {
 
             case SkeletonDrawOrder::LegLeft:
-                drawCalf(list, 1);
-                drawThigh(list, 1);
-                drawFoot(list, 1); 
+                drawCalf(renderer, list, 1);
+                drawThigh(renderer, list, 1);
+                drawFoot(renderer, list, 1); 
                 break; 
 
             case SkeletonDrawOrder::LegRight:
-                drawCalf(list, 0);
-                drawThigh(list, 0);  
-                drawFoot(list, 0);
+                drawCalf(renderer, list, 0);
+                drawThigh(renderer, list, 0);  
+                drawFoot(renderer, list, 0);
                 break; 
 
             case SkeletonDrawOrder::Body:
-                drawTorso(list);
+                drawTorso(renderer, list);
                 break;
 
             case SkeletonDrawOrder::Head:
-                drawNeck(list);
-                drawHead(list, headAngle);
+                drawNeck(renderer, list);
+                drawHead(renderer, list, headAngle);
                 break;           
 
             case SkeletonDrawOrder::ArmLeft:
-                drawUpperArm(list, 0);
-                drawForeArm(list, 0);
-                drawHand(list, 0);
+                drawUpperArm(renderer, list, 0);
+                drawForeArm(renderer, list, 0);
+                drawHand(renderer, list, 0);
                 break;
 
             case SkeletonDrawOrder::ArmRight:
-                drawUpperArm(list, 1);
-                drawForeArm(list, 1);
-                drawHand(list, 1);
+                drawUpperArm(renderer, list, 1);
+                drawForeArm(renderer, list, 1);
+                drawHand(renderer, list, 1);
                 break;                   
         }
     }

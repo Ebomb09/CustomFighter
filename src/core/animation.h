@@ -26,6 +26,7 @@ struct Animation {
     // What the animation is
     std::string name                = "";
     int category                    = MoveCategory::Normal;
+    int points                      = 0;
 
     // How you can get into the animation
     bool from[MoveCategory::Total];
@@ -46,6 +47,11 @@ struct Animation {
 
     Frame getFrame(int frame);
     int getFrameCount();
+
+    int getStartup();
+    int getDamage();
+    int getOnHit();
+    int getOnBlock();
 };
 
 #endif

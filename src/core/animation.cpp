@@ -281,3 +281,72 @@ void Animation::loadFromFile(std::filesystem::path path) {
     }
     file.close();
 }
+
+int Animation::getStartup() {
+    int f_pos = 0;
+
+    for(auto& frame : keyFrames) {
+
+        if(frame.hitBoxes.size() > 0)
+            return f_pos;
+
+        f_pos += frame.duration;
+    }
+    return -1;
+}
+
+int Animation::getDamage() {
+    int dmg = 0;
+
+    for(auto& frame : keyFrames) {
+        int max = 0;
+
+        for(auto& hit : frame.hitBoxes) {
+            max = std::max(max, hit.damage);
+        }
+        dmg += max;
+    }
+    return dmg;
+}
+
+int Animation::getOnHit() {
+    int last_hit = 0;
+    int f_pos = 0;
+
+    for(auto& frame : keyFrames) {
+        int max = 0;
+
+        for(auto& hit : frame.hitBoxes) {
+            max = std::max(max, hit.hitStun);
+        }
+
+        if(max > 0) {
+            last_hit = max;
+            f_pos = 0;
+        }
+
+        f_pos += frame.duration;
+    }
+    return last_hit - f_pos;
+}
+
+int Animation::getOnBlock() {
+    int last_hit = 0;
+    int f_pos = 0;
+
+    for(auto& frame : keyFrames) {
+        int max = 0;
+
+        for(auto& hit : frame.hitBoxes) {
+            max = std::max(max, hit.blockStun);
+        }
+
+        if(max > 0) {
+            last_hit = max;
+            f_pos = 0;
+        }
+
+        f_pos += frame.duration;
+    }
+    return last_hit - f_pos;
+}

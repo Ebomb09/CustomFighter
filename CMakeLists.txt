@@ -101,4 +101,4 @@ add_executable(Game
 target_compile_features(Game PUBLIC cxx_std_17)
 target_include_directories(Game PUBLIC ${IncludeDirs})
 target_link_directories(Game PUBLIC ${LibraryDirs})
-target_link_libraries(Game PUBLIC sfml-graphics ${LinkLibrary})
+target_link_libraries(Game PUBLIC ${LinkLibrary})

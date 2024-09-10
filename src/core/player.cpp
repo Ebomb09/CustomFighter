@@ -759,13 +759,17 @@ vector<Clothing> Player::getClothes() {
     vector<Clothing> out;
 
     // Implied clothing... skin
-    out.push_back(*g::save.getClothing("realistic"));
+    Clothing* skin = g::save.getClothing("skin");
+    if(skin) out.push_back(*skin);
 
     for(int i = 0; i < config.clothes.size(); i ++) {
-        Clothing cloth = *g::save.getClothing(config.clothes[i].name);
-        cloth.blend = sf::Color(config.clothes[i].r, config.clothes[i].g, config.clothes[i].b);
+        Clothing* cloth = g::save.getClothing(config.clothes[i].name);
 
-        out.push_back(cloth);
+        if(cloth) {
+            Clothing copy = *cloth;
+            copy.blend = sf::Color(config.clothes[i].r, config.clothes[i].g, config.clothes[i].b);
+            out.push_back(copy);            
+        }
     }
     return out;
 }
@@ -841,7 +845,7 @@ string Player::Config::saveToText() {
         cloth["r"] = clothes[i].r;
         cloth["g"] = clothes[i].g;
         cloth["b"] = clothes[i].b;
-        json["clothes"][i] = cloth;
+        json["clothes"][i] = cloth;            
     }
 
     json["moves"] = moves;   

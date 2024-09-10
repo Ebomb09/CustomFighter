@@ -161,10 +161,9 @@ struct Creator {
     vector<Menu::Option> getConfigClothes() {
         vector<Menu::Option> out;    
         
-        for(int i = 0; i < dummy.config.clothes.size(); i ++) {
+        for(int i = 0; i < dummy.config.clothes.size(); i ++) 
             out.push_back({i, dummy.config.clothes[i].name});
-        }
-
+        
         out.push_back({});
         out.push_back({ID::Insert, "ADD"});
         out.push_back({ID::Cancel, "BACK"});
@@ -496,7 +495,7 @@ struct Creator {
                 if(options[itemHover].id == ID::Insert) {
                     backup = dummy.config;   
                                      
-                    dummy.config.clothes.push_back({""});
+                    dummy.config.clothes.push_back({});
                     itemSelected = dummy.config.clothes.size()-1;
                     mode = Mode::ListClothes;
 
@@ -527,8 +526,8 @@ struct Creator {
                 dummy.config.clothes[itemSelected].name = *options[clothHover].text;
 
                 dummy.config.clothes[itemSelected].r = 255;
-                dummy.config.clothes[itemSelected].g = 200 + std::sin(time * PI / 180 / 4) * 50;
-                dummy.config.clothes[itemSelected].b = 200 + std::sin(time * PI / 180 / 4) * 50;
+                dummy.config.clothes[itemSelected].g = 50 + std::sin(time * PI / 180 / 2) * 50;
+                dummy.config.clothes[itemSelected].b = 50 + std::sin(time * PI / 180 / 2) * 50;
             }
 
             if(res == Menu::Accept) {
@@ -544,9 +543,19 @@ struct Creator {
                     mode = Mode::ListConfigItems;
 
                 }else {
-                    dummy.config.clothes[itemSelected].r = backup.clothes[itemSelected].r;
-                    dummy.config.clothes[itemSelected].g = backup.clothes[itemSelected].g;
-                    dummy.config.clothes[itemSelected].b = backup.clothes[itemSelected].b;
+
+                    // Reuse the backup colour if already specified
+                    if(itemSelected < backup.clothes.size()) {
+                        dummy.config.clothes[itemSelected].r = backup.clothes[itemSelected].r;
+                        dummy.config.clothes[itemSelected].g = backup.clothes[itemSelected].g;
+                        dummy.config.clothes[itemSelected].b = backup.clothes[itemSelected].b;
+
+                    // Set default random colours
+                    }else {
+                        dummy.config.clothes[itemSelected].r = rand() % 256;
+                        dummy.config.clothes[itemSelected].g = rand() % 256;
+                        dummy.config.clothes[itemSelected].b = rand() % 256;                        
+                    }
                     mode = Mode::SetConfigItemColor;
                 }
 
@@ -572,7 +581,6 @@ struct Creator {
             dummy.config.clothes[itemSelected].b = color.b;
 
             if(res == Menu::Accept) {
-                dummy.config.clothes[itemSelected].name = *getClothingOptions()[clothHover].text;
                 mode = ListConfigItems;
 
             }else if(res == Menu::Decline) {

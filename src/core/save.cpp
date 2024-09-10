@@ -212,7 +212,21 @@ Clothing* SaveManager::getClothing(std::filesystem::path path) {
 		ptr->handBack 	= getTexture(path/"handBack.png");					
 		ptr->foot 		= getTexture(path/"foot.png");
 		ptr->head 		= getTexture(path/"head.png");
-		clothes[path.stem().string()] = ptr;			
+
+		bool good = false;
+
+		for(int i = 0; i < Clothing::Total; i ++)
+			if(ptr->part[i])
+				good = true;
+
+		// Ensure something was loaded
+		if(good) {
+			clothes[path.stem().string()] = ptr;		
+
+		}else{
+			delete ptr;
+			ptr = NULL;
+		}
 	
 	}else {
 		ptr = clothes.at(path.string());

@@ -167,8 +167,6 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 	Vector2 pos = Vector2(area.x, area.y);
 
 	int 	rows 				= options.size() / columns;
-	int 	selectedRow 		= (*hover) / columns;
-	float 	distanceScrolled 	= rowHeight * (selectedRow + 1);
 	float	bottomRow			= rows * rowHeight;
 
     // Set view to scrolled distance
@@ -176,10 +174,20 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 
 	// If last row extends past the maximum area then activate scroll
 	if(bottomRow > area.h) {
+		float selectedRow = 1.f * (*hover) / columns;
 
+		// Override if mouse on screen
+		if(Screen::pointInRectangle(g::input.mousePosition, area)) 
+			selectedRow = (g::input.mousePosition.y - area.y) / area.h * rows;
+
+		// Calculate the distance scrolled down table
+		float distanceScrolled = rowHeight * (selectedRow + 1);
+
+		// Clamp to bottom
 	    if(distanceScrolled > bottomRow - area.h / 2) {
 	        desiredScroll = bottomRow - area.h;
 
+	    // Clamp to scroll middle
 	    }else if(distanceScrolled > area.h / 2) {
 	        desiredScroll = distanceScrolled - area.h / 2;
 	    }		
@@ -238,7 +246,7 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 			}
 
 	        // Mouse controls
-	        if(Screen::pointInRectangle(g::input.mousePosition, renderBox)) {
+	        if(Screen::pointInRectangle(g::input.mousePosition + Vector2{0, scroll[user]}, renderBox)) {
 
 	        	if(options[i+j].type != Option::Type::Empty) {
 

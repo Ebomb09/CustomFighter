@@ -1,15 +1,21 @@
 #include "button.h"
-#include "input_interpreter.h"
 
 #include <fstream>
 #include <json.hpp>
 
-void Button::Config::loadFromFile(std::filesystem::path path) {
+Button::Config::Config() {
+	index = -1;
+
+	for(int i = 0; i < Button::Total; i ++)
+		button[i] = 0;
+}
+
+bool Button::Config::loadFromFile(std::filesystem::path path) {
 	std::fstream file(path, std::fstream::in);
 
 	if(!file.good()) {
 		file.close();
-		return;
+		return false;
 	}
 
 	nlohmann::json json = nlohmann::json::parse(file);
@@ -25,7 +31,7 @@ void Button::Config::loadFromFile(std::filesystem::path path) {
 	if(json["C"].is_number_integer())		C 		= json["C"];
 	if(json["D"].is_number_integer())		D 		= json["D"];
 	if(json["Taunt"].is_number_integer())	Taunt 	= json["Taunt"];
-	return;
+	return true;
 }
 
 void Button::Config::saveToFile(std::filesystem::path path) {

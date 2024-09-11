@@ -196,31 +196,10 @@ Clothing* SaveManager::getClothing(std::filesystem::path path) {
 	Clothing* ptr = NULL;
 
 	if(clothes.find(path.string()) == clothes.end()) {
-
-		// Load from file
 		ptr = new Clothing;
-		ptr->name		= path.stem().string();
-		ptr->torsoFront	= getTexture(path/"torsoFront.png");
-		ptr->torsoBack	= getTexture(path/"torsoBack.png");
-		ptr->neck 		= getTexture(path/"neck.png");
-		ptr->upperArm 	= getTexture(path/"upperArm.png");
-		ptr->foreArm 	= getTexture(path/"foreArm.png");
-		ptr->pelvis 	= getTexture(path/"pelvis.png");
-		ptr->thigh 		= getTexture(path/"thigh.png");
-		ptr->calf 		= getTexture(path/"calf.png");
-		ptr->handFront 	= getTexture(path/"handFront.png");
-		ptr->handBack 	= getTexture(path/"handBack.png");					
-		ptr->foot 		= getTexture(path/"foot.png");
-		ptr->head 		= getTexture(path/"head.png");
-
-		bool good = false;
-
-		for(int i = 0; i < Clothing::Total; i ++)
-			if(ptr->part[i])
-				good = true;
 
 		// Ensure something was loaded
-		if(good) {
+		if(ptr->loadFromFile(path)) {
 			clothes[path.stem().string()] = ptr;		
 
 		}else{

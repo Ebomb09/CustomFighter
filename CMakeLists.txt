@@ -19,6 +19,7 @@ set(Core
 	src/core/net_tools.cpp
 	src/core/menu.cpp
 	src/core/button.cpp
+	src/core/clothing.cpp
 	)
 
 set(ImGui
@@ -45,9 +46,9 @@ set(IncludeDirs
 
 set(LibraryDirs
 
-	ext/SFML-2.6.1/lib 
+	ext/SFML-2.6.1/build/lib
 	ext/nativefiledialog-extended-1.2.0/build/src
-	ext/curl-8.9.1_1-win64-mingw/lib	
+	ext/curl-8.9.1_1-win64-mingw/lib
 	ext/ggpo-master/build/lib/x64/Release
 	ext/sockpp-master/build	
 	)
@@ -55,15 +56,17 @@ set(LibraryDirs
 set(LinkLibrary
 
 	sfml-graphics 
-	sfml-window 
-	sfml-audio 
-	sfml-system 
-	opengl32 
+	sfml-window
+	sfml-audio
+	sfml-system
+
+	GGPO
 	nfd
 	curl
-	ws2_32
 	sockpp
-	GGPO
+
+	opengl32
+	ws2_32
 	)
 
 add_executable(Editor

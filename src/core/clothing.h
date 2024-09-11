@@ -1,11 +1,12 @@
 #ifndef GAME_CLOTHING_H
 #define GAME_CLOTHING_H
 
+#include <filesystem>
 #include <SFML/Graphics.hpp>
 
 struct Clothing {
-	std::string name = "";
-	sf::Color blend = sf::Color(255, 255, 255);
+	std::string name;
+	sf::Color blend;
 
 	enum {
 		TorsoFront,
@@ -27,20 +28,24 @@ struct Clothing {
 		sf::Texture* part[Total];
 
 		struct{
-			sf::Texture *torsoFront		= NULL,
-						*torsoBack		= NULL,
-						*neck 			= NULL,
-						*upperArm 		= NULL,
-						*foreArm 		= NULL,
-						*pelvis 		= NULL,
-						*thigh 			= NULL,
-						*calf 			= NULL,
-						*handFront		= NULL,
-						*handBack		= NULL,
-						*foot			= NULL,
-						*head			= NULL;			
+			sf::Texture *torsoFront,
+						*torsoBack,
+						*neck,
+						*upperArm,
+						*foreArm,
+						*pelvis,
+						*thigh,
+						*calf,
+						*handFront,
+						*handBack,
+						*foot,
+						*head;			
 		};
 	};
+
+	Clothing();
+
+	bool loadFromFile(std::filesystem::path path);
 };
 
 #endif

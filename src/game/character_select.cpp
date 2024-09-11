@@ -3,8 +3,10 @@
 #include "core/render_instance.h"
 #include "core/input_interpreter.h"
 #include "core/save.h"
+#include "core/audio.h"
 #include "core/menu.h"
 
+#include <SFML/Audio.hpp>
 #include <chrono>
 #include <cmath>
 #include <vector>
@@ -454,6 +456,9 @@ struct Creator {
 
                     if(dummy.config.calculatePoints() <= MAX_POINTS) {
                         g::save.savePlayerConfig(configSelected, dummy.config);
+
+                    }else {
+                        g::audio.playSound(g::save.getSound("error"));
                     }
 
                 // Confirm character
@@ -462,6 +467,9 @@ struct Creator {
                     if(dummy.config.calculatePoints() <= MAX_POINTS) {
                         done = true;
                         test = true;
+                        
+                    }else {
+                        g::audio.playSound(g::save.getSound("error"));
                     }
 
                 // List config moves
@@ -785,7 +793,6 @@ struct Creator {
 };
 
 vector<Player::Config> CharacterSelect::run(int count) {
-
     vector<Creator> creator;
 
     for(int i = 0; i < count; i ++) {

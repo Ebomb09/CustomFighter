@@ -8,9 +8,18 @@
 #include <vector>
 #include <string>
 
+#ifdef __WIN32__
+    #include <windows.h>
+#endif
+
 using std::vector, std::string;
 
 int main() {
+
+    #ifdef __WIN32__
+        ShowWindow(GetConsoleWindow(), SW_HIDE);
+    #endif
+
     Editor editor;
 
     g::video.init("Skeletal Animation Editor");

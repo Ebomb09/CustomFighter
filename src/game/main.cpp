@@ -8,6 +8,10 @@
 #include "core/input_interpreter.h"
 #include "core/render_instance.h"
 
+#ifdef __WIN32__
+    #include <windows.h>
+#endif
+
 using std::vector, std::string;
 
 enum {
@@ -28,6 +32,10 @@ vector<Menu::Option> menuOptions = {
 int hover = 0;
 
 int main(int argc, char* argv[]) {
+
+    #ifdef __WIN32__
+        ShowWindow(GetConsoleWindow(), SW_HIDE);   
+    #endif
 
     g::video.init("Custom Fighter");
 

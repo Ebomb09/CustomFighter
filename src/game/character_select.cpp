@@ -793,6 +793,10 @@ struct Creator {
 };
 
 vector<Player::Config> CharacterSelect::run(int count) {
+
+    sf::Sound* music = g::audio.playMusic(g::save.getMusic("Leaving Home"));
+    music->setLoop(true);
+
     vector<Creator> creator;
 
     for(int i = 0; i < count; i ++) {

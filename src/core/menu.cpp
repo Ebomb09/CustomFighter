@@ -124,6 +124,7 @@ void cycleIndex(std::vector<Menu::Option> options, int* index, int quantity) {
 }
 
 static float scroll[MAX_PLAYERS] {0, 0, 0, 0};
+static int items[MAX_PLAYERS] {0, 0, 0, 0};
 
 int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int* hover, int user, Rectangle area, float rowHeight) {
 	int status = Wait;
@@ -168,6 +169,12 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 
 	int 	rows 				= options.size() / columns;
 	float	bottomRow			= rows * rowHeight;
+
+	// Check if item count has changed before performing scroll
+	if(items[user] != options.size()) {
+		items[user] = options.size();
+		scroll[user] = 0;
+	}
 
     // Set view to scrolled distance
 	float desiredScroll = 0;

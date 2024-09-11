@@ -145,6 +145,7 @@ void Editor::resetPlayer() {
     timer = 0;
     player.state.position = {0, 0};
     player.state.velocity = {0, 0};
+    player.state.moveFrame = 0;
 
     // Set player to test and copy in the save
     player.config.moves[Move::Stand] = "";
@@ -154,11 +155,11 @@ void Editor::resetPlayer() {
 
     if(anim.category < Move::Custom00) {
         player.config.moves[Move::Stand] = test;
-        player.setMove(Move::Stand);
+        player.state.moveIndex = Move::Stand;
         
     }else {
         player.config.moves[Move::Custom00] = test;
-        player.setMove(Move::Custom00);        
+        player.state.moveIndex = Move::Custom00;     
     }
     *g::save.getAnimation(test) = anim;
 }
@@ -233,7 +234,7 @@ void Editor::update() {
 
         player.advanceFrame({player});
 
-        if(player.state.moveFrame == 0 && player.state.position.y == 0)
+        if(player.state.position.y == 0 && player.doneMove())
             resetPlayer();
     }
 }

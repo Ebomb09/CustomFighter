@@ -46,6 +46,9 @@ SaveManager::SaveManager() {
 			stages.push_back(ptr);
 	}
 
+	for(auto& entry : std::filesystem::directory_iterator("data/shaders")) 
+		getShader(entry);
+
 	for(int i = 0; i < maxButtonConfigs; i ++)
 		getButtonConfig(i);
 
@@ -82,6 +85,9 @@ SaveManager::~SaveManager() {
 	for(auto& it : textures)
 		delete it.second;
 
+	for(auto& it : shaders)
+		delete it.second;
+
 	for(auto& it : sounds)
 		delete it.second;
 
@@ -111,6 +117,36 @@ sf::Texture* SaveManager::getTexture(std::filesystem::path path) {
 
 	}else {
 		ptr = textures[path.string()];
+	}
+	return ptr;
+}
+
+sf::Shader* SaveManager::getShader(std::filesystem::path path) {
+	sf::Shader* ptr = NULL;
+
+	if(shaders.find(path.string()) == shaders.end()) {
+		ptr = new sf::Shader();
+
+		string ext = path.extension().string();
+		int type = -1;
+
+		if(ext == ".fs" || ext == ".frag") {
+			type = sf::Shader::Fragment;
+
+		}else if(ext == ".vs" || ext == ".vert") {
+			type = sf::Shader::Vertex;
+		}
+
+		if(type >= 0 && ptr->loadFromFile(path.string(), (sf::Shader::Type)type)) {
+			shaders[path.filename().string()] = ptr;
+
+		}else {
+			delete ptr;
+			ptr = NULL;
+		}
+
+	}else {
+		ptr = shaders[path.string()];
 	}
 	return ptr;
 }

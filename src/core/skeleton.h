@@ -91,7 +91,7 @@ struct Skeleton {
 	void rotateJoint(Vector2& joint, Vector2& origin, float rotate);
 
 	void draw(std::vector<Clothing> clothes, float headAngle = 0.f);
-	void draw(sf::RenderTarget* renderer, std::vector<Clothing> clothes, float headAngle = 0.f);
+	void draw(sf::RenderTarget* renderer, std::vector<Clothing> clothes, float headAngle = 0.f, bool outline=true);
 
 private:
 

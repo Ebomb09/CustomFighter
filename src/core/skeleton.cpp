@@ -1,4 +1,5 @@
 #include "skeleton.h"
+#include "save.h"
 #include "render_instance.h"
 
 using std::vector;
@@ -182,7 +183,7 @@ void Skeleton::drawBone(sf::RenderTarget* renderer, std::vector<Clothing> list, 
 
         sf::RenderStates states;
         states.texture = tex;
-
+        
         renderer->draw(vert, 4, sf::PrimitiveType::Quads, states);        
     }
 }
@@ -386,46 +387,74 @@ void Skeleton::draw(vector<Clothing> list, float headAngle) {
     draw(&g::video, list, headAngle);
 }
 
-void Skeleton::draw(sf::RenderTarget* renderer, vector<Clothing> list, float headAngle) {
+static sf::RenderTexture renderer;
+
+void Skeleton::draw(sf::RenderTarget* final, vector<Clothing> list, float headAngle, bool unused) {
+
+    if(!final)
+        return;
+
+    if(!renderer.create(final->getSize().x, final->getSize().y))
+        return;
+
+    renderer.clear(sf::Color::Transparent);
 
     for(int i = 0; i < SkeletonDrawOrder::Total; i ++) {
 
         switch(order[i]) {
 
             case SkeletonDrawOrder::LegLeft:
-                drawCalf(renderer, list, 1);
-                drawThigh(renderer, list, 1);
-                drawFoot(renderer, list, 1); 
+                drawCalf(&renderer, list, 1);
+                drawThigh(&renderer, list, 1);
+                drawFoot(&renderer, list, 1); 
                 break; 
 
             case SkeletonDrawOrder::LegRight:
-                drawCalf(renderer, list, 0);
-                drawThigh(renderer, list, 0);  
-                drawFoot(renderer, list, 0);
+                drawCalf(&renderer, list, 0);
+                drawThigh(&renderer, list, 0);  
+                drawFoot(&renderer, list, 0);
                 break; 
 
             case SkeletonDrawOrder::Body:
-                drawTorso(renderer, list);
+                drawTorso(&renderer, list);
                 break;
 
             case SkeletonDrawOrder::Head:
-                drawNeck(renderer, list);
-                drawHead(renderer, list, headAngle);
+                drawNeck(&renderer, list);
+                drawHead(&renderer, list, headAngle);
                 break;           
 
             case SkeletonDrawOrder::ArmLeft:
-                drawUpperArm(renderer, list, 0);
-                drawForeArm(renderer, list, 0);
-                drawHand(renderer, list, 0);
+                drawUpperArm(&renderer, list, 0);
+                drawForeArm(&renderer, list, 0);
+                drawHand(&renderer, list, 0);
                 break;
 
             case SkeletonDrawOrder::ArmRight:
-                drawUpperArm(renderer, list, 1);
-                drawForeArm(renderer, list, 1);
-                drawHand(renderer, list, 1);
+                drawUpperArm(&renderer, list, 1);
+                drawForeArm(&renderer, list, 1);
+                drawHand(&renderer, list, 1);
                 break;                   
         }
     }
+
+    renderer.display();
+
+    // Apply the renderer skeleton to the final target
+    sf::RectangleShape rect;
+    rect.setSize({(float)final->getSize().x, (float)final->getSize().y});
+    rect.setTexture(&renderer.getTexture());
+
+    // Set the outline shader
+    sf::RenderStates states;
+
+    sf::Shader* outline = g::save.getShader("outline.fs");
+    if(outline) {
+        outline->setUniform("texture", renderer.getTexture());
+        states.shader = outline;
+    }
+
+    final->draw(rect, states);
 }
 
 bool Skeleton::torsoTopFlipped() {

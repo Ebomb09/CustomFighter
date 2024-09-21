@@ -27,6 +27,14 @@ private:
 	std::map<std::string, sf::Texture*> 		textures;
 
 
+/* Shader Assets */
+public:
+	sf::Shader*									getShader(std::filesystem::path path);
+
+private:
+	std::map<std::string, sf::Shader*> 		shaders;
+
+
 /* Audio Assets */
 public:
 	sf::SoundBuffer* 							getSound(std::filesystem::path path);

@@ -3,8 +3,6 @@
 #include "core/render_instance.h"
 #include "core/save.h"
 
-#include <cmath>
-
 using std::vector, std::string;
 
 void setCamera(Player* players, int count) {
@@ -22,12 +20,15 @@ void setCamera(std::vector<Player> players) {
 
 	for(int i = 0; i < players.size(); i ++) {
 
-		if(players[i].taggedIn(players)) {
+		if(players[i].getTaggedIn(players)) {
 			Rectangle area = players[i].getRealBoundingBox();
 			pos += {area.x + area.w / 2, area.y - area.h / 2 + g::video.camera.h / 6};
 			n ++;
 		}
 	}
+
+	if(n == 0)
+		n = 1;
 
 	// Smooth motion towards players
     g::video.camera.x += (((pos.x / n) - (g::video.camera.w / 2.f)) - g::video.camera.x) * 0.10f;
@@ -52,10 +53,10 @@ void drawHealthBars(vector<Player> players) {
 
 	for(auto& ply : players) {
 
-		if(ply.team == 0 && ply.taggedIn(players))
+		if(ply.team == 0 && ply.getTaggedIn(players))
 			health[0] = ply.state.health;
 
-		if(ply.team == 1 && ply.taggedIn(players))
+		if(ply.team == 1 && ply.getTaggedIn(players))
 			health[1] = ply.state.health;		
 	}
 

@@ -5,6 +5,7 @@
 #include "core/render_instance.h"
 #include "core/save.h"
 
+#include <thread>
 #include <string>
 #include <vector>
 
@@ -15,8 +16,10 @@ void Game::init(int _playerCount, int _roundMax, int _timerMax) {
 	roundMax = _roundMax;
 	timerMax = _timerMax;
 
-	for(int i = 0; i < playerCount; i ++)
+	for(int i = 0; i < playerCount; i ++) {
 		players[i].gameIndex = i;
+		players[i].cache.enabled = true;
+	}
 
 	// Setup teams
     if(playerCount == 2) {
@@ -104,6 +107,7 @@ void Game::resetRound() {
 
 	// Center camera
     g::video.camera.x = -g::video.camera.w / 2.f;
+    g::video.camera.y = g::video.camera.h;
 
     // Play music
     vector<string> songs = {
@@ -147,6 +151,35 @@ void Game::nextRound() {
 	}else {
 		resetRound();
 	}
+}
+
+static void readPlayerInput(Player& ply, vector<Player>& others) {
+	ply.in = ply.readInput(others);
+}
+
+void Game::readInput() {
+
+	// Only start reading input once the match begins
+	if(state.timer > timerMax * 60) 
+		return;
+
+	vector<Player> others;
+
+	for(int i = 0; i < playerCount; i ++)
+		others.push_back(players[i]);
+
+	// Start worker threads to read in the inputs
+	vector<std::thread> tasks(playerCount);
+
+	for(int i = 0; i < playerCount; i ++) 
+		tasks[i] = std::thread(readPlayerInput, std::ref(players[i]), std::ref(others));
+	
+	for(int i = 0; i < playerCount; i ++)
+		tasks[i].join();
+}
+
+static void advancePlayerFrame(Player& ply, vector<Player>& others) {
+	ply.advanceFrame(others);
 }
 
 void Game::advanceFrame() {
@@ -193,7 +226,7 @@ void Game::advanceFrame() {
 
 	if(state.slomo % 2 == 0) {
 
-		// Update players		
+		// Update players
 		vector<Player> others;
 
 		for(int i = 0; i < playerCount; i ++) {
@@ -204,8 +237,17 @@ void Game::advanceFrame() {
 				players[i].in = Button::Flag();
 		}		
 
+		// Start worker threads to determine the next player state
+		vector<std::thread> tasks(playerCount);
+
+		for(int i = 0; i < playerCount; i ++) 
+			tasks[i] = std::thread(advancePlayerFrame, std::ref(players[i]), std::ref(others));
+
+		for(int i = 0; i < playerCount; i ++) 
+			tasks[i].join();
+
+		// Check for any KOs
 		for(int i = 0; i < playerCount; i ++) {
-			players[i].advanceFrame(others);
 
 			// Slomo on player KO
 			if(players[i].state.health <= 0 && others[i].state.health > 0) {
@@ -245,6 +287,9 @@ void Game::advanceFrame() {
 
 			if(lTeamAlive == 0 && rTeamAlive == 0) {
 				state.timer = 0;
+				state.rWins ++;
+				state.lWins ++;
+				state.judge = Judgement::DoubleKO;
 
 			}else if(lTeamAlive == 0) {
 				state.timer = 0;
@@ -374,16 +419,25 @@ void Game::draw() {
 		    if(!state.playJudgement) {
 		    	g::audio.playSound(g::save.getSound("announcer_ko"));
 		    	state.playJudgement = true;
-		    }	    	
-	    }
-	    
-	    else if(state.judge == Judgement::TimeUp) {
+		    }	 
+
+
+	    }else if(state.judge == Judgement::TimeUp) {
 	    	txt.setString("Time Up");
 
 		    if(!state.playJudgement) {
 		    	g::audio.playSound(g::save.getSound("announcer_timeup"));
 		    	state.playJudgement = true;
-		    }	    	    	
+		    }	 
+
+
+	    }else if(state.judge == Judgement::DoubleKO) {
+	    	txt.setString("Double KO");
+
+		    if(!state.playJudgement) {
+		    	g::audio.playSound(g::save.getSound("announcer_ko"));
+		    	state.playJudgement = true;
+		    }	    	
 	    }
 
 	    txt.setFont(*g::save.getFont("Anton-Regular"));

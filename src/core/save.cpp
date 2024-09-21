@@ -2,6 +2,7 @@
 #include "button.h"
 #include "render_instance.h"
 #include "input_interpreter.h"
+#include "audio.h"
 
 #include <algorithm>
 #include <cstdlib>
@@ -117,6 +118,9 @@ sf::Texture* SaveManager::getTexture(std::filesystem::path path) {
 sf::SoundBuffer* SaveManager::getSound(std::filesystem::path path) {
 	sf::SoundBuffer* ptr = NULL;
 
+	if(!g::audio.isEnabled())
+		return ptr;
+
 	if(sounds.find(path.string()) == sounds.end()) {
 		ptr = new sf::SoundBuffer();
 
@@ -145,6 +149,9 @@ vector<string> SaveManager::getSoundList() {
 
 sf::SoundBuffer* SaveManager::getMusic(std::filesystem::path path) {
 	sf::SoundBuffer* ptr = NULL;
+
+	if(!g::audio.isEnabled())
+		return ptr;
 
 	if(musics.find(path.string()) == musics.end()) {
 		ptr = new sf::SoundBuffer();

@@ -43,6 +43,8 @@ Frame Animation::getFrame(int t) {
         if(t >= f_pos && t < f_pos + keyFrames[i].duration) {
             frame = keyFrames[i];
 
+            frame.key = i;
+
             // Only play sound effect on first active frame
             if(t != f_pos)
                 frame.sound = "";

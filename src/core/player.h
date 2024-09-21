@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 
+#include "math.h"
 #include "skeleton.h"
 #include "clothing.h"
 #include "animation.h"
@@ -20,6 +21,9 @@ const Rectangle StageBounds = {
 	256
 };
 
+const float StageLeft = StageBounds.x + 16;
+const float StageRight = StageBounds.x + StageBounds.w - 16;
+
 const Rectangle CameraBounds = {
 	0, 
 	0,
@@ -29,10 +33,14 @@ const Rectangle CameraBounds = {
 
 struct Player {
 
+	// Game state specification
 	int gameIndex 	= 0;
-	int seatIndex 	= -1;
 	int team 		= -1;
-	
+
+	// Player specification
+	int aiLevel		= 0;
+	int seatIndex 	= -1;
+
 	Button::Flag in;
 
 	struct Config {
@@ -57,6 +65,7 @@ struct Player {
 	}config;
 
 	struct State {
+		int				counter			= 0;
 		int				tagCount		= 0;
 		int				health			= 100;
 		int				accDamage		= 0;
@@ -66,6 +75,8 @@ struct Player {
 		int				side			= 1;
 		Vector2			position		= {0, 0};
 		Vector2			velocity		= {0, 0};
+		Vector2			pushBack		= {0, 0};
+		int 			aiMove			= -1;
 		int				moveIndex		= Move::Stand;
 		int				moveFrame		= 0;
 		float 			look			= 0;
@@ -73,39 +84,62 @@ struct Player {
 
 	}state;
 
+	struct Cache {
+		bool enabled 					= false;
+
+		Frame			frame;
+		int 			moveIndex		= -1;
+		int 			moveFrame		= -1;
+
+		Vector2			socd;
+		int 			socdCounter		= -1;
+
+		int 			target;
+		int 			targetCounter	= -1;
+		
+		bool			tagged;
+		int 			taggedCounter	= -1;
+
+		std::vector<Animation*>	anims;
+		std::vector<Clothing>	clothes;
+	}cache;
+
 	Button::Flag readInput();
-	void advanceFrame(std::vector<Player> others);
+	Button::Flag readInput(std::vector<Player>& others);
+
+	void advanceFrame();
+	void advanceFrame(std::vector<Player>& others);
 	void draw(sf::RenderTarget* renderer = NULL);
 
 	void dealDamage(int dmg);
 
-	int getTarget(std::vector<Player> others);
-
-	Vector2 getSOCD(int index = 0);
+	const Vector2& getSOCD(int index = 0);
 	std::string getInputBuffer();
-	int searchBestMove(std::string buffer);
+	int searchBestMove(const std::string& buffer);
 
 	bool inMove(int move);
-	void setMove(int move, bool loop = false);
 	bool doneMove();
+	void setMove(int move, bool loop = false);
 
-	bool taggedIn(std::vector<Player> others);
+	const int& getTarget(std::vector<Player>& others);
+	const bool& getTaggedIn(std::vector<Player>& others);
 
-	HitBox getCollision(std::vector<Player> others);
+	bool inCorner();
 
-	Vector2 getCameraCenter(std::vector<Player> others);
+	HitBox getCollision(std::vector<Player>& others);
 
-	int getKeyFrame();
-	Frame getFrame();
-	
-	Skeleton getSkeleton();
-	std::vector<HitBox> getHitBoxes();
-	std::vector<HurtBox> getHurtBoxes();	
+	Vector2 getCameraCenter(std::vector<Player>& others);
 
-	std::vector<Clothing> getClothes();	
+	const int& getKeyFrame();
+	const Frame& getFrame();
+	const Skeleton& getSkeleton();
+	const std::vector<HitBox>& getHitBoxes();
+	const std::vector<HurtBox>& getHurtBoxes();
+	const std::vector<Clothing>& getClothes();
+	const std::vector<Animation*>& getAnimations();
 
 	Rectangle getRealBoundingBox();
-	Rectangle getScreenBoundingBox();	
+	Rectangle getScreenBoundingBox();
 };
 
 #endif

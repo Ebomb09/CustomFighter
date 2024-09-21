@@ -232,7 +232,7 @@ void Editor::update() {
     if(settings.playback && timer >= settings.playbackSpeed) {
         timer = 0;
 
-        player.advanceFrame({player});
+        player.advanceFrame();
 
         if(player.state.position.y == 0 && player.doneMove())
             resetPlayer();

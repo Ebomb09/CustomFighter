@@ -32,7 +32,7 @@ bool advanceFrame(int flags) {
     if(result == GGPO_OK) {
 
         // Mute sounds while in rollback to prevent repeats
-        g::audio.setVolume(0);
+        g::audio.disable();
 
         for(int i = 0; i < game.playerCount; i ++) 
             game.players[i].in = in[i];
@@ -40,7 +40,7 @@ bool advanceFrame(int flags) {
         game.advanceFrame();
 
         // Restore default volume
-        g::audio.setVolume(100);
+        g::audio.enable();
 
 	    ggpo_advance_frame(ggpo);
 	}
@@ -193,7 +193,7 @@ bool loop() {
     while(g::video.isOpen()) {
         g::input.pollEvents();
         
-        // Get buttons for local and remote player
+        // Get button flags for local players
         GGPOErrorCode result;
 
         for(int i = 0; i < game.playerCount; i ++) {

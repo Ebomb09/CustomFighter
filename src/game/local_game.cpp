@@ -16,12 +16,13 @@ bool LocalGame::run(vector<Player::Config> configs) {
         game.players[i].config = configs[i];
     }
 
+    game.players[1].seatIndex = -1;
+    game.players[1].aiLevel = 5;
+
     while(g::video.isOpen()) {
         g::input.pollEvents();
 
-        for(int i = 0; i < game.playerCount; i ++)
-            game.players[i].in = game.players[i].readInput();
-
+        game.readInput();
         game.advanceFrame();
 
         g::video.clear();

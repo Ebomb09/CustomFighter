@@ -7,11 +7,125 @@
 #include "save.h"
 #include "audio.h"
 
+#include <iostream>
 #include <fstream>
 #include <cmath>
 #include <json.hpp>
+#include <thread>
 
 using std::vector, std::string;
+
+static vector<int> aiSuccessorFunction(vector<Player>& players, int gameIndex) {
+    Player& self = players[gameIndex];
+
+    int target = self.getTarget(players);
+
+    // Check preconditions if this player can move
+    if( self.state.stun > 0 || 
+        self.state.health <= 0 || 
+        self.state.hitStop != 0 || 
+        target < 0)
+        return {};
+
+    int moveIndex = self.state.moveIndex;
+    string moveName = self.config.moves[moveIndex];
+    Animation* currentAnim = self.getAnimations()[moveIndex];
+    int moveCategory = (currentAnim) ? currentAnim->category : -1;
+
+    // Accumulate all moves that can be performed from current state
+    vector<int> moves;
+    moves.push_back(-1);
+
+    for(int i = 0; i < Move::Total; i ++) {
+        Animation* anim = self.getAnimations()[i];
+
+        if(anim) {
+            // Also check if the customFrom is set
+            if(anim->from[moveCategory] || anim->customFrom == moveName)
+                moves.push_back(i);   
+        }
+    }
+    return moves;
+}
+
+static int aiCalculateHeuristic(vector<Player>& players, int gameIndex) {
+    int target = players[gameIndex].getTarget(players);
+
+    if(target >= 0) {
+        Player& self = players[gameIndex];
+        Player& enem = players[target];
+
+        int loop = self.aiLevel * 100;
+
+        float selfHP = (self.state.health / 100.f) * 100.f;
+        float enemHP = ((100 - enem.state.health) / 100.f) * 100.f;
+        float dist = ((CameraBounds.w - std::abs(self.state.position.x - enem.state.position.x)) / CameraBounds.w) * 100.f;
+
+        // Divide loop time into half to determine heuristic for game plan
+        if((self.state.counter % loop) < (loop / 2)) {
+
+            float wSelfHP = 0.75f * (self.aiLevel / 10.f);
+            float wEnemHP = 0.75f * ((10 - self.aiLevel) / 10.f);
+            float wDist = 0.25f;
+
+            return wSelfHP*selfHP + wEnemHP*enemHP + wDist*dist;
+
+        }else {
+            return 0.25f*dist + 0.75f*selfHP;
+        }
+
+
+    }
+    return 100;
+}
+
+static void aiRunSimulation(vector<Player>& players, int gameIndex, int& score) {
+
+    for(int i = 0; i < 20; i ++) {
+        vector<Player> others = players;
+
+        for(auto& ply : players)
+            ply.advanceFrame(others);
+    }
+
+    score = aiCalculateHeuristic(players, gameIndex);
+}
+
+static int aiSolve(vector<Player>& players, int gameIndex) {
+
+    vector<int> nodes = aiSuccessorFunction(players, gameIndex);
+    int move_index = 0;
+    int value = -100000;
+
+    vector<std::thread>     tasks(nodes.size());
+    vector<vector<Player>>  simulations(nodes.size());
+    vector<int>             scores(nodes.size());
+
+    for(int i = 0; i < nodes.size(); i ++) {
+
+        // Create simulation, assume perfect world opponents don't attack back
+        simulations[i] = players;
+        simulations[i][gameIndex].state.aiMove = nodes[i];
+
+        tasks[i] = std::thread(aiRunSimulation, std::ref(simulations[i]), gameIndex, std::ref(scores[i]));
+    }
+
+    // Evaluate the scores
+    for(int i = 0; i < nodes.size(); i ++) {
+        tasks[i].join();
+
+        if(scores[i] > value) {
+            value = scores[i];
+            move_index = i;
+        }   
+    }
+
+    // Return a valid move
+    if(nodes.size() > 0)
+        return nodes[move_index];   
+
+    return -1;
+}
 
 void Player::draw(sf::RenderTarget* renderer) {
 
@@ -34,9 +148,6 @@ Button::Flag Player::readInput() {
     Button::Flag out;
 
     // Get the local save button config
-    if(seatIndex == -1)
-        return out;
-
     Button::Config buttonConfig = g::save.getButtonConfig(seatIndex);
 
     out.A       = g::input.pressed(buttonConfig.index, buttonConfig.A);
@@ -63,10 +174,24 @@ Button::Flag Player::readInput() {
     return out;
 }
 
-void Player::advanceFrame(vector<Player> others) {
+Button::Flag Player::readInput(vector<Player>& others) {
 
-    // Find other currently tagged in player
-    int target = getTarget(others);
+    // Check if ai
+    if(seatIndex == -1 && aiLevel > 0) {
+        g::audio.disable();
+        state.aiMove = aiSolve(others, gameIndex);
+        g::audio.enable();
+        return {};
+    }
+    return readInput();
+}
+
+void Player::advanceFrame() {
+    vector<Player> self {*this};
+    advanceFrame(self);
+}
+
+void Player::advanceFrame(vector<Player>& others) {
 
     // Hitstop
     if(state.hitStop > 0)
@@ -106,12 +231,22 @@ void Player::advanceFrame(vector<Player> others) {
 
     // Increment frames
     state.moveFrame ++;
+    state.counter ++;
 
     if(state.stun > 0)
         state.stun --;
 
+    // Check for pushBack
+    state.pushBack = {0, 0};
+
+    for(auto& ply : others) {
+
+        if(ply.team != team && ply.getTaggedIn(others))
+            state.velocity += ply.state.pushBack;
+    }
+
     // Special Move Check
-    if(getFrame().cancel && taggedIn(others)) {
+    if(getFrame().cancel && getTaggedIn(others)) {
         int move = searchBestMove(getInputBuffer());
 
         if(move != -1) {
@@ -134,15 +269,21 @@ void Player::advanceFrame(vector<Player> others) {
         if(inMove(Move::Stand) || inMove(Move::StandBlock) ||
             inMove(Move::Crouch) || inMove(Move::CrouchBlock)) {
 
-            if((state.side == 1 && getSOCD().x < 0) || (state.side == -1 && getSOCD().x > 0)) {
+            if((state.side == 1 && getSOCD().x < 0) || (state.side == -1 && getSOCD().x > 0) || state.aiMove == Move::StandBlock || state.aiMove == Move::CrouchBlock) {
                 block = true;
             }
         }
 
         if(block) {
 
-            // Push back
-            state.velocity.x = hit.force.x;
+            // If not cornered self pushback
+            if(!inCorner())
+                state.velocity.x = hit.force.x;
+
+            // Otherwise signal pushback
+            else
+                state.pushBack.x = -hit.force.x;
+
             state.stun = hit.blockStun;
             state.accDamage = hit.blockStun;
 
@@ -156,8 +297,15 @@ void Player::advanceFrame(vector<Player> others) {
 
         }else{
             dealDamage(hit.damage);
-            state.velocity.x += hit.force.x;
-            state.velocity.y = hit.force.y;
+            state.velocity.y += hit.force.y;
+
+            // If not cornered self pushback
+            if(!inCorner())
+                state.velocity.x += hit.force.x;
+
+            // Otherwise signal pushback
+            else
+                state.pushBack.x = -hit.force.x;
 
             if(hit.knockdown) {
                 setMove(Move::KnockDown);
@@ -188,15 +336,15 @@ void Player::advanceFrame(vector<Player> others) {
     state.position += state.velocity;
 
     // Collision checks
-    if(target != -1) {
+    if(getTarget(others) != -1) {
 
         // Unstick players
-        while((state.position - others[target].state.position).getDistance() < 25) {
+        while((state.position - others[getTarget(others)].state.position).getDistance() < 25) {
 
-            if(state.position.x < others[target].state.position.x)
+            if(state.position.x < others[getTarget(others)].state.position.x)
                 state.position.x -= 1;
 
-            else if(state.position.x == others[target].state.position.x)
+            else if(state.position.x == others[getTarget(others)].state.position.x)
                 state.position.x += (state.position.x < 0) ? 1 : -1;
 
             else
@@ -204,7 +352,7 @@ void Player::advanceFrame(vector<Player> others) {
         }   
     }
 
-    if(taggedIn(others)) {
+    if(getTaggedIn(others)) {
         Vector2 center = getCameraCenter(others);
 
         // Clamp position within the camera
@@ -217,8 +365,8 @@ void Player::advanceFrame(vector<Player> others) {
         // Clamp position within stage bounds
         state.position.x = std::clamp(
             state.position.x, 
-            StageBounds.x + 16, 
-            StageBounds.x + StageBounds.w - 16
+            StageLeft, 
+            StageRight
             );  
     }
   
@@ -284,48 +432,39 @@ void Player::advanceFrame(vector<Player> others) {
             setMove(Move::Stand);
 
         // Controls
-        if(taggedIn(others)) {
+        if(getTaggedIn(others)) {
 
             // Movement options
             if(inMove(Move::Stand) || inMove(Move::Crouch)) {
 
                 // If on ground look in direction of opponent
-                if(target != -1)
-                    state.side = (state.position.x < others[target].state.position.x) ? 1 : -1;
+                if(getTarget(others) != -1)
+                    state.side = (state.position.x < others[getTarget(others)].state.position.x) ? 1 : -1;
 
-                // Standing
-                if(getSOCD().y == 0) {
+                if((getSOCD().y == 0 && in.Taunt) || state.aiMove == Move::Taunt) {
+                    setMove(Move::Taunt);
+        
+                }else if((getSOCD().y == 0 && getSOCD().x == state.side) || state.aiMove == Move::WalkForwards) {
+                    setMove(Move::WalkForwards, true);
 
-                    if(in.Taunt) {
-                        setMove(Move::Taunt);
-            
-                    }else if(getSOCD().x == state.side){
-                        setMove(Move::WalkForwards, true);
+                }else if((getSOCD().y == 0 && getSOCD().x == -state.side) || state.aiMove == Move::WalkBackwards) {
+                    setMove(Move::WalkBackwards, true);
 
-                    }else if(getSOCD().x == -state.side){
-                        setMove(Move::WalkBackwards, true);
+                }else if((getSOCD().y == 0 && getSOCD().x == 0) || state.aiMove == Move::Stand) {
+                    setMove(Move::Stand, true);
 
-                    }else{
-                        setMove(Move::Stand, true);
-                    }
+                }else if((getSOCD().y > 0 && getSOCD().x == state.side) || state.aiMove == Move::JumpForwards) {
+                    setMove(Move::JumpForwards);
 
-                // Jumping
-                }else if(getSOCD().y > 0) {
+                }else if((getSOCD().y > 0 && getSOCD().x == -state.side) || state.aiMove == Move::JumpBackwards) {
+                    setMove(Move::JumpBackwards);
 
-                    if(getSOCD().x == state.side){
-                        setMove(Move::JumpForwards);
+                }else if((getSOCD().y > 0 && getSOCD().x == 0) || state.aiMove == Move::Jump) {
+                    setMove(Move::Jump);
 
-                    }else if(getSOCD().x == -state.side){
-                        setMove(Move::JumpBackwards);
-
-                    }else {
-                        setMove(Move::Jump);
-                    }
-
-                // Crouching
-                }else if(getSOCD().y < 0) {
+                }else if(getSOCD().y < 0 || state.aiMove == Move::Crouch) {
                     setMove(Move::Crouch, true);
-                }      
+                }
             }
 
         // Always prepare to be tagged in
@@ -337,7 +476,7 @@ void Player::advanceFrame(vector<Player> others) {
             for(int i = 0; i < others.size(); i ++) {
                 Player& ply = others[i];
 
-                if(ply.team == team && ply.gameIndex != gameIndex && ply.taggedIn(others)) {
+                if(ply.team == team && ply.gameIndex != gameIndex && ply.getTaggedIn(others)) {
                     curr = i;
                     prepare = ply.inMove(Move::Taunt) || ply.state.health <= 0;
                 }
@@ -386,9 +525,9 @@ void Player::advanceFrame(vector<Player> others) {
     // Look at the target while still alive
     if(state.health > 0) {
 
-        if(target != -1 && state.stun == 0) {
-            Skeleton myPose = getSkeleton();
-            Skeleton opPose = others[target].getSkeleton();
+        if(getTarget(others) != -1 && state.stun == 0) {
+            Skeleton myPose = getFrame().pose;
+            Skeleton opPose = others[getTarget(others)].getSkeleton();
 
             state.look = (opPose.head - myPose.head).getAngle();
 
@@ -418,6 +557,7 @@ void Player::advanceFrame(vector<Player> others) {
 
     // Reset input
     in = Button::Flag();
+    state.aiMove = -1;
 }
 
 void Player::dealDamage(int dmg) {
@@ -428,18 +568,25 @@ void Player::dealDamage(int dmg) {
         state.health = 0;
 }
 
-int Player::getTarget(vector<Player> others) {
+const int& Player::getTarget(vector<Player>& others) {
 
-    if(!taggedIn(others))
-        return -1;
+    if(cache.enabled && cache.targetCounter == state.counter)
+        return cache.target;
+
+    cache.target = -1;
+    cache.targetCounter = state.counter;
+
+    if(!getTaggedIn(others)) 
+        return cache.target;
 
     for(int i = 0; i < others.size(); i ++) {
 
-        if(others[i].team != team && others[i].taggedIn(others)) {
-            return i;
+        if(others[i].team != team && others[i].getTaggedIn(others)) {
+            cache.target = i;
+            break;
         }
     }
-    return -1;
+    return cache.target;
 }
 
 bool Player::inMove(int move) {
@@ -465,8 +612,17 @@ bool Player::inMove(int move) {
     return current == move;
 }
 
+bool Player::doneMove() {
+    Animation* anim = getAnimations()[state.moveIndex];
+
+    if(!anim)
+        return true;
+
+    return (state.moveFrame >= anim->getFrameCount());
+}
+
 void Player::setMove(int move, bool loop) {
-    Animation* anim = g::save.getAnimation(config.moves[move]);
+    Animation* anim = getAnimations()[move];
 
     if(!anim)
         return;
@@ -482,15 +638,6 @@ void Player::setMove(int move, bool loop) {
     }
 }
 
-bool Player::doneMove() {
-    Animation* anim = g::save.getAnimation(config.moves[state.moveIndex]);
-
-    if(!anim)
-        return true;
-
-    return (state.moveFrame >= anim->getFrameCount());
-}
-
 string Player::getInputBuffer() {
     string buffer = "";
 
@@ -500,10 +647,15 @@ string Player::getInputBuffer() {
         string motion = "";
         Vector2 socd;
 
-        bool press =    (state.button[i].Up != state.button[i+1].Up) ||
-                        (state.button[i].Down != state.button[i+1].Down) ||
-                        (state.button[i].Right != state.button[i+1].Right) ||
-                        (state.button[i].Left != state.button[i+1].Left);
+        bool press =    (state.button[i].A) ||
+                        (state.button[i].B) ||
+                        (state.button[i].C) ||
+                        (state.button[i].D) ||
+                        (state.button[i].Taunt) ||
+                        (state.button[i].Up && !state.button[i+1].Up) ||
+                        (state.button[i].Down && !state.button[i+1].Down) ||
+                        (state.button[i].Right && !state.button[i+1].Right) ||
+                        (state.button[i].Left && !state.button[i+1].Left);
 
         if(press && state.button[i].Up)      socd.y += 1;
         if(press && state.button[i].Down)    socd.y -= 1;
@@ -523,18 +675,17 @@ string Player::getInputBuffer() {
 
         buffer = motion + button + '|' + buffer;
     }
-
     return buffer;
 }
 
-int Player::searchBestMove(string buffer) {
+int Player::searchBestMove(const string& buffer) {
     int best = -1;
 
     for(int i = Move::Custom00; i < Move::Total; i ++) {
 
         // Validate both animations
-        Animation* currAnim = g::save.getAnimation(config.moves[state.moveIndex]);
-        Animation* nextAnim = g::save.getAnimation(config.moves[i]);
+        Animation* currAnim = getAnimations()[state.moveIndex];
+        Animation* nextAnim = getAnimations()[i];
 
         if(!currAnim || !nextAnim)
             continue;
@@ -552,7 +703,11 @@ int Player::searchBestMove(string buffer) {
         int v = 0;
         int decay = 10;
 
-        while(u < motion.size() && v < buffer.size()) {
+        // Check if the player has an ai controlling moves
+        if(state.aiMove == i)
+            match = true;
+
+        while(u < motion.size() && v < buffer.size() && !match) {
 
             // Each input delimitted by a pipe
             if(buffer[v] == '|') {
@@ -569,7 +724,6 @@ int Player::searchBestMove(string buffer) {
 
                 if(u == motion.size()) {
                     match = true;
-                    break;
                 }
             }
 
@@ -589,11 +743,24 @@ int Player::searchBestMove(string buffer) {
     return best;
 }
 
-bool Player::taggedIn(vector<Player> others) {
+bool Player::inCorner() {
+    return (state.position.x <= StageLeft || state.position.x >= StageRight);
+}
+
+const bool& Player::getTaggedIn(vector<Player>& others) {
+
+    if(cache.enabled && cache.taggedCounter == state.counter)
+        return cache.tagged;
+
+    cache.taggedCounter = state.counter;
 
     // Indicates out of the game
-    if(state.tagCount < 0)
-        return false;
+    if(state.tagCount < 0) {
+        cache.tagged = false;
+        return cache.tagged;
+    }
+
+    cache.tagged = true;
 
     for(auto& ply : others) {
 
@@ -602,18 +769,21 @@ bool Player::taggedIn(vector<Player> others) {
 
         if(ply.team == team) {
 
-            if(ply.state.tagCount == state.tagCount)
-                return gameIndex < ply.gameIndex;
-            else
-                return (state.tagCount < ply.state.tagCount);
+            if(ply.state.tagCount == state.tagCount) {
+                cache.tagged = gameIndex < ply.gameIndex;
+            
+            }else {
+                cache.tagged = (state.tagCount < ply.state.tagCount);
+            }
+            break;
         }
     }
-    return true;
+    return cache.tagged;
 }
 
-HitBox Player::getCollision(vector<Player> others) {
+HitBox Player::getCollision(vector<Player>& others) {
 
-    if(!taggedIn(others))
+    if(!getTaggedIn(others))
         return {};
 
     for(int i = 0; i < others.size(); i ++) {
@@ -640,13 +810,13 @@ HitBox Player::getCollision(vector<Player> others) {
     return {};
 }
 
-Vector2 Player::getCameraCenter(std::vector<Player> others) {
+Vector2 Player::getCameraCenter(std::vector<Player>& others) {
     Vector2 pos;
     int n = 0;
 
     for(int i = 0; i < others.size(); i ++) {
 
-        if(others[i].taggedIn(others)) {
+        if(others[i].getTaggedIn(others)) {
             pos += others[i].state.position;
             n ++;
         }
@@ -654,29 +824,20 @@ Vector2 Player::getCameraCenter(std::vector<Player> others) {
     return pos / n;
 }
 
-int Player::getKeyFrame() {
-    Animation* anim = g::save.getAnimation(config.moves[state.moveIndex]);
-
-    int key = 0;
-
-    if(anim) {
-        int time = 0;
-
-        for(int i = 0; i < anim->keyFrames.size(); i ++) {
-
-            if(state.moveFrame >= time)
-                key = i;
-
-            time += anim->keyFrames[i].duration;
-        }        
-    }
-    return key;
+const int& Player::getKeyFrame() {
+    return getFrame().key;
 }
 
-Frame Player::getFrame() {
-    Animation* anim = g::save.getAnimation(config.moves[state.moveIndex]);
+const Frame& Player::getFrame() {
+    Frame& frame = cache.frame;
 
-    Frame frame;
+    if(cache.enabled && cache.moveIndex == state.moveIndex && cache.moveFrame == state.moveFrame)
+        return frame;
+
+    Animation* anim = getAnimations()[state.moveIndex];
+
+    if(!anim)
+        return frame;
 
     // Special case knockdown
     if(state.moveIndex == Move::KnockDown) {
@@ -703,60 +864,66 @@ Frame Player::getFrame() {
         }
     }
 
-    if(anim) {
-        frame = anim->getFrame(state.moveFrame);
+    frame = anim->getFrame(state.moveFrame);
+    cache.moveIndex = state.moveIndex;
+    cache.moveFrame = state.moveFrame;
 
-        // Correct directional attributes of the frame
-        frame.impulse.x *= state.side;
+    // Correct directional attributes of the frame
+    frame.impulse.x *= state.side;
 
-        for(auto& box : frame.hitBoxes) {
+    for(auto& box : frame.hitBoxes) {
 
-            if(state.side == -1)
-                box.x = -box.x - box.w;
+        if(state.side == -1)
+            box.x = -box.x - box.w;
 
-            box.x += state.position.x;
-            box.y += state.position.y;
+        box.x += state.position.x;
+        box.y += state.position.y;
 
-            box.force.x *= state.side;            
-        }
-
-        for(auto& box : frame.hurtBoxes) {
-
-            if(state.side == -1)
-                box.x = -box.x - box.w;
-
-            box.x += state.position.x;
-            box.y += state.position.y;        
-        }
-
-        for(int i = 0; i < frame.pose.jointCount; i ++) {
-            frame.pose.joints[i].x *= state.side;
-            frame.pose.joints[i] += state.position;
-        }
-
-        // Flip draw order array
-        if(state.side == -1) {
-            for(int i = 0; i < SkeletonDrawOrder::Total / 2; i ++) 
-                std::swap(frame.pose.order[i], frame.pose.order[SkeletonDrawOrder::Total - 1 - i]);
-        }
+        box.force.x *= state.side;            
     }
+
+    for(auto& box : frame.hurtBoxes) {
+
+        if(state.side == -1)
+            box.x = -box.x - box.w;
+
+        box.x += state.position.x;
+        box.y += state.position.y;        
+    }
+
+    for(int i = 0; i < frame.pose.jointCount; i ++) {
+        frame.pose.joints[i].x *= state.side;
+        frame.pose.joints[i] += state.position;
+    }
+
+    // Flip draw order array
+    if(state.side == -1) {
+        for(int i = 0; i < SkeletonDrawOrder::Total / 2; i ++) 
+            std::swap(frame.pose.order[i], frame.pose.order[SkeletonDrawOrder::Total - 1 - i]);
+    }
+
     return frame;
 }
 
-Skeleton Player::getSkeleton() {
+const Skeleton& Player::getSkeleton() {
     return getFrame().pose;
 }
 
-vector<HitBox> Player::getHitBoxes() {
+const vector<HitBox>& Player::getHitBoxes() {
     return getFrame().hitBoxes;
 }
 
-vector<HurtBox> Player::getHurtBoxes() {
+const vector<HurtBox>& Player::getHurtBoxes() {
     return getFrame().hurtBoxes;
 }
 
-vector<Clothing> Player::getClothes() {
-    vector<Clothing> out;
+const vector<Clothing>& Player::getClothes() {
+
+    if(cache.enabled && cache.clothes.size() > 0)
+        return cache.clothes;
+
+    vector<Clothing>& out = cache.clothes;
+    out.clear();
 
     // Implied clothing... skin
     Clothing* skin = g::save.getClothing("skin");
@@ -774,7 +941,25 @@ vector<Clothing> Player::getClothes() {
     return out;
 }
 
-Vector2 Player::getSOCD(int index) {
+const vector<Animation*>& Player::getAnimations() {
+
+    if(cache.enabled && cache.anims.size() > 0)
+        return cache.anims;    
+
+    vector<Animation*>& out = cache.anims;
+    out.clear();
+
+    for(int i = 0; i < Move::Total; i ++) 
+        out.push_back(g::save.getAnimation(config.moves[i]));
+    
+    return out;
+}
+
+const Vector2& Player::getSOCD(int index) {
+
+    if(cache.enabled && cache.socdCounter == state.counter)
+        return cache.socd;
+
     Vector2 mov;
 
     if(state.button[index].Right)
@@ -789,7 +974,10 @@ Vector2 Player::getSOCD(int index) {
     if(state.button[index].Down)
         mov.y -= 1;
 
-    return mov;
+    cache.socd = mov;
+    cache.socdCounter = state.counter;
+
+    return cache.socd;
 }
 
 void Player::Config::loadFromText(string str) {
@@ -914,17 +1102,17 @@ int Player::Config::calculatePoints() {
             case MoveCategory::AirNormal:
             case MoveCategory::Grab:         
             case MoveCategory::AirGrab:  
-                base = 1;                 
+                base = 1;
                 break;
 
             case MoveCategory::CommandNormal:
             case MoveCategory::AirCommandNormal:
-                base = 2;                 
+                base = 2;
                 break;
 
             case MoveCategory::Special:
             case MoveCategory::AirSpecial:
-                base = 3;                 
+                base = 3;
                 break;
 
             case MoveCategory::Super:

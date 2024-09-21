@@ -10,6 +10,7 @@
 #include <filesystem>
 
 struct Frame {
+    int key             = 0;
     int duration        = 1;
     Skeleton pose       = Skeleton();
     Vector2 impulse     = Vector2(0, 0);
@@ -28,7 +29,7 @@ struct Animation {
     int category                    = MoveCategory::Normal;
 
     // How you can get into the animation
-    bool from[MoveCategory::Total];
+    bool from                       [MoveCategory::Total];
     std::string customFrom          = "";
 
     std::vector<Frame> keyFrames;

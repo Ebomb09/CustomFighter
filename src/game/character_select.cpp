@@ -408,7 +408,7 @@ struct Creator {
             // Capture player
             dummy.state.position.x = 0;            
             dummy.in = dummy.readInput();
-            dummy.advanceFrame({});
+            dummy.advanceFrame();
 
             Menu::renderPlayer(dummy, dummy.getRealBoundingBox(), getDiv());
             drawMoveProperties(getSubMenuDiv());
@@ -437,7 +437,7 @@ struct Creator {
         }else if(mode == Mode::ModifyConfig) {
 
             Menu::renderPlayer(dummy, dummy.getRealBoundingBox(), getPlayerDiv());
-            dummy.advanceFrame({});
+            dummy.advanceFrame();
             drawPlayerPoints(getSubMenuDiv());
         
             backup = dummy.config;
@@ -493,7 +493,7 @@ struct Creator {
         // List the worn clothing items
         }else if(mode == Mode::ListConfigItems) {
             Menu::renderPlayer(dummy, dummy.getRealBoundingBox(), getPlayerDiv());
-            dummy.advanceFrame({});
+            dummy.advanceFrame();
 
             auto options = getConfigClothes();
             int res = Menu::List(options, &itemHover, dummy.seatIndex, getMenuDiv());
@@ -523,7 +523,7 @@ struct Creator {
         // List all available clothing items
         }else if(mode == Mode::ListClothes) {
             Menu::renderPlayer(dummy, dummy.getRealBoundingBox(), getPlayerDiv());
-            dummy.advanceFrame({});
+            dummy.advanceFrame();
 
             auto options = getClothingOptions();
             int res = Menu::List(options, &clothHover, dummy.seatIndex, getMenuDiv());
@@ -576,7 +576,7 @@ struct Creator {
 
         }else if(mode == Mode::SetConfigItemColor) {
             Menu::renderPlayer(dummy, dummy.getRealBoundingBox(), getPlayerDiv());
-            dummy.advanceFrame({});
+            dummy.advanceFrame();
 
             // Copy color in
             sf::Color color(dummy.config.clothes[itemSelected].r, dummy.config.clothes[itemSelected].g, dummy.config.clothes[itemSelected].b);
@@ -644,7 +644,7 @@ struct Creator {
 
             // Set to default animation
             dummy.setMove(Move::Stand, true);
-            dummy.advanceFrame({});
+            dummy.advanceFrame();
 
             // Set the dummys animation
             if(options[moveHover].id >= 0) {

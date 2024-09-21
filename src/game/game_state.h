@@ -8,6 +8,7 @@ struct Game {
 	enum Judgement {
 		None,
 		KO,
+		DoubleKO,
 		TimeUp
 	};
 
@@ -48,6 +49,7 @@ struct Game {
 	SaveState saveState();
 	void loadState(SaveState state);
 
+	void readInput();
 	void advanceFrame();
 
 	void draw();

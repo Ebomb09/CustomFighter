@@ -1,6 +1,6 @@
 #include "player.h"
 #include "move.h"
-#include "render_instance.h"
+#include "video.h"
 #include "input_interpreter.h"
 #include "save.h"
 #include "math.h"
@@ -127,7 +127,7 @@ static int aiSolve(vector<Player>& players, int gameIndex) {
     return -1;
 }
 
-void Player::draw(sf::RenderTarget* renderer) {
+void Player::draw(Renderer* renderer) {
 
     if(!renderer)
         renderer = &g::video;
@@ -1065,7 +1065,7 @@ void Player::Config::saveToFile(string path) {
     }
 
     file << saveToText();
-    file.close();   
+    file.close();
 }
 
 Rectangle Player::getRealBoundingBox() {
@@ -1081,10 +1081,6 @@ Rectangle Player::getRealBoundingBox() {
         max = {std::max(max.x, pose.joints[i].x), std::max(max.y, pose.joints[i].y)};
     }
     return {min.x, max.y, max.x - min.x, max.y - min.y};
-}
-
-Rectangle Player::getScreenBoundingBox() {
-    return g::video.camera.getScreen(getRealBoundingBox());
 }
 
 int Player::Config::calculatePoints() {

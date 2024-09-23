@@ -1,7 +1,7 @@
 #include "lobby.h"
 
 #include "core/save.h"
-#include "core/render_instance.h"
+#include "core/video.h"
 #include "core/input_interpreter.h"
 #include "core/net_tools.h"
 

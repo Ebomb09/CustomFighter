@@ -6,7 +6,8 @@
 
 #include "core/menu.h"
 #include "core/input_interpreter.h"
-#include "core/render_instance.h"
+#include "core/video.h"
+#include "core/save.h"
 
 #ifdef __WIN32__
     #include <windows.h>
@@ -37,7 +38,11 @@ int main(int argc, char* argv[]) {
         ShowWindow(GetConsoleWindow(), SW_HIDE);   
     #endif
 
-    g::video.init("Custom Fighter");
+    g::video.setTitle("Custom Fighter");
+    g::video.setSize(g::save.resolution);
+    g::video.setDisplayMode(g::save.displayMode);
+    g::video.setVSync(g::save.vsync);
+    g::video.reload();
 
     while (g::video.isOpen()) {
         g::input.pollEvents();

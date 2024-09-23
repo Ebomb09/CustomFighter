@@ -3,7 +3,7 @@
 #include "input_interpreter.h"
 #include "math.h"
 #include "player.h"
-#include "render_instance.h"
+#include "video.h"
 #include "audio.h"
 #include "save.h"
 
@@ -215,7 +215,7 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 	});
 
 	// View port is relative of screen coordinates
-	view.setViewport(area.getScreenRatio());
+	view.setViewport(area.getRatio(g::video.getSize().x, g::video.getSize().y));
 
 	g::video.setView(view);
 
@@ -654,43 +654,48 @@ void Menu::renderText(string str, string font, sf::Color color, Rectangle area, 
 	g::video.draw(text);
 }
 
-static sf::RenderTexture renderer;
+static Renderer renderer(TargetMode::Texture);
 
 void Menu::renderPlayer(Player player, Rectangle capture, Rectangle area) {
-    capture.x -= 16.f;
-    capture.y += 16.f;
-    capture.w += 32.f;
-    capture.h += 32.f;
 
-    // Scale bounding box to proper aspect ratio
-    Vector2 center = {capture.x + capture.w / 2, capture.y - capture.h / 2};
+    renderer.setSize({area.w, area.h});
 
-    if(capture.w / capture.h < area.w / area.h) {
-        capture.w = capture.h * area.w / area.h;
+    if(renderer.reload()) {
 
-    }else {
-        capture.h = capture.w * area.h / area.w;
-    }
+    	// Increase padding of capture
+	    capture.x -= 16.f;
+	    capture.y += 16.f;
+	    capture.w += 32.f;
+	    capture.h += 32.f;
 
-    // Set camera to the location of player
-    g::video.camera = {
-        center.x - capture.w / 2,
-        center.y + capture.h / 2,
-        capture.w,
-        capture.h
-    };
+	    // Scale bounding box to proper aspect ratio
+	    Vector2 center = {capture.x + capture.w / 2, capture.y - capture.h / 2};
 
-    if(renderer.create(g::video.getSize().x, g::video.getSize().y)) {
+	    if(capture.w / capture.h < area.w / area.h) {
+	        capture.w = capture.h * area.w / area.h;
+
+	    }else {
+	        capture.h = capture.w * area.h / area.w;
+	    }
+
+		// Set camera to the location of player
+		renderer.camera = {
+		    center.x - capture.w / 2,
+		    center.y + capture.h / 2,
+		    capture.w,
+		    capture.h
+		};
+
     	renderer.clear();
 
 	    // Clear the area
 	    sf::RectangleShape rect;
-	    rect.setSize({(float)g::video.getSize().x, (float)g::video.getSize().y});
+	    rect.setSize({area.w, area.h});
 	    rect.setFillColor(sf::Color(158, 215, 240));
 	    renderer.draw(rect);
 
 	    // Draw floor
-        rect = g::video.camera.getScreen(Rectangle{
+        rect = renderer.toScreen(Rectangle{
             -1000,
             0,
             2000,
@@ -706,7 +711,7 @@ void Menu::renderPlayer(Player player, Rectangle capture, Rectangle area) {
 
 	    // Draw the output image
 	    sf::RectangleShape out = area;
-	    out.setTexture(&renderer.getTexture());
+	    out.setTexture(renderer.getTexture());
 	    g::video.draw(out);
     }
 }

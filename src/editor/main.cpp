@@ -2,11 +2,12 @@
 
 #include "core/save.h"
 #include "core/input_interpreter.h"
-#include "core/render_instance.h"
+#include "core/video.h"
 #include "core/math.h"
 
 #include <vector>
 #include <string>
+#include <iostream>
 
 #ifdef __WIN32__
     #include <windows.h>
@@ -22,7 +23,12 @@ int main() {
 
     Editor editor;
 
-    g::video.init("Skeletal Animation Editor");
+    g::video.setTitle("Skeletal Animation Editor");
+    g::video.setSize(g::save.resolution);
+    g::video.setDisplayMode(g::save.displayMode);
+    g::video.setVSync(g::save.vsync);
+    g::video.reload();
+
     g::video.camera.x = g::video.getSize().x / -2.f;
     g::video.camera.y = g::video.getSize().y / 2.f;
 
@@ -33,10 +39,10 @@ int main() {
 
         // Draw editor grid
         editor.update();
-
+        
         if(g::input.held(MOUSE_INDEX, sf::Mouse::Button::Middle)) {
-            g::video.camera.x += -g::input.mouseMove.x * g::video.camera.getScreenScale().x;
-            g::video.camera.y += g::input.mouseMove.y * g::video.camera.getScreenScale().y;
+            g::video.camera.x += -g::input.mouseMove.x * g::video.getCameraScale().x;
+            g::video.camera.y += g::input.mouseMove.y * g::video.getCameraScale().y;
         }
 
         if(g::input.mouseScroll < 0) {
@@ -372,13 +378,9 @@ int main() {
                 } 
             }     
         }
-
         ImGui::End();
 
-        ImGui::SFML::Render(g::video);
         g::video.display();
     }
-    ImGui::SFML::Shutdown();
-
     return 0;
 }

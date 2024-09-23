@@ -1,6 +1,6 @@
 #include "character_select.h"
 
-#include "core/render_instance.h"
+#include "core/video.h"
 #include "core/input_interpreter.h"
 #include "core/save.h"
 #include "core/audio.h"
@@ -807,13 +807,7 @@ vector<Player::Config> CharacterSelect::run(int count) {
     }
 
     while (g::video.isOpen()) {
-        g::input.prepEvents();
-
-        sf::Event event;
-
-        while(g::video.pollEvent(event)){
-            g::input.processEvent(event);
-        }
+        g::input.pollEvents();
 
         g::video.clear();
 

@@ -119,8 +119,7 @@ private:
 
 /* Video Config */
 public:
-	int resolutionWidth;
-	int resolutionHeight;
+	Vector2 resolution;
 	int displayMode;
 	bool vsync;	
 

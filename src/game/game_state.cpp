@@ -2,7 +2,7 @@
 #include "game_tools.h"
 
 #include "core/audio.h"
-#include "core/render_instance.h"
+#include "core/video.h"
 #include "core/save.h"
 
 #include <thread>

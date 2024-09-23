@@ -1,9 +1,8 @@
 #include <SFML/Graphics.hpp>
 #include <cmath>
-#include <iostream>
 
 #include "core/input_interpreter.h"
-#include "core/render_instance.h"
+#include "core/video.h"
 #include "core/save.h"
 #include "core/math.h"
 #include "editor.h"
@@ -20,32 +19,32 @@ void Editor::drawGrid() {
     float sY = std::floor(g::video.camera.y / 32) * 32;
 
     for(int x = 0; x <= g::video.camera.w; x += 32) {
-        l[0].position = g::video.camera.getScreen(Vector2{sX + x, g::video.camera.y});
+        l[0].position = g::video.toScreen(Vector2{sX + x, g::video.camera.y});
         l[0].color = {20, 20, 20};
-        l[1].position = g::video.camera.getScreen(Vector2{sX + x, g::video.camera.y - g::video.camera.h});
+        l[1].position = g::video.toScreen(Vector2{sX + x, g::video.camera.y - g::video.camera.h});
         l[1].color = {20, 20, 20};
         g::video.draw(l, 2, sf::PrimitiveType::Lines);
     }
 
     for(int y = 0; y <= g::video.camera.h; y += 32) {
-        l[0].position = g::video.camera.getScreen(Vector2{g::video.camera.x, sY - y});
+        l[0].position = g::video.toScreen(Vector2{g::video.camera.x, sY - y});
         l[0].color = {20, 20, 20};
-        l[1].position = g::video.camera.getScreen(Vector2{g::video.camera.x + g::video.camera.w, sY - y});
+        l[1].position = g::video.toScreen(Vector2{g::video.camera.x + g::video.camera.w, sY - y});
         l[1].color = {20, 20, 20};
         g::video.draw(l, 2, sf::PrimitiveType::Lines);
     }
 
     // X - Line
-    l[0].position = g::video.camera.getScreen(Vector2{g::video.camera.x, 0}); 
+    l[0].position = g::video.toScreen(Vector2{g::video.camera.x, 0}); 
     l[0].color = sf::Color::Green;
-    l[1].position = g::video.camera.getScreen(Vector2{g::video.camera.x + g::video.camera.w, 0});    
+    l[1].position = g::video.toScreen(Vector2{g::video.camera.x + g::video.camera.w, 0});    
     l[1].color = sf::Color::Green;    
     g::video.draw(l, 2, sf::PrimitiveType::Lines);   
 
     // Y - Line
-    l[0].position = g::video.camera.getScreen(Vector2{0, g::video.camera.y}); 
+    l[0].position = g::video.toScreen(Vector2{0, g::video.camera.y}); 
     l[0].color = sf::Color::Red;
-    l[1].position = g::video.camera.getScreen(Vector2{0, g::video.camera.y - g::video.camera.h});
+    l[1].position = g::video.toScreen(Vector2{0, g::video.camera.y - g::video.camera.h});
     l[1].color = sf::Color::Red;
     g::video.draw(l, 2, sf::PrimitiveType::Lines);
 }
@@ -84,9 +83,9 @@ void Editor::drawSkeleton() {
         Bone& b = copy.bones[i];
 
         sf::Vertex line[2];
-        line[0].position = g::video.camera.getScreen(b.start);
+        line[0].position = g::video.toScreen(b.start);
         line[0].color = {255, 255, 255, 255};
-        line[1].position = g::video.camera.getScreen(b.end);
+        line[1].position = g::video.toScreen(b.end);
         line[1].color = {255, 255, 255, 255};
 
         g::video.draw((const sf::Vertex*)&line, 2, sf::PrimitiveType::Lines);
@@ -109,7 +108,7 @@ void Editor::drawHitBox() {
         copy = getHitBoxes();
 
     for(auto& box : copy) {
-        sf::RectangleShape rect = g::video.camera.getScreen(box);
+        sf::RectangleShape rect = g::video.toScreen(box);
         rect.setFillColor({252, 62, 45, 50});
         rect.setOutlineThickness(1);
         rect.setOutlineColor({252, 62, 45});
@@ -133,7 +132,7 @@ void Editor::drawHurtBox() {
         copy = getHurtBoxes();
 
     for(auto& box : copy) {
-        sf::RectangleShape rect = g::video.camera.getScreen(box);
+        sf::RectangleShape rect = g::video.toScreen(box);
         rect.setFillColor({252, 218, 45, 50});
         rect.setOutlineThickness(1);
         rect.setOutlineColor({252, 218, 45});
@@ -263,7 +262,7 @@ void Editor::selectJoint() {
     Skeleton& skele = getKeyFrame().pose;     
 
     if(selected >= 0) {
-        Vector2 j = g::video.camera.getScreen(skele.getJoint(selected));
+        Vector2 j = g::video.toScreen(skele.getJoint(selected));
 
         if(g::input.pressed(MOUSE_INDEX, sf::Mouse::Button::Left)) {
             setDragZone(-1);
@@ -277,7 +276,7 @@ void Editor::selectJoint() {
         bool pick_same = false;
 
         if(selected >= 0) {
-            Vector2 j = g::video.camera.getScreen(skele.getJoint(selected));
+            Vector2 j = g::video.toScreen(skele.getJoint(selected));
             pick_same = Screen::pointInCircle(g::input.mousePosition, {j.x, j.y, 8});
         }
         
@@ -285,7 +284,7 @@ void Editor::selectJoint() {
             setSelected(-1);
 
             for(int i = 0; i < skele.jointCount; i ++) {
-                Vector2 j = g::video.camera.getScreen(skele.joints[i]);
+                Vector2 j = g::video.toScreen(skele.joints[i]);
 
                 if(Screen::pointInCircle(g::input.mousePosition, {j.x, j.y, 8})) {
                     setSelected(i);
@@ -305,8 +304,8 @@ void Editor::selectJoint() {
 
         skele.moveJoint(selected,
             {
-                g::input.mouseMove.x * g::video.camera.getScreenScale().x,
-                -g::input.mouseMove.y * g::video.camera.getScreenScale().y
+                g::input.mouseMove.x * (g::video.camera.w / g::video.getSize().x),
+                -g::input.mouseMove.y * (g::video.camera.h / g::video.getSize().y)
             }
         );   
     }
@@ -314,7 +313,7 @@ void Editor::selectJoint() {
     if(selected >= 0) {
         Vector2& joint = skele.getJoint(selected);
 
-        Vector2 pos = g::video.camera.getScreen(joint);
+        Vector2 pos = g::video.toScreen(joint);
 
         sf::CircleShape highlight; 
         highlight.setFillColor({0, 0, 0, 0});
@@ -330,7 +329,7 @@ void Editor::selectRectangle() {
 
     // Create Rectangles
     if(g::input.pressed(MOUSE_INDEX, sf::Mouse::Button::Right)) {
-        Vector2 pos = g::video.camera.getReal(g::input.mousePosition);
+        Vector2 pos = g::video.toReal(g::input.mousePosition);
         
         if(settings.mode == Mode::HitBoxes) {
             getHitBoxes().push_back({pos.x - 25, pos.y + 25, 50, 50});
@@ -358,7 +357,7 @@ void Editor::selectRectangle() {
                 boxes[selected]->y - (boxes[selected]->h/2) * (i / 3)
             };
 
-            pos = g::video.camera.getScreen(pos);
+            pos = g::video.toScreen(pos);
 
             zone[i].x = pos.x - 4;
             zone[i].y = pos.y - 4;
@@ -376,7 +375,7 @@ void Editor::selectRectangle() {
         if(g::input.pressed(MOUSE_INDEX, sf::Mouse::Button::Left)) {
             setDragZone(-1);
 
-            if(Screen::pointInRectangle(g::input.mousePosition, g::video.camera.getScreen(*boxes[selected])))
+            if(Screen::pointInRectangle(g::input.mousePosition, g::video.toScreen(*boxes[selected])))
                 setDragZone(4);
 
             for(int i = 0; i < 9; i ++) {
@@ -396,14 +395,14 @@ void Editor::selectRectangle() {
         bool pick_same = false;
 
         if(selected >= 0) 
-            pick_same = Screen::pointInRectangle(g::input.mousePosition, g::video.camera.getScreen(*boxes[selected]));
+            pick_same = Screen::pointInRectangle(g::input.mousePosition, g::video.toScreen(*boxes[selected]));
         
         if(!pick_same) {
             setSelected(-1);
 
             for(int i = 0; i < boxes.size(); i ++) {
 
-                if(Screen::pointInRectangle(g::input.mousePosition, g::video.camera.getScreen(*boxes[i]))) {
+                if(Screen::pointInRectangle(g::input.mousePosition, g::video.toScreen(*boxes[i]))) {
                     setSelected(i);
                     break;
                 }
@@ -413,7 +412,7 @@ void Editor::selectRectangle() {
 
     if(g::input.held(MOUSE_INDEX, sf::Mouse::Button::Left) && selected >= 0) {
         std::vector<Rectangle*> boxes = getBoxes();
-        Vector2 mov = g::input.mouseMove * g::video.camera.getScreenScale();
+        Vector2 mov = g::input.mouseMove * (g::video.camera.w / g::video.getSize().x);
 
         switch(dragZone) {
 

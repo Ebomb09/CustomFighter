@@ -9,7 +9,7 @@ project(CustomFighter)
 set(Core
 
 	src/core/input_interpreter.cpp
-	src/core/render_instance.cpp
+	src/core/video.cpp
 	src/core/audio.cpp
 	src/core/save.cpp
 	src/core/skeleton.cpp

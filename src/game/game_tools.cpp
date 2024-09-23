@@ -1,6 +1,6 @@
 #include "game_tools.h"
 
-#include "core/render_instance.h"
+#include "core/video.h"
 #include "core/save.h"
 
 using std::vector, std::string;
@@ -131,7 +131,7 @@ void drawStage(int index) {
 	};
 
 	for(int i = 0; i < 4; i ++) 
-		v[i].position = g::video.camera.getScreen(v[i].position);
+		v[i].position = g::video.toScreen(v[i].position);
 
 	sf::RenderStates states;
 	states.texture = tex;

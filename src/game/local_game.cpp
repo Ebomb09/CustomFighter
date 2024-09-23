@@ -2,7 +2,7 @@
 #include "game_state.h"
 
 #include "core/input_interpreter.h"
-#include "core/render_instance.h"
+#include "core/video.h"
 
 using std::vector;
 

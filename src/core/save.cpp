@@ -1,6 +1,6 @@
 #include "save.h"
 #include "button.h"
-#include "render_instance.h"
+#include "video.h"
 #include "input_interpreter.h"
 #include "audio.h"
 
@@ -431,8 +431,8 @@ sf::Texture* SaveManager::getStage(int index) {
 void SaveManager::loadVideoConfig() {
 
 	// Default video config
-	resolutionWidth = sf::VideoMode::getFullscreenModes()[0].width;
-	resolutionHeight = sf::VideoMode::getFullscreenModes()[0].height;
+	resolution.x = sf::VideoMode::getFullscreenModes()[0].width;
+	resolution.y = sf::VideoMode::getFullscreenModes()[0].height;
 	displayMode = DisplayMode::Borderless;
 	vsync = true;
 
@@ -447,13 +447,13 @@ void SaveManager::loadVideoConfig() {
 	nlohmann::json json = nlohmann::json::parse(file);
 	file.close();
 
-	if(json["width"].is_number_integer())
-		resolutionWidth = json["width"];
+	if(json["width"].is_number())
+		resolution.x = json["width"];
 
-	if(json["height"].is_number_integer())
-		resolutionHeight = json["height"];
+	if(json["height"].is_number())
+		resolution.y = json["height"];
 
-	if(json["displayMode"].is_number_integer())
+	if(json["displayMode"].is_number())
 		displayMode = json["displayMode"];
 
 	if(json["vsync"].is_boolean())	
@@ -469,8 +469,8 @@ void SaveManager::saveVideoConfig() {
 	}
 
 	nlohmann::json json;
-	json["width"] = resolutionWidth;
-	json["height"] = resolutionHeight;
+	json["width"] = resolution.x;
+	json["height"] = resolution.y;
 	json["displayMode"] = displayMode;
 	json["vsync"] = vsync;
 

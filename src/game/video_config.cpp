@@ -2,7 +2,7 @@
 
 #include "core/menu.h"
 #include "core/input_interpreter.h"
-#include "core/render_instance.h"
+#include "core/video.h"
 #include "core/save.h"
 
 #include <vector>
@@ -33,7 +33,7 @@ void VideoConfig::run() {
 		vector<Menu::Option> options;
 
 		options.push_back({Resolution, "Resolution"});
-		options.push_back({Resolution, std::to_string(g::save.resolutionWidth) + "x" + std::to_string(g::save.resolutionHeight)});
+		options.push_back({Resolution, std::to_string(g::save.resolution.x) + "x" + std::to_string(g::save.resolution.y)});
 
 		options.push_back({DisplayMode, "Display Mode"});
 		options.push_back({DisplayMode, DisplayMode::String[g::save.displayMode]});	
@@ -59,6 +59,9 @@ void VideoConfig::run() {
 
 			}else if(options[hover].id == Apply) {
 				g::save.saveVideoConfig();
+				g::video.setSize(g::save.resolution);
+				g::video.setDisplayMode(g::save.displayMode);
+				g::video.setVSync(g::save.vsync);				
 				g::video.reload();
 			}
 
@@ -72,8 +75,8 @@ void VideoConfig::run() {
 
 				for(int i = 0; i < sf::VideoMode::getFullscreenModes().size(); i ++) {
 
-					if(g::save.resolutionWidth == sf::VideoMode::getFullscreenModes()[i].width &&
-						g::save.resolutionHeight == sf::VideoMode::getFullscreenModes()[i].height) {
+					if(g::save.resolution.x == sf::VideoMode::getFullscreenModes()[i].width &&
+						g::save.resolution.y == sf::VideoMode::getFullscreenModes()[i].height) {
 
 						index = i;
 						break;
@@ -92,8 +95,8 @@ void VideoConfig::run() {
 				else if(index >= sf::VideoMode::getFullscreenModes().size())
 					index = 0;
 
-				g::save.resolutionWidth = sf::VideoMode::getFullscreenModes()[index].width;
-				g::save.resolutionHeight = sf::VideoMode::getFullscreenModes()[index].height;
+				g::save.resolution.x = sf::VideoMode::getFullscreenModes()[index].width;
+				g::save.resolution.y = sf::VideoMode::getFullscreenModes()[index].height;
 
 			}else if(options[hover].id == DisplayMode) {
 				int index = g::save.displayMode;

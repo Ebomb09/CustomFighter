@@ -1,5 +1,4 @@
 #include "math.h"
-#include "render_instance.h"
 
 #include <cmath>
 
@@ -8,23 +7,15 @@ Vector2::Vector2(float _x, float _y) {
 	y = _y;
 }
 
-Vector2::Vector2(sf::Vector2f v) {
-	x = v.x;
-	y = v.y;
-}
+Vector2::Vector2(sf::Vector2f v) { x = v.x; y = v.y; }
+Vector2::Vector2(sf::Vector2i v) { x = v.x; y = v.y; }
+Vector2::Vector2(sf::Vector2u v) { x = v.x; y = v.y; }
+Vector2::Vector2(sf::Vertex v) { x = v.position.x; y = v.position.y; }
 
-Vector2::Vector2(sf::Vertex v) {
-	x = v.position.x;
-	y = v.position.y;
-}
-
-Vector2::operator sf::Vector2f() {
-	return {x, y};
-}
-
-Vector2::operator sf::Vertex() {
-	return sf::Vertex({x, y});
-}
+Vector2::operator sf::Vector2f() { return sf::Vector2f(x, y); }
+Vector2::operator sf::Vector2i() { return sf::Vector2i(x, y); }
+Vector2::operator sf::Vector2u() { return sf::Vector2u(x, y); }
+Vector2::operator sf::Vertex() { return sf::Vertex(sf::Vector2f(x, y)); }
 
 Vector2 Vector2::operator+(const Vector2& v2) {
 	return {x + v2.x, y + v2.y};
@@ -42,11 +33,11 @@ Vector2 Vector2::operator/(const float n) {
 	return {x / n, y / n};
 }
 
-Vector2 Vector2::operator*(const Vector2 v2) {
+Vector2 Vector2::operator*(const Vector2& v2) {
 	return {x * v2.x, y * v2.y};
 }
 
-Vector2 Vector2::operator/(const Vector2 v2) {
+Vector2 Vector2::operator/(const Vector2& v2) {
 	return {x / v2.x, y / v2.y};
 }
 
@@ -72,6 +63,26 @@ Vector2& Vector2::operator/=(const float n) {
 	x /= n;
 	y /= n;
 	return *this;	
+}
+
+Vector2& Vector2::operator*=(const Vector2& v2) {
+	x *= v2.x;
+	y *= v2.y;
+	return *this;	
+}
+
+Vector2& Vector2::operator/=(const Vector2& v2) {
+	x /= v2.x;
+	y /= v2.y;
+	return *this;	
+}
+
+bool Vector2::operator==(const Vector2& v2) {
+	return (x == v2.x && y == v2.y);
+}
+
+bool Vector2::operator!=(const Vector2& v2) {
+	return (x != v2.x || y != v2.y);
 }
 
 float Vector2::getAngle() {
@@ -122,36 +133,6 @@ bool Screen::rectangleInRectangle(const Rectangle& r1, const Rectangle& r2) {
 			(r1.y + r1.h >= r2.y && r1.y <= r2.y + r2.h);
 }
 
-Vector2 Camera::getScreenScale() {
-	return {w / g::video.getSize().x, h / g::video.getSize().y};
-}
-
-Vector2 Camera::getReal(Vector2 pos) {
-	Vector2 percent = {pos.x / g::video.getSize().x, pos.y / g::video.getSize().y};
-	return {x + percent.x * w, y - percent.y * h};
-}
-
-Rectangle Camera::getReal(Rectangle rect) { 
-	Vector2 pos[] = {
-		getReal(Vector2{rect.x, rect.y}),
-		getReal(Vector2{rect.x + rect.w, rect.y + rect.h})
-	};
-	return {pos[0].x, pos[0].y, pos[1].x - pos[0].x, pos[0].y - pos[1].y};
-}
-
-Vector2 Camera::getScreen(Vector2 pos) {
-	Vector2 percent = {(pos.x - x) / w, (y - pos.y) / h};
-	return {percent.x * g::video.getSize().x, percent.y * g::video.getSize().y};
-}
-
-Rectangle Camera::getScreen(Rectangle rect) {
-	Vector2 pos[] = {
-		getScreen(Vector2{rect.x, rect.y}),
-		getScreen(Vector2{rect.x + rect.w, rect.y - rect.h})
-	};
-	return {pos[0].x, pos[0].y, pos[1].x - pos[0].x, pos[1].y - pos[0].y};
-}
-
 Circle::operator sf::CircleShape() {
 	sf::CircleShape sh;
 	sh.setPosition({x, y});
@@ -170,12 +151,12 @@ Rectangle::operator sf::FloatRect() {
 	return sf::FloatRect(x, y, w, h);
 }
 
-Rectangle Rectangle::getScreenRatio() {
+Rectangle Rectangle::getRatio(float width, float height) {
 
 	return {
-		x / g::video.getSize().x, 
-		y / g::video.getSize().y,
-		w / g::video.getSize().x, 
-		h / g::video.getSize().y		
+		x / width, 
+		y / height,
+		w / width, 
+		h / height		
 	};
 }

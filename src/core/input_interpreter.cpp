@@ -1,5 +1,5 @@
 #include "input_interpreter.h"
-#include "render_instance.h"
+#include "video.h"
 
 using std::string;
 
@@ -17,27 +17,34 @@ void InputInterpreter::prepEvents() {
 	}
 	mouseScroll = 0;
 
-	mouseMove = {
-		sf::Mouse::getPosition(g::video).x - mousePosition.x,
-		sf::Mouse::getPosition(g::video).y - mousePosition.y,		
-	};
+	sf::RenderWindow* win = g::video.getRenderWindowPtr();
 
-	mousePosition = {
-		(float)sf::Mouse::getPosition(g::video).x,
-		(float)sf::Mouse::getPosition(g::video).y
-	};
+	if(win) {
+		mouseMove = {
+			sf::Mouse::getPosition(*win).x - mousePosition.x,
+			sf::Mouse::getPosition(*win).y - mousePosition.y,		
+		};
+
+		mousePosition = {
+			(float)sf::Mouse::getPosition(*win).x,
+			(float)sf::Mouse::getPosition(*win).y
+		};		
+	}
 }
 
 void InputInterpreter::pollEvents() {
-	prepEvents();
+	sf::RenderWindow* win = g::video.getRenderWindowPtr();
 
-	sf::Event event;
+	if(win) {
+		prepEvents();	
 
-	while(g::video.pollEvent(event)) {
-        ImGui::SFML::ProcessEvent(event);
+		sf::Event event;
+		while(win->pollEvent(event)) {
+	        ImGui::SFML::ProcessEvent(event);
 
-        if(!ImGui::GetIO().WantCaptureKeyboard && !ImGui::GetIO().WantCaptureMouse)
-            processEvent(event);		
+	        if(!ImGui::GetIO().WantCaptureKeyboard && !ImGui::GetIO().WantCaptureMouse)
+	            processEvent(event);		
+		}		
 	}
 }
 

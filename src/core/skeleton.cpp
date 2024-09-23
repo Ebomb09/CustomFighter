@@ -1,6 +1,6 @@
 #include "skeleton.h"
 #include "save.h"
-#include "render_instance.h"
+#include "video.h"
 
 using std::vector;
 
@@ -121,7 +121,7 @@ void Skeleton::rotateJoint(Vector2& joint, Vector2& origin, float rotate) {
     }    
 }
 
-void Skeleton::drawBone(sf::RenderTarget* renderer, std::vector<Clothing> list, int part, Bone& bone, float width, bool flip) {
+void Skeleton::drawBone(Renderer* renderer, std::vector<Clothing> list, int part, Bone& bone, float width, bool flip) {
     width /= 2.f;
 
     // Shortcuts
@@ -171,7 +171,7 @@ void Skeleton::drawBone(sf::RenderTarget* renderer, std::vector<Clothing> list, 
             pos = mid + (pos - mid) * scale;
             pos = pos.rotate(-rotate, mid);
 
-            vert[j].position = g::video.camera.getScreen(pos);
+            vert[j].position = renderer->toScreen(pos);
             vert[j].texCoords = texPt[j];
             vert[j].color = list[i].blend;
         }                                    
@@ -188,7 +188,7 @@ void Skeleton::drawBone(sf::RenderTarget* renderer, std::vector<Clothing> list, 
     }
 }
 
-void Skeleton::drawTorso(sf::RenderTarget* renderer, std::vector<Clothing> list) {
+void Skeleton::drawTorso(Renderer* renderer, std::vector<Clothing> list) {
     Vector2 pt[3][3];
 
     if(!torsoTopFlipped()) {
@@ -273,7 +273,7 @@ void Skeleton::drawTorso(sf::RenderTarget* renderer, std::vector<Clothing> list)
                 pos = pt[1][1] + (pos - pt[1][1]) * scale;
                 pos = pos.rotate(-rotate, pt[1][1]);
 
-                vert[v].position = g::video.camera.getScreen(pos);
+                vert[v].position = renderer->toScreen(pos);
                 vert[v].texCoords = texPt[x][y];   
                 vert[v].color = list[i].blend;
             }
@@ -282,12 +282,12 @@ void Skeleton::drawTorso(sf::RenderTarget* renderer, std::vector<Clothing> list)
     }
 }
 
-void Skeleton::drawNeck(sf::RenderTarget* renderer, std::vector<Clothing> list) {
+void Skeleton::drawNeck(Renderer* renderer, std::vector<Clothing> list) {
     float width = ((shoulder[0] - torso[0]).getDistance() + (shoulder[1] - torso[0]).getDistance()) / 3.f;
     drawBone(renderer, list, Clothing::Neck, neck, width);
 }
 
-void Skeleton::drawHead(sf::RenderTarget* renderer, std::vector<Clothing> list, float headAngle) {
+void Skeleton::drawHead(Renderer* renderer, std::vector<Clothing> list, float headAngle) {
     float height = (torso[0] - torso[1]).getDistance();   
 
     Vector2 psuedoHeadTop;
@@ -302,7 +302,7 @@ void Skeleton::drawHead(sf::RenderTarget* renderer, std::vector<Clothing> list, 
     drawBone(renderer, list, Clothing::Head, psuedoBone, height / 2.f, !(headAngle >= -PI / 2 && headAngle < PI / 2.f));  
 }
 
-void Skeleton::drawUpperArm(sf::RenderTarget* renderer, std::vector<Clothing> list, int side) {
+void Skeleton::drawUpperArm(Renderer* renderer, std::vector<Clothing> list, int side) {
     float width = (torso[1] - torso[0]).getDistance() / 5.f;
 
     Vector2 psuedoShoulder = shoulder[side].translate((hip[side] - shoulder[side]).getAngle(), width / 2);
@@ -313,7 +313,7 @@ void Skeleton::drawUpperArm(sf::RenderTarget* renderer, std::vector<Clothing> li
     drawBone(renderer, list, Clothing::UpperArm, psuedoBone, width, torsoTopFlipped());
 }
 
-void Skeleton::drawForeArm(sf::RenderTarget* renderer, std::vector<Clothing> list, int side) {
+void Skeleton::drawForeArm(Renderer* renderer, std::vector<Clothing> list, int side) {
     float width = (torso[1] - torso[0]).getDistance() / 5.f;
 
     Vector2 psuedoShoulder = shoulder[side].translate((hip[side] - shoulder[side]).getAngle(), width / 2);
@@ -325,7 +325,7 @@ void Skeleton::drawForeArm(sf::RenderTarget* renderer, std::vector<Clothing> lis
     drawBone(renderer, list, Clothing::ForeArm, psuedoBone, width, torsoTopFlipped());   
 }
 
-void Skeleton::drawHand(sf::RenderTarget* renderer, std::vector<Clothing> list, int side) {
+void Skeleton::drawHand(Renderer* renderer, std::vector<Clothing> list, int side) {
     float width = (torso[1] - torso[0]).getDistance() / 5.f;
 
     Vector2 psuedoShoulder = shoulder[side].translate((hip[side] - shoulder[side]).getAngle(), width / 2);
@@ -346,7 +346,7 @@ void Skeleton::drawHand(sf::RenderTarget* renderer, std::vector<Clothing> list, 
     drawBone(renderer, list, index, psuedoBone, width, hand[side].end.x < hand[side].start.x);       
 }
 
-void Skeleton::drawThigh(sf::RenderTarget* renderer, std::vector<Clothing> list, int side) {
+void Skeleton::drawThigh(Renderer* renderer, std::vector<Clothing> list, int side) {
     float width = (hip[side] - torso[1]).getDistance();
 
     Vector2 psuedoHip = torso[1] + (hip[side] - torso[1]) / 2.f;
@@ -356,7 +356,7 @@ void Skeleton::drawThigh(sf::RenderTarget* renderer, std::vector<Clothing> list,
     drawBone(renderer, list, Clothing::Thigh, psuedoBone, width, torsoBottomFlipped()); 
 }
 
-void Skeleton::drawCalf(sf::RenderTarget* renderer, std::vector<Clothing> list, int side) {
+void Skeleton::drawCalf(Renderer* renderer, std::vector<Clothing> list, int side) {
     float width = (hip[side] - torso[1]).getDistance();
 
     Vector2 psuedoHip = torso[1] + (hip[side] - torso[1]) / 2.f;
@@ -367,7 +367,7 @@ void Skeleton::drawCalf(sf::RenderTarget* renderer, std::vector<Clothing> list, 
     drawBone(renderer, list, Clothing::Calf, psuedoBone, width, torsoBottomFlipped());   
 }
 
-void Skeleton::drawFoot(sf::RenderTarget* renderer, std::vector<Clothing> list, int side) {
+void Skeleton::drawFoot(Renderer* renderer, std::vector<Clothing> list, int side) {
     float width = (hip[side] - torso[1]).getDistance();
 
     Vector2 psuedoHip = torso[1] + (hip[side] - torso[1]) / 2.f;
@@ -387,19 +387,24 @@ void Skeleton::draw(vector<Clothing> list, float headAngle) {
     draw(&g::video, list, headAngle);
 }
 
-static sf::RenderTexture renderer;
+static Renderer renderer(TargetMode::Texture);
 
-void Skeleton::draw(sf::RenderTarget* final, vector<Clothing> list, float headAngle, bool unused) {
+void Skeleton::draw(Renderer* final, vector<Clothing> list, float headAngle, bool unused) {
 
     if(!final)
         return;
 
-    if(!renderer.create(final->getSize().x, final->getSize().y))
+    sf::Shader* outline = outline = g::save.getShader("outline.fs");
+
+    renderer.setSize(final->getSize());
+
+    if(!renderer.reload())
         return;
 
-    renderer.clear(sf::Color::Transparent);
+    renderer.camera = final->camera;
 
     for(int i = 0; i < SkeletonDrawOrder::Total; i ++) {
+        renderer.clear(sf::Color::Transparent);
 
         switch(order[i]) {
 
@@ -416,12 +421,21 @@ void Skeleton::draw(sf::RenderTarget* final, vector<Clothing> list, float headAn
                 break; 
 
             case SkeletonDrawOrder::Body:
-                drawTorso(&renderer, list);
+
+                if(!torsoTopFlipped()) {
+                    drawTorso(&renderer, list);
+                    drawNeck(&renderer, list);
+                    drawHead(&renderer, list, headAngle);
+
+                }else {
+                    drawNeck(&renderer, list);
+                    drawHead(&renderer, list, headAngle);
+                    drawTorso(&renderer, list);
+                }
                 break;
 
             case SkeletonDrawOrder::Head:
-                drawNeck(&renderer, list);
-                drawHead(&renderer, list, headAngle);
+                continue;
                 break;           
 
             case SkeletonDrawOrder::ArmLeft:
@@ -434,27 +448,28 @@ void Skeleton::draw(sf::RenderTarget* final, vector<Clothing> list, float headAn
                 drawUpperArm(&renderer, list, 1);
                 drawForeArm(&renderer, list, 1);
                 drawHand(&renderer, list, 1);
-                break;                   
+                break;
         }
+
+        renderer.display();
+
+        // Apply the renderer skeleton to the final target
+        sf::Vertex vert[4] {
+            sf::Vertex(Vector2(0, 0), Vector2(0, 1)),
+            sf::Vertex(Vector2(final->getSize().x, 0), Vector2(1, 1)),
+            sf::Vertex(Vector2(final->getSize().x, final->getSize().y), Vector2(1, 0)),
+            sf::Vertex(Vector2(0, final->getSize().y), Vector2(0, 0))
+        };
+
+        sf::RenderStates states;
+
+        if(outline) {
+            outline->setUniform("texture", *renderer.getTexture());         
+            states.shader = outline;
+        }
+
+        final->draw(vert, 4, sf::PrimitiveType::Quads, states);        
     }
-
-    renderer.display();
-
-    // Apply the renderer skeleton to the final target
-    sf::RectangleShape rect;
-    rect.setSize({(float)final->getSize().x, (float)final->getSize().y});
-    rect.setTexture(&renderer.getTexture());
-
-    // Set the outline shader
-    sf::RenderStates states;
-
-    sf::Shader* outline = g::save.getShader("outline.fs");
-    if(outline) {
-        outline->setUniform("texture", renderer.getTexture());
-        states.shader = outline;
-    }
-
-    final->draw(rect, states);
 }
 
 bool Skeleton::torsoTopFlipped() {

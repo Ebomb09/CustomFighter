@@ -1,7 +1,7 @@
 #include "button_config.h"
 
 #include "core/input_interpreter.h"
-#include "core/render_instance.h"
+#include "core/video.h"
 #include "core/save.h"
 #include "core/menu.h"
 

@@ -1,6 +1,7 @@
 #ifndef SKELETON_H
 #define SKELETON_H
 
+#include "video.h"
 #include "clothing.h"
 #include "math.h"
 
@@ -91,20 +92,20 @@ struct Skeleton {
 	void rotateJoint(Vector2& joint, Vector2& origin, float rotate);
 
 	void draw(std::vector<Clothing> clothes, float headAngle = 0.f);
-	void draw(sf::RenderTarget* renderer, std::vector<Clothing> clothes, float headAngle = 0.f, bool outline=true);
+	void draw(Renderer* renderer, std::vector<Clothing> clothes, float headAngle = 0.f, bool outline=true);
 
 private:
 
-	void drawBone(sf::RenderTarget* renderer, std::vector<Clothing> list, int part, Bone& bone, float width = 2, bool flip = false);
-	void drawTorso(sf::RenderTarget* renderer,std::vector<Clothing> list);
-	void drawNeck(sf::RenderTarget* renderer, std::vector<Clothing> list);	
-	void drawHead(sf::RenderTarget* renderer, std::vector<Clothing> list, float headAngle = 0.f);
-	void drawUpperArm(sf::RenderTarget* renderer, std::vector<Clothing> list, int side);
-	void drawForeArm(sf::RenderTarget* renderer, std::vector<Clothing> list, int side);
-	void drawHand(sf::RenderTarget* renderer, std::vector<Clothing> list, int side);
-	void drawThigh(sf::RenderTarget* renderer, std::vector<Clothing> list, int side);
-	void drawCalf(sf::RenderTarget* renderer, std::vector<Clothing> list, int side);
-	void drawFoot(sf::RenderTarget* renderer, std::vector<Clothing> list, int side);
+	void drawBone(Renderer* renderer, std::vector<Clothing> list, int part, Bone& bone, float width = 2, bool flip = false);
+	void drawTorso(Renderer* renderer,std::vector<Clothing> list);
+	void drawNeck(Renderer* renderer, std::vector<Clothing> list);	
+	void drawHead(Renderer* renderer, std::vector<Clothing> list, float headAngle = 0.f);
+	void drawUpperArm(Renderer* renderer, std::vector<Clothing> list, int side);
+	void drawForeArm(Renderer* renderer, std::vector<Clothing> list, int side);
+	void drawHand(Renderer* renderer, std::vector<Clothing> list, int side);
+	void drawThigh(Renderer* renderer, std::vector<Clothing> list, int side);
+	void drawCalf(Renderer* renderer, std::vector<Clothing> list, int side);
+	void drawFoot(Renderer* renderer, std::vector<Clothing> list, int side);
 
 	bool torsoTopFlipped();
 	bool torsoBottomFlipped();

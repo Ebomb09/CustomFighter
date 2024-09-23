@@ -4,7 +4,7 @@
 
 #include "core/menu.h"
 #include "core/input_interpreter.h"
-#include "core/render_instance.h"
+#include "core/video.h"
 
 #include <vector>
 #include <string>

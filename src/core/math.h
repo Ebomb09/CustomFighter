@@ -2,7 +2,6 @@
 #define GAME_MATH_H
 
 #include <SFML/Graphics.hpp>
-#include <string>
 
 #define PI 3.14159265359
 
@@ -11,21 +10,29 @@ struct Vector2 {
 
 	Vector2(float _x=0.f, float _y=0.f);
 	Vector2(sf::Vector2f);
+	Vector2(sf::Vector2i);
+	Vector2(sf::Vector2u);
 	Vector2(sf::Vertex);
 
 	operator sf::Vector2f();
+	operator sf::Vector2i();
+	operator sf::Vector2u();		
 	operator sf::Vertex();	
 
 	Vector2 operator-(const Vector2& v2);
 	Vector2 operator+(const Vector2& v2);	
 	Vector2 operator*(const float n);
 	Vector2 operator/(const float n);
-	Vector2 operator*(const Vector2 v2);
-	Vector2 operator/(const Vector2 v2);
+	Vector2 operator*(const Vector2& v2);
+	Vector2 operator/(const Vector2& v2);
 	Vector2& operator-=(const Vector2& v2);
 	Vector2& operator+=(const Vector2& v2);
 	Vector2& operator*=(const float n);
 	Vector2& operator/=(const float n);
+	Vector2& operator*=(const Vector2& v2);
+	Vector2& operator/=(const Vector2& v2);
+	bool operator==(const Vector2& v2);
+	bool operator!=(const Vector2& v2);
 
 	float getAngle();
 	float getDistance();
@@ -40,9 +47,9 @@ struct Circle {
 };
 
 struct Rectangle {
-	float x, y, w, h; 
+	float x, y, w, h;
 
-	Rectangle getScreenRatio();
+	Rectangle getRatio(float width, float height);
 
 	operator sf::RectangleShape();
 	operator sf::FloatRect();
@@ -58,17 +65,6 @@ struct HitBox : Rectangle {
 	int hitStun = 0;
 	int blockStun = 0;
 	bool knockdown = false;
-};
-
-struct Camera : Rectangle {
-
-	Vector2 getScreenScale();
-
-	Vector2 getReal(Vector2 pos);
-	Rectangle getReal(Rectangle rect);
-
-	Vector2 getScreen(Vector2 pos);
-	Rectangle getScreen(Rectangle rect);
 };
 
 namespace Real {

@@ -9,6 +9,7 @@
 #include "clothing.h"
 #include "animation.h"
 #include "move.h"
+#include "video.h"
 
 #include "button.h"
 
@@ -109,7 +110,7 @@ struct Player {
 
 	void advanceFrame();
 	void advanceFrame(std::vector<Player>& others);
-	void draw(sf::RenderTarget* renderer = NULL);
+	void draw(Renderer* renderer = NULL);
 
 	void dealDamage(int dmg);
 
@@ -139,7 +140,6 @@ struct Player {
 	const std::vector<Animation*>& getAnimations();
 
 	Rectangle getRealBoundingBox();
-	Rectangle getScreenBoundingBox();
 };
 
 #endif

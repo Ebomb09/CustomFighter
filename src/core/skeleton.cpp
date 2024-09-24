@@ -464,7 +464,8 @@ void Skeleton::draw(Renderer* final, vector<Clothing> list, float headAngle, boo
         sf::RenderStates states;
 
         if(outline) {
-            outline->setUniform("texture", *renderer.getTexture());         
+            outline->setUniform("texture", *renderer.getTexture());
+            outline->setUniform("resolution", sf::Glsl::Vec2(renderer.getSize().x, renderer.getSize().y));
             states.shader = outline;
         }
 

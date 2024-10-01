@@ -263,15 +263,26 @@ void Player::advanceFrame(vector<Player>& others) {
     HitBox hit = getCollision(others);
 
     if(hit.damage > 0) {  
-        // Block if input in the opposite direction of opponent           
         bool block = false;
 
-        if(inMove(Move::Stand) || inMove(Move::StandBlock) ||
-            inMove(Move::Crouch) || inMove(Move::CrouchBlock)) {
+        // Block: if input in the opposite direction of opponent   
+        if(inMove(Move::Stand) || inMove(Move::StandBlock) || inMove(Move::Crouch) || inMove(Move::CrouchBlock)) 
+            block = (state.side == 1 && getSOCD().x < 0) || (state.side == -1 && getSOCD().x > 0);
+        
+        // Block: if standing or crouching input for hitType
+        switch(hit.type) {
 
-            if((state.side == 1 && getSOCD().x < 0) || (state.side == -1 && getSOCD().x > 0) || state.aiMove == Move::StandBlock || state.aiMove == Move::CrouchBlock) {
-                block = true;
-            }
+            case HitType::High: 
+                block = (block && getSOCD().y == 0) || state.aiMove == Move::StandBlock;
+                break;
+
+            case HitType::Mid:
+                block = (block) || state.aiMove == Move::CrouchBlock || state.aiMove == Move::StandBlock;
+                break;
+
+            case HitType::Low: 
+                block = (block && getSOCD().y < 0) || state.aiMove == Move::CrouchBlock;
+                break;
         }
 
         if(block) {

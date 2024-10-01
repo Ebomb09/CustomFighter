@@ -59,8 +59,28 @@ struct HurtBox : Rectangle {
 	int armour = 0;
 };
 
+namespace HitType {
+
+	enum {
+		High,
+		Mid,
+		Low,
+		Unblockable,
+		Total
+	};
+
+	const std::string String[] {
+		"High",
+		"Mid",
+		"Low",
+		"Unblockable",
+		"Total"
+	};
+};
+
 struct HitBox : Rectangle {
 	Vector2 force;
+	int type = HitType::Mid;
 	int damage = 0;
 	int hitStun = 0;
 	int blockStun = 0;

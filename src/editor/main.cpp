@@ -347,6 +347,17 @@ int main() {
                         ImGui::InputFloat("Y", &editor.getHitBoxes()[editor.selected].y);
                         ImGui::InputFloat("W", &editor.getHitBoxes()[editor.selected].w);
                         ImGui::InputFloat("H", &editor.getHitBoxes()[editor.selected].h);
+
+                        if(ImGui::BeginCombo("Type", HitType::String[editor.getHitBoxes()[editor.selected].type].c_str())) {
+
+                            for(int i = 0; i < HitType::Total; i ++) {
+
+                                if(ImGui::Selectable(HitType::String[i].c_str(), i == editor.getHitBoxes()[editor.selected].type)) 
+                                    editor.getHitBoxes()[editor.selected].type = i;
+                            }
+                            ImGui::EndCombo();
+                        }
+
                         ImGui::InputInt("Damage", &editor.getHitBoxes()[editor.selected].damage);
                         ImGui::InputInt("Hit Stun", &editor.getHitBoxes()[editor.selected].hitStun);
                         ImGui::InputInt("Block Stun", &editor.getHitBoxes()[editor.selected].blockStun);

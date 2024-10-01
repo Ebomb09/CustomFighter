@@ -138,6 +138,7 @@ void Animation::saveToFile(std::filesystem::path path) {
             obj["y"]           = keyFrames[i].hitBoxes[j].y;
             obj["w"]           = keyFrames[i].hitBoxes[j].w;
             obj["h"]           = keyFrames[i].hitBoxes[j].h;
+            obj["type"]        = keyFrames[i].hitBoxes[j].type;
             obj["damage"]      = keyFrames[i].hitBoxes[j].damage;
             obj["hitStun"]     = keyFrames[i].hitBoxes[j].hitStun;
             obj["blockStun"]   = keyFrames[i].hitBoxes[j].blockStun;
@@ -255,6 +256,7 @@ bool Animation::loadFromFile(std::filesystem::path path) {
             if(hitBox["w"].is_number_float())           add.w = hitBox["w"];
             if(hitBox["h"].is_number_float())           add.h = hitBox["h"];
 
+            if(hitBox["type"].is_number_integer())      add.type = hitBox["type"];
             if(hitBox["damage"].is_number_integer())    add.damage = hitBox["damage"];
             if(hitBox["hitStun"].is_number_integer())   add.hitStun = hitBox["hitStun"];
             if(hitBox["blockStun"].is_number_integer()) add.blockStun = hitBox["blockStun"];

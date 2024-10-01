@@ -36,7 +36,7 @@ Renderer::Renderer(int mode) {
 
 		case TargetMode::MainWindow:
 		case TargetMode::Window: {
-			target = new sf::RenderWindow;
+			target = new sf::RenderWindow({100, 100}, "Initializing...");
 			break;
 		}
 

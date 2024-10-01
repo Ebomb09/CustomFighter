@@ -376,24 +376,50 @@ void Skeleton::draw(Renderer* final, vector<Clothing> list, float headAngle, boo
 
     renderer.camera = final->camera;
 
+    // Align the skeleton with it's spine
+    Skeleton copy = *this;
+    float rotate = PI/2 - (torso[0] - torso[1]).getAngle();
+
+    for(int i = 0; i < jointCount; i ++) {
+        copy.joints[i] = copy.joints[i].rotate(rotate, torso[1]);
+    }
+
     for(int i = 0; i < SkeletonDrawOrder::Total; i ++) {
         renderer.clear(sf::Color::Transparent);
 
         switch(order[i]) {
 
             case SkeletonDrawOrder::LegLeft:
-                drawCalf(&renderer, list, 1);
-                drawThigh(&renderer, list, 1);
-                drawFoot(&renderer, list, 1); 
+
+                if(copy.knee[0].y > copy.hip[0].y) {
+                    drawCalf(&renderer, list, 0);
+                    drawThigh(&renderer, list, 0);
+                    drawFoot(&renderer, list, 0);
+                }
                 break; 
 
             case SkeletonDrawOrder::LegRight:
-                drawCalf(&renderer, list, 0);
-                drawThigh(&renderer, list, 0);  
-                drawFoot(&renderer, list, 0);
+
+                if(copy.knee[1].y > copy.hip[1].y) {
+                    drawCalf(&renderer, list, 1);
+                    drawThigh(&renderer, list, 1);
+                    drawFoot(&renderer, list, 1);
+                }
                 break; 
 
             case SkeletonDrawOrder::Body:
+
+                if(copy.knee[0].y <= copy.hip[0].y) {
+                    drawCalf(&renderer, list, 0);
+                    drawThigh(&renderer, list, 0);
+                    drawFoot(&renderer, list, 0);
+                }
+
+                if(copy.knee[1].y <= copy.hip[1].y) {
+                    drawCalf(&renderer, list, 1);
+                    drawThigh(&renderer, list, 1);
+                    drawFoot(&renderer, list, 1);
+                }
 
                 if(!torsoTopFlipped()) {
                     drawTorso(&renderer, list);
@@ -401,15 +427,14 @@ void Skeleton::draw(Renderer* final, vector<Clothing> list, float headAngle, boo
                     drawHead(&renderer, list, headAngle);
 
                 }else {
-                    drawNeck(&renderer, list);
                     drawHead(&renderer, list, headAngle);
+                    drawNeck(&renderer, list);
                     drawTorso(&renderer, list);
                 }
                 break;
 
             case SkeletonDrawOrder::Head:
-                continue;
-                break;           
+                continue;       
 
             case SkeletonDrawOrder::ArmLeft:
                 drawUpperArm(&renderer, list, 0);

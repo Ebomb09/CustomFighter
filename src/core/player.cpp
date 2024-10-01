@@ -404,6 +404,13 @@ void Player::advanceFrame(vector<Player>& others) {
         if(inMove(Move::Custom00) && doneMove())
             setMove(Move::Stand);
 
+        // If the move is an air move cancel early if on ground
+        Animation* anim = getAnimations()[state.moveIndex];
+
+        if(anim && (anim->category == MoveCategory::AirNormal || anim->category == MoveCategory::AirSpecial || anim->category == MoveCategory::AirCommandNormal)) {
+            setMove(Move::Stand);
+        }
+
         // Anticipate the jump startup and only return once animation is done
         if(inMove(Move::Jump) && doneMove())
             setMove(Move::Stand);

@@ -7,7 +7,6 @@
 #include "save.h"
 #include "audio.h"
 
-#include <iostream>
 #include <fstream>
 #include <cmath>
 #include <json.hpp>
@@ -150,22 +149,11 @@ Button::Flag Player::readInput() {
     // Get the local save button config
     Button::Config buttonConfig = g::save.getButtonConfig(seatIndex);
 
-    out.A       = g::input.pressed(buttonConfig.index, buttonConfig.A);
-    out.B       = g::input.pressed(buttonConfig.index, buttonConfig.B);
-    out.C       = g::input.pressed(buttonConfig.index, buttonConfig.C);
-    out.D       = g::input.pressed(buttonConfig.index, buttonConfig.D);
-    out.Taunt   = g::input.pressed(buttonConfig.index, buttonConfig.Taunt);
-
-    // Any attack button is pressed then retrigger all held attack buttons
-    if(out.A || out.B || out.C || out.D || out.Taunt) {
-        out.A       = g::input.held(buttonConfig.index, buttonConfig.A);
-        out.B       = g::input.held(buttonConfig.index, buttonConfig.B);
-        out.C       = g::input.held(buttonConfig.index, buttonConfig.C);
-        out.D       = g::input.held(buttonConfig.index, buttonConfig.D);
-        out.Taunt   = g::input.held(buttonConfig.index, buttonConfig.Taunt);      
-    }
-
-    // Movement keys always held down
+    out.A       = g::input.held(buttonConfig.index, buttonConfig.A);
+    out.B       = g::input.held(buttonConfig.index, buttonConfig.B);
+    out.C       = g::input.held(buttonConfig.index, buttonConfig.C);
+    out.D       = g::input.held(buttonConfig.index, buttonConfig.D);
+    out.Taunt   = g::input.held(buttonConfig.index, buttonConfig.Taunt);
     out.Up      = g::input.held(buttonConfig.index, buttonConfig.Up);
     out.Down    = g::input.held(buttonConfig.index, buttonConfig.Down);
     out.Left    = g::input.held(buttonConfig.index, buttonConfig.Left);
@@ -252,10 +240,6 @@ void Player::advanceFrame(vector<Player>& others) {
         if(move != -1) {
             state.moveFrame = 0;
             setMove(move);
-
-            // Clear input history to prevent misinputs
-            for(int i = 0; i < Button::History; i ++)
-                state.button[i] = Button::Flag();
         }
     }
 
@@ -665,33 +649,36 @@ string Player::getInputBuffer() {
         string motion = "";
         Vector2 socd;
 
-        bool press =    (state.button[i].A) ||
-                        (state.button[i].B) ||
-                        (state.button[i].C) ||
-                        (state.button[i].D) ||
-                        (state.button[i].Taunt) ||
-                        (state.button[i].Up && !state.button[i+1].Up) ||
-                        (state.button[i].Down && !state.button[i+1].Down) ||
-                        (state.button[i].Right && !state.button[i+1].Right) ||
-                        (state.button[i].Left && !state.button[i+1].Left);
+        bool change = state.button[i].Up != state.button[i+1].Up ||
+            state.button[i].Down != state.button[i+1].Down ||
+            state.button[i].Left != state.button[i+1].Left ||
+            state.button[i].Right != state.button[i+1].Right ||        
+            state.button[i].A != state.button[i+1].A ||
+            state.button[i].B != state.button[i+1].B ||
+            state.button[i].C != state.button[i+1].C ||
+            state.button[i].D != state.button[i+1].D ||
+            state.button[i].Taunt != state.button[i+1].Taunt;
 
-        if(press && state.button[i].Up)      socd.y += 1;
-        if(press && state.button[i].Down)    socd.y -= 1;
-        if(press && state.button[i].Right)   socd.x += 1 * state.side;
-        if(press && state.button[i].Left)    socd.x -= 1 * state.side;
+        if(change && state.button[i].Up)          socd.y += 1;
+        if(change && state.button[i].Down)        socd.y -= 1;
+        if(change && state.button[i].Right)       socd.x += 1 * state.side;
+        if(change && state.button[i].Left)        socd.x -= 1 * state.side;
 
         motion = ('5' + (int)socd.x + (int)socd.y * 3);
 
         // Button presses
         string button = "";
 
-        if(state.button[i].A)       button += (button.size() == 0) ? "A" : "+A";
-        if(state.button[i].B)       button += (button.size() == 0) ? "B" : "+B";
-        if(state.button[i].C)       button += (button.size() == 0) ? "C" : "+C";
-        if(state.button[i].D)       button += (button.size() == 0) ? "D" : "+D";
-        if(state.button[i].Taunt)   button += (button.size() == 0) ? "P" : "+P";
+        if(change && state.button[i].A)       button += (button.size() == 0) ? "A" : "+A";
+        if(change && state.button[i].B)       button += (button.size() == 0) ? "B" : "+B";
+        if(change && state.button[i].C)       button += (button.size() == 0) ? "C" : "+C";
+        if(change && state.button[i].D)       button += (button.size() == 0) ? "D" : "+D";
+        if(change && state.button[i].Taunt)   button += (button.size() == 0) ? "P" : "+P";
 
-        buffer = motion + button + '|' + buffer;
+        if(buffer.size() == 0)
+            buffer = motion + button;
+        else
+            buffer = motion + button + '|' + buffer;
     }
     return buffer;
 }
@@ -718,34 +705,35 @@ int Player::searchBestMove(const string& buffer) {
         // Scan the motion strings for matching inputs
         bool match = false;
         int u = 0;
-        int v = 0;
-        int decay = 10;
+        int consume = 0;
 
         // Check if the player has an ai controlling moves
         if(state.aiMove == i)
             match = true;
 
-        while(u < motion.size() && v < buffer.size() && !match) {
+        std::stringstream sBuffer(buffer);
 
-            // Each input delimitted by a pipe
-            if(buffer[v] == '|') {
-                decay --;
+        while(u < motion.size() && !sBuffer.eof() && !match) {
 
-                // Only search up to a few inputs to prevent misfiring
-                if(decay <= 0)
-                    u = 0;
-            }
+            string part;
+            std::getline(sBuffer, part, '|');
 
-            if(motion[u] == buffer[v]) {
-                u ++;
-                decay = 10;
+            consume ++;
 
-                if(u == motion.size()) {
-                    match = true;
+            for(int i = 0; i < part.size(); i ++) {
+
+                if(u != motion.size()-1) {
+                    
+                    if(motion[u] == part[i])
+                        u ++;
+
+                // Last character needs to match within buffer window of 10 frames
+                }else if(Button::History - consume <= 10){
+
+                    if(motion[motion.size()-1] == part[part.size()-1])
+                        match = true;
                 }
             }
-
-            v ++;
         }
 
         // A correctly matching move was found

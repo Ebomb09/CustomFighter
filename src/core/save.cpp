@@ -407,7 +407,10 @@ void SaveManager::loadServerList() {
 }
 
 string SaveManager::getServer(int index) {
-	index = std::clamp(index, 0, (int)serverList.size()-1);
+
+	if(index < 0 || index > serverList.size()-1 || serverList.size() == 0)
+		return "";
+
 	return serverList[index];
 }
 
@@ -424,7 +427,10 @@ int SaveManager::getRandomStage() {
 }
 
 sf::Texture* SaveManager::getStage(int index) {
-	index = std::clamp(index, 0, (int)stages.size()-1);
+	
+	if(index < 0 || index > stages.size()-1 || stages.size() == 0)
+		return NULL;
+
 	return stages[index];
 }
 

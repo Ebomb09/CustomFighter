@@ -91,21 +91,21 @@ struct Skeleton {
 	void rotateJoint(int index, float rotate);
 	void rotateJoint(Vector2& joint, Vector2& origin, float rotate);
 
-	void draw(std::vector<Clothing> clothes, float headAngle = 0.f);
-	void draw(Renderer* renderer, std::vector<Clothing> clothes, float headAngle = 0.f, bool outline=true);
+	void draw(std::vector<Clothing> clothes, float headAngle = 0.f, float armWidth = 8.5f, float legWidth = 8.5f);
+	void draw(Renderer* renderer, std::vector<Clothing> clothes, float headAngle = 0.f, float armWidth = 8.5f, float legWidth = 8.5f);
 
 private:
 
 	void drawBone(Renderer* renderer, std::vector<Clothing> list, int part, Bone& bone, float width = 2, bool flip = false);
 	void drawTorso(Renderer* renderer,std::vector<Clothing> list);
 	void drawNeck(Renderer* renderer, std::vector<Clothing> list);	
-	void drawHead(Renderer* renderer, std::vector<Clothing> list, float headAngle = 0.f);
-	void drawUpperArm(Renderer* renderer, std::vector<Clothing> list, int side);
-	void drawForeArm(Renderer* renderer, std::vector<Clothing> list, int side);
-	void drawHand(Renderer* renderer, std::vector<Clothing> list, int side);
-	void drawThigh(Renderer* renderer, std::vector<Clothing> list, int side);
-	void drawCalf(Renderer* renderer, std::vector<Clothing> list, int side);
-	void drawFoot(Renderer* renderer, std::vector<Clothing> list, int side);
+	void drawHead(Renderer* renderer, std::vector<Clothing> list, float angle);
+	void drawUpperArm(Renderer* renderer, std::vector<Clothing> list, int side, float width);
+	void drawForeArm(Renderer* renderer, std::vector<Clothing> list, int side, float width);
+	void drawHand(Renderer* renderer, std::vector<Clothing> list, int side, float width);
+	void drawThigh(Renderer* renderer, std::vector<Clothing> list, int side, float width);
+	void drawCalf(Renderer* renderer, std::vector<Clothing> list, int side, float width);
+	void drawFoot(Renderer* renderer, std::vector<Clothing> list, int side, float width);
 
 	bool torsoTopFlipped();
 	bool torsoBottomFlipped();

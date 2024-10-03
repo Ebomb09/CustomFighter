@@ -9,18 +9,22 @@
 
 #include <utility>
 #include <string>
+#include <iostream>
 
 using std::vector, std::string;
 
 Menu::Option::Option() {
 	type = Type::Empty;
+	id = -1;
+	data = 0;
 }
 
-Menu::Option::Option(int _id, std::string _text, std::string _font) {
+Menu::Option::Option(int _id, std::string _text, std::string _font, int _align) {
 	type = Type::Text;
 	id = _id;
 	text = new string(_text);
 	font = new string(_font);
+	align = _align;
 }
 
 Menu::Option::Option(int _id, Player _player, Rectangle _capture) {
@@ -30,6 +34,27 @@ Menu::Option::Option(int _id, Player _player, Rectangle _capture) {
 
 	type = Type::Player;
 	id = _id;
+	player = new Player(_player);
+	capture = new Rectangle(_capture);
+}
+
+Menu::Option::Option(int _id, int _data, std::string _text, std::string _font, int _align) {
+	type = Type::Text;
+	id = _id;
+	data = _data;
+	text = new string(_text);
+	font = new string(_font);
+	align = _align;
+}
+
+Menu::Option::Option(int _id, int _data, Player _player, Rectangle _capture) {
+
+	if(_capture.w == 0 || _capture.h == 0)
+		_capture = _player.getRealBoundingBox();
+
+	type = Type::Player;
+	id = _id;
+	data = _data;
 	player = new Player(_player);
 	capture = new Rectangle(_capture);
 }
@@ -56,6 +81,7 @@ Menu::Option::~Option() {
 
 Menu::Option::Option(Option&& move) {
 	id = std::move(move.id);
+	data = std::move(move.data);
 	type = std::exchange(move.type, Type::Empty);
 
 	switch(type) {
@@ -63,6 +89,7 @@ Menu::Option::Option(Option&& move) {
 	case Type::Text:
 		text = std::move(move.text);
 		font = std::move(move.font);
+		align = std::move(move.align);
 		break;
 
 	case Type::Player:
@@ -77,6 +104,7 @@ Menu::Option::Option(Option&& move) {
 
 Menu::Option::Option(const Option& copy) {
 	id = copy.id;
+	data = copy.data;
 	type = copy.type;
 
 	switch(type) {
@@ -84,6 +112,7 @@ Menu::Option::Option(const Option& copy) {
 	case Type::Text:
 		text = new string(*copy.text);
 		font = new string(*copy.font);
+		align = copy.align;		
 		break;
 
 	case Type::Player:
@@ -241,7 +270,7 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 			switch(options[i+j].type) {
 
 			case Option::Type::Text:
-	        	renderText(*options[i+j].text, *options[i+j].font, color, renderBox, 0);
+	        	renderText(*options[i+j].text, *options[i+j].font, color, renderBox, options[i+j].align);
 	        	break;
 
 	        case Option::Type::Player: 

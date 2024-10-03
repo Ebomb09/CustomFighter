@@ -45,6 +45,8 @@ struct Player {
 	Button::Flag in;
 
 	struct Config {
+		float armSize = 8.f;
+		float legSize = 8.5f;
 
 		struct Cloth {
 			std::string name	= "";

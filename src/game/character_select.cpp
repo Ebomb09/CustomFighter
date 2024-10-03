@@ -11,6 +11,7 @@
 #include <cmath>
 #include <vector>
 #include <string>
+#include <iostream>
 
 using std::vector, std::string;
 using namespace std::chrono;
@@ -18,15 +19,18 @@ using namespace std::chrono;
 struct Creator {
 
     enum ID {
-        Save        = -1,
-        Delete      = -2,
-        Cancel      = -3,
-        Disregard   = -4,
-        Test        = -5,
-        MoveList    = -6,
-        Confirm     = -7,
-        Costume     = -8,
-        Insert      = -9
+        Save,
+        Delete,
+        Cancel,
+        Disregard,
+        Test,
+        MoveList,
+        Confirm,
+        Costume,
+        Insert,
+        ArmSize,
+        LegSize,
+        Index
     };
 
     enum Mode {
@@ -150,25 +154,62 @@ struct Creator {
 
         // Moves before custom's are required
         if(moveSelected >= Move::Custom00) {
-            out.push_back({ID::Delete, "REMOVE"});
+            out.push_back({ID::Delete, "[-] Remove"});
             out.push_back({});            
         }
 
-        out.push_back({ID::Cancel, "BACK"});
+        out.push_back({ID::Cancel, "Back"});
         out.push_back({});
 
         return out;
     }
 
-    vector<Menu::Option> getConfigClothes() {
+    vector<Menu::Option> getConfigCostumeOptions() {
         vector<Menu::Option> out;    
         
-        for(int i = 0; i < dummy.config.clothes.size(); i ++) 
-            out.push_back({i, dummy.config.clothes[i].name});
-        
+        out.push_back({ID::Disregard, "Proportions"});
         out.push_back({});
-        out.push_back({ID::Insert, "ADD"});
-        out.push_back({ID::Cancel, "BACK"});
+        out.push_back({});
+
+        out.push_back({ID::ArmSize, "4", "fight", 1});
+        out.push_back({ID::ArmSize, "Arm Size: " + std::to_string((int)dummy.config.armSize)});
+        out.push_back({ID::ArmSize, "6", "fight", -1});
+
+        out.push_back({ID::LegSize, "4", "fight", 1});
+        out.push_back({ID::LegSize, "Leg Size: " + std::to_string((int)dummy.config.legSize)});
+        out.push_back({ID::LegSize, "6", "fight", -1});
+
+        out.push_back({});
+        out.push_back({});
+        out.push_back({});
+
+        out.push_back({ID::Disregard, "Clothes"});
+        out.push_back({});
+        out.push_back({});
+
+        for(int i = 0; i < dummy.config.clothes.size(); i ++) {
+            out.push_back({ID::Index, i, std::to_string(i + 1) + ".", "Anton-Regular", 1});
+            out.push_back({ID::Index, i, dummy.config.clothes[i].name});
+
+            if(i == 0)
+                out.push_back({ID::Index, i, "2 *", "fight", -1});
+            else if(i == dummy.config.clothes.size()-1)
+                out.push_back({ID::Index, i, "@ 8", "fight", -1});
+            else
+                out.push_back({ID::Index, i, "2 8", "fight", -1});
+        }
+
+        out.push_back({ID::Insert, ""});
+        out.push_back({ID::Insert, "[+] Add"});
+        out.push_back({ID::Insert, ""});
+
+        out.push_back({});
+        out.push_back({});
+        out.push_back({});
+
+        out.push_back({ID::Cancel, "Back"});
+        out.push_back({ID::Cancel, ""});
+        out.push_back({ID::Cancel, ""});
 
         return out;
     }
@@ -177,11 +218,11 @@ struct Creator {
         vector<Menu::Option> out;
         
         for(auto& clothing : g::save.getClothingList())
-            out.push_back({0, clothing});
+            out.push_back({ID::Index, clothing});
         
         out.push_back({});
-        out.push_back({ID::Delete, "REMOVE"});
-        out.push_back({ID::Cancel, "BACK"});
+        out.push_back({ID::Delete, "[-] Remove"});
+        out.push_back({ID::Cancel, "Back"});
 
         return out;    
     }
@@ -495,11 +536,12 @@ struct Creator {
             Menu::renderPlayer(dummy, dummy.getRealBoundingBox(), getPlayerDiv());
             dummy.advanceFrame();
 
-            auto options = getConfigClothes();
-            int res = Menu::List(options, &itemHover, dummy.seatIndex, getMenuDiv());
+            auto options = getConfigCostumeOptions();
+            int res = Menu::Table(options, 3, true, &itemHover, dummy.seatIndex, getMenuDiv());
 
             if(res == Menu::Accept) {
 
+                // Insert new clothing piece
                 if(options[itemHover].id == ID::Insert) {
                     backup = dummy.config;   
                                      
@@ -510,14 +552,60 @@ struct Creator {
                 }else if(options[itemHover].id == ID::Cancel) {
                     mode = Mode::ModifyConfig;
 
-                }else {
-                    itemSelected = options[itemHover].id;
+                // Modify existing clothing piece
+                }else if(options[itemHover].id == ID::Index) {
+                    itemSelected = options[itemHover].data;
                     backup = dummy.config;
                     mode = Mode::ListClothes;
                 }
 
             }else if(res == Menu::Decline) {
                 mode = Mode::ModifyConfig;
+
+            }else {
+                Button::Config b = g::save.getButtonConfig(dummy.seatIndex);
+
+                // Shift clothing order
+                if(options[itemHover].id == ID::Index) {
+                    int index = options[itemHover].data;
+
+                    if(g::input.pressed(b.index, b.Left)) {
+                        
+                        if(index > 0) {
+                            std::swap(dummy.config.clothes[index], dummy.config.clothes[index-1]);
+                            itemHover -= 3;
+                        }
+
+                    }else if(g::input.pressed(b.index, b.Right)) {
+
+                        if(index < dummy.config.clothes.size()-1) {
+                            std::swap(dummy.config.clothes[index], dummy.config.clothes[index+1]);
+                            itemHover += 3;
+                        }
+                    }
+
+                // Shift proportion of arm size
+                }else if(options[itemHover].id == ID::ArmSize) {
+
+                    if(g::input.held(b.index, b.Left)) 
+                        dummy.config.armSize -= 0.1f;
+
+                    else if(g::input.held(b.index, b.Right)) 
+                        dummy.config.armSize += 0.1f;
+                    
+                    dummy.config.armSize = std::clamp(dummy.config.armSize, 3.f, 15.f);
+
+                // Shift proportion of leg size
+                }else if(options[itemHover].id == ID::LegSize) {
+
+                    if(g::input.held(b.index, b.Left))
+                        dummy.config.legSize -= 0.1f;
+
+                    else if(g::input.held(b.index, b.Right))
+                        dummy.config.legSize += 0.1f;
+
+                    dummy.config.legSize = std::clamp(dummy.config.legSize, 3.f, 15.f);                 
+                }
             }
 
         // List all available clothing items
@@ -527,16 +615,6 @@ struct Creator {
 
             auto options = getClothingOptions();
             int res = Menu::List(options, &clothHover, dummy.seatIndex, getMenuDiv());
-
-            if(options[clothHover].id >= 0) {
-                auto time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count(); 
-
-                dummy.config.clothes[itemSelected].name = *options[clothHover].text;
-
-                dummy.config.clothes[itemSelected].r = 255;
-                dummy.config.clothes[itemSelected].g = 50 + std::sin(time * PI / 180 / 2) * 50;
-                dummy.config.clothes[itemSelected].b = 50 + std::sin(time * PI / 180 / 2) * 50;
-            }
 
             if(res == Menu::Accept) {
 
@@ -550,7 +628,7 @@ struct Creator {
                     dummy.config = backup;
                     mode = Mode::ListConfigItems;
 
-                }else {
+                }else if(options[clothHover].id == ID::Index) {
 
                     // Reuse the backup colour if already specified
                     if(itemSelected < backup.clothes.size()) {
@@ -572,6 +650,18 @@ struct Creator {
                 // Rollback changes
                 dummy.config = backup;
                 mode = Mode::ListConfigItems;
+            }else {
+
+                // Highlight the clothing option hovered
+                if(options[clothHover].id == ID::Index) {
+                    auto time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count(); 
+
+                    dummy.config.clothes[itemSelected].name = *options[clothHover].text;
+
+                    dummy.config.clothes[itemSelected].r = 255;
+                    dummy.config.clothes[itemSelected].g = 50 + std::sin(time * PI / 180 / 2) * 50;
+                    dummy.config.clothes[itemSelected].b = 50 + std::sin(time * PI / 180 / 2) * 50;
+                }                
             }
 
         }else if(mode == Mode::SetConfigItemColor) {

@@ -13,6 +13,7 @@ namespace Menu {
 
 	struct Option {
 		int id;
+		int data;
 
 		enum class Type {
 			Empty,
@@ -24,6 +25,7 @@ namespace Menu {
 			struct {
 				std::string* text;
 				std::string* font;
+				int align;
 			};
 
 			struct {
@@ -33,8 +35,10 @@ namespace Menu {
 		};
 
 		Option();
-		Option(int _id, std::string _text, std::string _font = "Anton-Regular");
+		Option(int _id, std::string _text, std::string _font = "Anton-Regular", int _align = 0);
 		Option(int _id, Player _player, Rectangle _capture = {0,0,0,0});
+		Option(int _id, int _data, std::string _text, std::string _font = "Anton-Regular", int _align = 0);
+		Option(int _id, int _data, Player _player, Rectangle _capture = {0,0,0,0});		
 		~Option();
 
 		Option(Option&& move);

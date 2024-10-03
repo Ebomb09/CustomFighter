@@ -141,7 +141,7 @@ void Player::draw(Renderer* renderer) {
             pose.joints[i].x += std::sin(state.hitStop) * 2;
     }
 
-    pose.draw(renderer, getClothes(), state.look);
+    pose.draw(renderer, getClothes(), state.look, config.armSize, config.legSize);
 }
 
 Button::Flag Player::readInput() {
@@ -1033,6 +1033,12 @@ void Player::Config::loadFromText(string str) {
         }
     }
 
+    if(json["armSize"].is_number())
+        armSize = json["armSize"];
+
+    if(json["legSize"].is_number())
+        armSize = json["legSize"];
+
     for(int i = 0; i < json["moves"].size(); i ++) 
         if(json["moves"][i].is_string())
             moves[i] = json["moves"][i];
@@ -1053,6 +1059,9 @@ string Player::Config::saveToText() {
         cloth["b"] = clothes[i].b;
         json["clothes"][i] = cloth;            
     }
+
+    json["armSize"] = armSize;
+    json["legSize"] = legSize;
 
     json["moves"] = moves;   
     json["motions"] = motions;     

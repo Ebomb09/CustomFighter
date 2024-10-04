@@ -109,11 +109,22 @@ struct Creator {
 
         for(int i = 0; i < Move::Total; i ++) {
 
+            // If a stance move has nothing selected, pick first valid from category
+            if(moveCategorySelected == 0 && i < Move::Custom00) {
+
+                if(dummy.config.moves[i] == "") {
+                    auto moves = g::save.getAnimationsByFilter(Move::getValidCategories(i));
+
+                    if(moves.size() > 0)
+                        dummy.config.moves[i] = moves[0];
+                }
+            }   
+
             if((moveCategorySelected == 0 && i < Move::Custom00) ||
                 (moveCategorySelected == 1 && i >= Move::Custom00)) {
                 out.push_back({ID::Index, i, Move::String[i]});
                 out.push_back({ID::Index, i, dummy.config.motions[i], "fight"});
-                out.push_back({ID::Index, i, dummy.config.moves[i]});                  
+                out.push_back({ID::Index, i, dummy.config.moves[i]});   
             }    
         }
           

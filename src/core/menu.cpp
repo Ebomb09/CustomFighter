@@ -442,10 +442,14 @@ int Menu::Motion(std::string* str, int user, Rectangle area) {
 	// Emulate player input buffer by check press / release
 	string motion = "";
 
-	if(	g::input.pressed(b.index, b.Up) 	|| g::input.released(b.index, b.Up) ||
+	if((g::input.pressed(b.index, b.Up) 	|| g::input.released(b.index, b.Up) ||
 		g::input.pressed(b.index, b.Left) 	|| g::input.released(b.index, b.Left) ||
 		g::input.pressed(b.index, b.Down) 	|| g::input.released(b.index, b.Down) ||
-		g::input.pressed(b.index, b.Right) 	|| g::input.released(b.index, b.Right)) {
+		g::input.pressed(b.index, b.Right) 	|| g::input.released(b.index, b.Right)) &&
+		(g::input.held(b.index, b.Up) ||
+		g::input.held(b.index, b.Left) ||
+		g::input.held(b.index, b.Down) ||
+		g::input.held(b.index, b.Right))) {
 
 	    Vector2 socd = test.getSOCD();
 	    motion += ('5' + (int)socd.x + (int)socd.y * 3);
@@ -454,10 +458,10 @@ int Menu::Motion(std::string* str, int user, Rectangle area) {
 	// Get button states
 	string button = "";
 
-    if(g::input.pressed(b.index, b.A)) button = (button.size() == 0) ? "A" : "+A";
-    if(g::input.pressed(b.index, b.B)) button = (button.size() == 0) ? "B" : "+B";
-    if(g::input.pressed(b.index, b.C)) button = (button.size() == 0) ? "C" : "+C";
-    if(g::input.pressed(b.index, b.D)) button = (button.size() == 0) ? "D" : "+D";
+    if(g::input.pressed(b.index, b.A)) button += (button.size() == 0) ? "A" : "+A";
+    if(g::input.pressed(b.index, b.B)) button += (button.size() == 0) ? "B" : "+B";
+    if(g::input.pressed(b.index, b.C)) button += (button.size() == 0) ? "C" : "+C";
+    if(g::input.pressed(b.index, b.D)) button += (button.size() == 0) ? "D" : "+D";
 
     (*str) += motion + button;
 

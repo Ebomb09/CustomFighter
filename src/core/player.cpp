@@ -240,6 +240,9 @@ void Player::advanceFrame(vector<Player>& others) {
         if(move != -1) {
             state.moveFrame = 0;
             setMove(move);
+
+            for(int i = 0; i < Button::History; i ++)
+                state.button[i] = Button::Flag();
         }
     }
 

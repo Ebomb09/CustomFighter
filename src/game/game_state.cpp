@@ -381,6 +381,9 @@ void Game::draw() {
     for(int i = 0; i < playerCount; i ++) 
     	players[i].draw();  
 
+    for(int i = 0; i < playerCount; i ++) 
+    	players[i].drawEffects();  
+
     // Draw round header
     if(state.timer > (timerMax + 1) * 60) {
 	    sf::Text txt;

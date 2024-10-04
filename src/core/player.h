@@ -67,6 +67,17 @@ struct Player {
 		int calculatePoints();
 	}config;
 
+	struct Effect {
+		const static int Max = 10;
+
+		int id = -1;
+		int counter = 0;
+		int lifeTime = 0;
+		Vector2 position = {0, 0};
+		Vector2 size = {0, 0};
+		float angle = 0;
+	};
+
 	struct State {
 		int				counter			= 0;
 		int				tagCount		= 0;
@@ -84,7 +95,7 @@ struct Player {
 		int				moveFrame		= 0;
 		float 			look			= 0;
 		Button::Flag	button			[Button::History];
-
+		Effect			effects			[Effect::Max];
 	}state;
 
 	struct Cache {
@@ -113,6 +124,7 @@ struct Player {
 	void advanceFrame();
 	void advanceFrame(std::vector<Player>& others);
 	void draw(Renderer* renderer = NULL);
+	void drawEffects(Renderer* renderer = NULL);
 
 	void dealDamage(int dmg);
 
@@ -129,7 +141,7 @@ struct Player {
 
 	bool inCorner();
 
-	HitBox getCollision(std::vector<Player>& others);
+	HitBox getCollision(std::vector<Player>& others, Vector2* outLocation=NULL);
 
 	Vector2 getCameraCenter(std::vector<Player>& others);
 

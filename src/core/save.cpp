@@ -46,6 +46,9 @@ SaveManager::SaveManager() {
 			stages.push_back(ptr);
 	}
 
+	for(auto& entry : std::filesystem::directory_iterator("data/effects"))
+		getEffect(entry);
+
 	for(auto& entry : std::filesystem::directory_iterator("data/shaders")) 
 		getShader(entry);
 
@@ -119,6 +122,30 @@ sf::Texture* SaveManager::getTexture(std::filesystem::path path) {
 		ptr = textures[path.string()];
 	}
 	return ptr;
+}
+
+AnimatedTexture SaveManager::getEffect(std::filesystem::path path) {
+
+	if(effects.find(path.string()) == effects.end()) {
+		AnimatedTexture anim;
+		
+		if(anim.loadFromFile(path)) {
+			anim.id = effectID++;
+			effects[path.stem().string()] = anim;
+		}
+		return anim;
+	}
+	return effects[path.string()];
+}
+
+AnimatedTexture SaveManager::getEffectByID(int id) {
+
+	for(auto& it : effects) {
+
+		if(it.second.id == id)
+			return it.second;
+	}
+	return {};
 }
 
 sf::Shader* SaveManager::getShader(std::filesystem::path path) {

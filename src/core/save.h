@@ -7,6 +7,7 @@
 #include <SFML/Audio.hpp>
 #include <SFML/Graphics.hpp>
 
+#include "animated_texture.h"
 #include "clothing.h"
 #include "animation.h"
 #include "button.h"
@@ -22,17 +23,20 @@ public:
 /* Texture Assets */
 public:
 	sf::Texture* 								getTexture(std::filesystem::path path);
+	AnimatedTexture								getEffect(std::filesystem::path path);
+	AnimatedTexture								getEffectByID(int id);
 
 private:
 	std::map<std::string, sf::Texture*> 		textures;
-
+	std::map<std::string, AnimatedTexture> 		effects;
+	int 										effectID = 0;
 
 /* Shader Assets */
 public:
 	sf::Shader*									getShader(std::filesystem::path path);
 
 private:
-	std::map<std::string, sf::Shader*> 		shaders;
+	std::map<std::string, sf::Shader*> 			shaders;
 
 
 /* Audio Assets */

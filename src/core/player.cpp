@@ -11,6 +11,7 @@
 #include <cmath>
 #include <json.hpp>
 #include <thread>
+#include <iostream>
 
 using std::vector, std::string;
 
@@ -143,6 +144,37 @@ void Player::draw(Renderer* renderer) {
     pose.draw(renderer, getClothes(), state.look, config.armSize, config.legSize);
 }
 
+void Player::drawEffects(Renderer* renderer) {
+
+    if(!renderer)
+        renderer = &g::video;
+
+    // Draw effects
+    for(int i = 0; i < Effect::Max; i ++) {
+        Effect& eff = state.effects[i];
+
+        if(eff.id >= 0) {
+            AnimatedTexture anim = g::save.getEffectByID(eff.id);
+            sf::Texture* tex = anim.getFrame(eff.counter, eff.lifeTime);
+
+            if(tex) {
+                Rectangle rect {
+                    eff.position.x,
+                    eff.position.y,
+                    eff.size.x,
+                    eff.size.y
+                };
+
+                sf::RectangleShape d = renderer->toScreen(rect);
+                d.setTexture(tex);
+                d.setOrigin({d.getSize().x / 2, d.getSize().y / 2});
+                d.setRotation(eff.angle * 180 / PI);
+                renderer->draw(d);
+            }
+        }
+    }
+}
+
 Button::Flag Player::readInput() {
     Button::Flag out;
 
@@ -209,6 +241,18 @@ void Player::advanceFrame(vector<Player>& others) {
     }
     state.accDamage = 0;
 
+    // Step effect timers
+    for(int i = 0; i < Effect::Max; i ++) {
+
+        if(state.effects[i].id >= 0) {
+            state.effects[i].counter ++;
+
+            // Once complete reset to default
+            if(state.effects[i].counter > state.effects[i].lifeTime) 
+                state.effects[i] = Effect();          
+        }
+    }
+
     // Exit early if in HitStop
     if(state.hitStop != 0) 
         return;
@@ -247,7 +291,8 @@ void Player::advanceFrame(vector<Player>& others) {
     }
 
     // Check Hit/Hurtbox Collisions
-    HitBox hit = getCollision(others);
+    Vector2 hitLocation;
+    HitBox hit = getCollision(others, &hitLocation);
 
     if(hit.damage > 0) {  
         bool block = false;
@@ -325,6 +370,27 @@ void Player::advanceFrame(vector<Player>& others) {
 
             }else {
                 g::audio.playSound(g::save.getSound("hit_hard"), true);      
+            }
+        }
+
+        // Create hitspark effect
+        for(int i = 0; i < Effect::Max; i ++) {
+            Effect& eff = state.effects[i];
+
+            if(eff.id == -1) {
+
+                if(block) {
+                    eff.id = g::save.getEffect("blockspark").id;
+                    eff.lifeTime = std::max(24, hit.damage * 2);
+
+                }else {
+                    eff.id = g::save.getEffect("hitspark").id;
+                    eff.lifeTime = std::max(12, hit.damage);
+                }
+                eff.position = hitLocation;
+                eff.angle = (Vector2(hit.x + hit.w / 2, hit.y - hit.h / 2) - hitLocation).getAngle();
+                eff.size = {24, 24};
+                break;
             }
         }
     }
@@ -790,7 +856,7 @@ const bool& Player::getTaggedIn(vector<Player>& others) {
     return cache.tagged;
 }
 
-HitBox Player::getCollision(vector<Player>& others) {
+HitBox Player::getCollision(vector<Player>& others, Vector2* outLocation) {
 
     if(!getTaggedIn(others))
         return {};
@@ -809,6 +875,13 @@ HitBox Player::getCollision(vector<Player>& others) {
                 for(auto& hurt : getHurtBoxes()) {
 
                     if(Real::rectangleInRectangle(hurt, hit)) {
+
+                        // Output the location where hit occured
+                        if(outLocation) {
+                            outLocation->x = ((hit.x + hit.w/2) + (hurt.x + hurt.w/2))/2.f;
+                            outLocation->y = ((hit.y - hit.h/2) + (hurt.y - hurt.h/2))/2.f;
+                        }
+
                         state.hitKeyFrame[i] = others[i].getKeyFrame();
                         return hit;
                     }

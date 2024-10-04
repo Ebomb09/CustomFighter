@@ -111,9 +111,9 @@ struct Creator {
 
             if((moveCategorySelected == 0 && i < Move::Custom00) ||
                 (moveCategorySelected == 1 && i >= Move::Custom00)) {
-                out.push_back({i, Move::String[i]});
-                out.push_back({i, dummy.config.motions[i], "fight"});
-                out.push_back({i, dummy.config.moves[i]});                  
+                out.push_back({ID::Index, i, Move::String[i]});
+                out.push_back({ID::Index, i, dummy.config.motions[i], "fight"});
+                out.push_back({ID::Index, i, dummy.config.moves[i]});                  
             }    
         }
           
@@ -736,26 +736,15 @@ struct Creator {
             dummy.setMove(Move::Stand, true);
             dummy.advanceFrame();
 
-            // Set the dummys animation
-            if(options[moveHover].id >= 0) {
-                Animation* anim = g::save.getAnimation(dummy.config.moves[options[moveHover].id]);
-
-                if(anim) {
-                    auto time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();  
-                    dummy.state.moveIndex = options[moveHover].id;                                         
-                    dummy.state.moveFrame = (time / 17) % anim->getFrameCount();
-                }
-            }
-
             if(res == Menu::Accept) {
 
                 if(options[moveHover].id == ID::Cancel) {
                     mode = Mode::ModifyConfig;
 
-                }else if(options[moveHover].id >= 0) {
+                }else if(options[moveHover].id == ID::Index) {
                     backup = dummy.config;
 
-                    moveSelected = options[moveHover].id;
+                    moveSelected = options[moveHover].data;
                     dummy.config.moves[moveSelected] = "";                    
                     dummy.config.motions[moveSelected] = "";
                     mode = Mode::ListAnimations;
@@ -763,6 +752,19 @@ struct Creator {
 
             }else if(res == Menu::Decline) {
                 mode = Mode::ModifyConfig;
+
+            }else {
+
+                // Set the dummys animation
+                if(options[moveHover].id == ID::Index) {
+                    Animation* anim = g::save.getAnimation(dummy.config.moves[options[moveHover].data]);
+
+                    if(anim) {
+                        auto time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();  
+                        dummy.state.moveIndex = options[moveHover].data;                                         
+                        dummy.state.moveFrame = (time / 17) % anim->getFrameCount();
+                    }
+                }               
             }
 
         // Draw the animation selection

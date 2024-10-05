@@ -317,15 +317,13 @@ void Player::advanceFrame(vector<Player>& others) {
                 break;
         }
 
+        state.velocity.x += hit.force.x;
+
         if(block) {
 
-            // If not cornered self pushback
-            if(!inCorner())
-                state.velocity.x = hit.force.x;
-
-            // Otherwise signal pushback
-            else
-                state.pushBack.x = -hit.force.x;
+            // If cornered self pushback
+            if(inCorner())
+                state.pushBack.x = -state.velocity.x;
 
             state.stun = hit.blockStun;
             state.accDamage = hit.blockStun;
@@ -339,16 +337,17 @@ void Player::advanceFrame(vector<Player>& others) {
             g::audio.playSound(g::save.getSound("block"), true);
 
         }else{
+
+            // Float if a neutral hit, and already airborne
+            if(hit.force.y == 0 && state.position.y > 0)
+                hit.force.y = 2;
+
             dealDamage(hit.damage);
-            state.velocity.y += hit.force.y;
+            state.velocity.y = hit.force.y;
 
-            // If not cornered self pushback
-            if(!inCorner())
-                state.velocity.x += hit.force.x;
-
-            // Otherwise signal pushback
-            else
-                state.pushBack.x = -hit.force.x;
+            // If cornered self pushback
+            if(inCorner())
+                state.pushBack.x = -state.velocity.x;
 
             if(hit.knockdown) {
                 setMove(Move::KnockDown);

@@ -416,8 +416,8 @@ void Skeleton::draw(Renderer* final, vector<Clothing> list, float headAngle, flo
                     drawHead(&renderer, list, headAngle);
 
                 }else {
-                    drawHead(&renderer, list, headAngle);
                     drawNeck(&renderer, list);
+                    drawHead(&renderer, list, headAngle);
                     drawTorso(&renderer, list);
                 }
                 break;

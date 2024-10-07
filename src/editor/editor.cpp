@@ -239,6 +239,12 @@ void Editor::update() {
 }
 
 void Editor::setKeyFrame(int index) {
+
+    if(anim.keyFrames.size() == 0)
+        index = -1;
+    else
+        index = std::clamp(index, 0, (int)anim.keyFrames.size()-1);
+
     keyFrame = index;
     selected = -1;
     dragZone = -1;

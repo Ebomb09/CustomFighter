@@ -109,10 +109,7 @@ int main() {
             for(int i = 0; i < count; i ++)
                 editor.anim.removeKeyFrame(editor.keyFrame);
             
-            editor.keyFrame --;
-
-            if(editor.keyFrame < 0 && editor.anim.getKeyFrameCount() > 0)
-                editor.setKeyFrame(0);
+            editor.setKeyFrame(editor.keyFrame-1);
         }
 
         ImGui::SameLine();
@@ -126,11 +123,18 @@ int main() {
             editor.keyFrame ++;         
         }
 
+        if(!ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_LeftArrow))
+            editor.setKeyFrame(editor.keyFrame-1);
+
+        if(!ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_RightArrow))
+            editor.setKeyFrame(editor.keyFrame+1);
+
         if(editor.keyFrame >= 0) {
             
-            if(ImGui::ArrowButton("LeftFrame", ImGuiDir_Left) && editor.keyFrame > 0) {
+            if((ImGui::ArrowButton("LeftFrame", ImGuiDir_Left) && editor.keyFrame > 0)
+            || (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_LeftArrow))) {
                 editor.anim.swapKeyFrame(editor.keyFrame, editor.keyFrame-1);
-                editor.keyFrame --;
+                editor.setKeyFrame(editor.keyFrame-1);
             }
 
             ImGui::SameLine();
@@ -138,9 +142,10 @@ int main() {
             ImGui::InputInt("##Duration", &editor.anim.getKeyFrame(editor.keyFrame).duration, 0);   
 
             ImGui::SameLine();
-            if(ImGui::ArrowButton("RightFrame", ImGuiDir_Right) && editor.keyFrame < editor.anim.getKeyFrameCount()-1) {
+            if((ImGui::ArrowButton("RightFrame", ImGuiDir_Right) && editor.keyFrame < editor.anim.getKeyFrameCount()-1)
+            || (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_RightArrow))) {
                 editor.anim.swapKeyFrame(editor.keyFrame, editor.keyFrame+1);
-                editor.keyFrame ++;
+                editor.setKeyFrame(editor.keyFrame+1);
             }                        
         }
         ImGui::End();

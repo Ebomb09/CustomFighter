@@ -17,6 +17,7 @@ struct Editor {
 	int timer = 0;
 
 	enum Mode {
+		Frames,
 	    Joints,
 	    HitBoxes,
 	    HurtBoxes

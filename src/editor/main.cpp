@@ -15,6 +15,10 @@
 
 using std::vector, std::string;
 
+static bool inRange(int i, int a, int b) {
+    return (i <= std::max(a, b) && i >= std::min(a, b));
+}
+
 int main() {
 
     #ifdef __WIN32__
@@ -65,25 +69,46 @@ int main() {
             if(i != 0)
                 ImGui::SameLine();
 
-            if(editor.keyFrame == i){
+            bool highlighted = editor.keyFrame == i || (editor.settings.mode == Editor::Mode::Frames) && editor.selected != -1 && inRange(i, editor.keyFrame, editor.selected);
+
+            if(highlighted){
                 ImGui::PushStyleColor(ImGuiCol_Button, ImColor(102, 255, 102).Value);
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImColor(204, 255, 204).Value);                
-                ImGui::PushStyleColor(ImGuiCol_Text, ImColor(0, 102, 0).Value);                
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImColor(204, 255, 204).Value);
+                ImGui::PushStyleColor(ImGuiCol_Text, ImColor(0, 102, 0).Value);
             }
 
             bool clicked = ImGui::Button(std::to_string(i).c_str(), ImVec2(16 * editor.anim.getKeyFrame(i).duration, 64));
 
-            if(editor.keyFrame == i)
-                ImGui::PopStyleColor(3);                                   
+            if(highlighted) 
+                ImGui::PopStyleColor(3);                  
             
-            if(clicked)
-                editor.setKeyFrame(i);
+            if(clicked) {
+
+                if(ImGui::GetIO().KeyShift && editor.settings.mode == Editor::Mode::Frames) {
+                    editor.selected = i;
+
+                }else {
+                    editor.setKeyFrame(i);
+                }
+            }
         }
         ImGui::EndChild();
   
         // Delete current key frame and pick the previous
         if(ImGui::Button("-Remove") && editor.keyFrame >= 0) {
-            editor.anim.removeKeyFrame(editor.keyFrame);
+            int count = 1;
+
+            // Get the range of removal
+            if(editor.settings.mode == Editor::Mode::Frames && editor.selected != -1) {
+                count = 1 + std::max(editor.keyFrame, editor.selected) - std::min(editor.keyFrame, editor.selected);
+                editor.keyFrame = std::min(editor.keyFrame, editor.selected);
+                editor.selected = -1;
+            }
+
+            // The keyframes to the right
+            for(int i = 0; i < count; i ++)
+                editor.anim.removeKeyFrame(editor.keyFrame);
+            
             editor.keyFrame --;
 
             if(editor.keyFrame < 0 && editor.anim.getKeyFrameCount() > 0)
@@ -138,6 +163,20 @@ int main() {
                     if(result == NFD_OKAY) {
                         editor.fileName = outPath;
                         editor.anim.loadFromFile(outPath);
+                        editor.setKeyFrame((editor.anim.getKeyFrameCount() == 0) ? -1 : 0);
+                        NFD_FreePath(outPath);
+                    }
+                }
+
+                if(ImGui::MenuItem("Import")) {
+                    nfdchar_t* outPath;
+                    nfdfilteritem_t filters = {"freemocap.json", "json"};
+
+                    nfdresult_t result = NFD_OpenDialog(&outPath, &filters, 1, NULL);
+
+                    if(result == NFD_OKAY) {
+                        editor.fileName = "";
+                        editor.anim.importFromFreeMoCap(outPath);
                         editor.setKeyFrame((editor.anim.getKeyFrameCount() == 0) ? -1 : 0);
                         NFD_FreePath(outPath);
                     }
@@ -304,8 +343,8 @@ int main() {
 
             if(ImGui::CollapsingHeader("Selection")) {
 
-                const char* modes[] = {"Joints", "HitBoxes", "HurtBoxes"};
-                if(ImGui::Combo("Mode", &editor.settings.mode, modes, 3)) {
+                const char* modes[] = {"Frames", "Joints", "HitBoxes", "HurtBoxes"};
+                if(ImGui::Combo("Mode", &editor.settings.mode, modes, 4)) {
                     editor.selectDefault();
                 }     
 

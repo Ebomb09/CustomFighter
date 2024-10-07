@@ -36,6 +36,7 @@ struct Animation {
 
     bool loadFromFile(std::filesystem::path path);
     void saveToFile(std::filesystem::path path);
+    bool importFromFreeMoCap(std::filesystem::path path);
 
     void swapKeyFrame(int a, int b);
 

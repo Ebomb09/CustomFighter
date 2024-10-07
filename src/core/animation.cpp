@@ -3,6 +3,7 @@
 
 #include <fstream>
 #include <json.hpp>
+#include <iostream>
 
 Animation::Animation() {
 
@@ -83,6 +84,75 @@ int Animation::getFrameCount() {
     for(int i = 0; i < getKeyFrameCount(); i ++)
         total += keyFrames[i].duration;
     return total;
+}
+
+int Animation::getStartup() {
+    int f_pos = 0;
+
+    for(auto& frame : keyFrames) {
+
+        if(frame.hitBoxes.size() > 0)
+            return f_pos;
+
+        f_pos += frame.duration;
+    }
+    return -1;
+}
+
+int Animation::getDamage() {
+    int dmg = 0;
+
+    for(auto& frame : keyFrames) {
+        int max = 0;
+
+        for(auto& hit : frame.hitBoxes) {
+            max = std::max(max, hit.damage);
+        }
+        dmg += max;
+    }
+    return dmg;
+}
+
+int Animation::getOnHit() {
+    int last_hit = 0;
+    int f_pos = 0;
+
+    for(auto& frame : keyFrames) {
+        int max = 0;
+
+        for(auto& hit : frame.hitBoxes) {
+            max = std::max(max, hit.hitStun);
+        }
+
+        if(max > 0) {
+            last_hit = max;
+            f_pos = 0;
+        }
+
+        f_pos += frame.duration;
+    }
+    return last_hit - f_pos;
+}
+
+int Animation::getOnBlock() {
+    int last_hit = 0;
+    int f_pos = 0;
+
+    for(auto& frame : keyFrames) {
+        int max = 0;
+
+        for(auto& hit : frame.hitBoxes) {
+            max = std::max(max, hit.blockStun);
+        }
+
+        if(max > 0) {
+            last_hit = max;
+            f_pos = 0;
+        }
+
+        f_pos += frame.duration;
+    }
+    return last_hit - f_pos;
 }
 
 void Animation::saveToFile(std::filesystem::path path) {
@@ -287,71 +357,80 @@ bool Animation::loadFromFile(std::filesystem::path path) {
     return true;
 }
 
-int Animation::getStartup() {
-    int f_pos = 0;
+static Vector2 getPos(nlohmann::json& obj) {
 
-    for(auto& frame : keyFrames) {
+    if(obj.is_object() && obj["x"].is_number() && obj["z"].is_number())
+        return {obj["x"], obj["z"]};
 
-        if(frame.hitBoxes.size() > 0)
-            return f_pos;
-
-        f_pos += frame.duration;
-    }
-    return -1;
+    return {0, 0};
 }
 
-int Animation::getDamage() {
-    int dmg = 0;
+bool Animation::importFromFreeMoCap(std::filesystem::path path) {
+    keyFrames.clear();
 
-    for(auto& frame : keyFrames) {
-        int max = 0;
+    std::fstream file(path, std::fstream::in);
 
-        for(auto& hit : frame.hitBoxes) {
-            max = std::max(max, hit.damage);
-        }
-        dmg += max;
+    if(!file.good()) {
+        file.close();
+        return false;
     }
-    return dmg;
-}
 
-int Animation::getOnHit() {
-    int last_hit = 0;
-    int f_pos = 0;
+    // Parse json
+    nlohmann::json json;
 
-    for(auto& frame : keyFrames) {
-        int max = 0;
+    try {
+        json = nlohmann::json::parse(file);
 
-        for(auto& hit : frame.hitBoxes) {
-            max = std::max(max, hit.hitStun);
-        }
-
-        if(max > 0) {
-            last_hit = max;
-            f_pos = 0;
-        }
-
-        f_pos += frame.duration;
+    }catch(nlohmann::json::exception e) {
+        return false;
     }
-    return last_hit - f_pos;
-}
 
-int Animation::getOnBlock() {
-    int last_hit = 0;
-    int f_pos = 0;
+    if(json["data_by_frame"].is_object()) {
+        int frame = 0;
 
-    for(auto& frame : keyFrames) {
-        int max = 0;
+        while(json["data_by_frame"][std::to_string(frame)]["tracked_points"].is_object()) {
+            nlohmann::json& obj = json["data_by_frame"][std::to_string(frame)]["tracked_points"];
 
-        for(auto& hit : frame.hitBoxes) {
-            max = std::max(max, hit.blockStun);
+            Frame add;
+            Skeleton& pose = add.pose;
+            pose.head           = getPos(obj["head"]);
+            pose.shoulder[0]    = getPos(obj["body_left_shoulder"]);
+            pose.shoulder[1]    = getPos(obj["body_right_shoulder"]);
+            pose.elbow[0]       = getPos(obj["body_left_elbow"]);
+            pose.elbow[1]       = getPos(obj["body_right_elbow"]);
+            pose.wrist[0]       = getPos(obj["body_left_wrist"]);
+            pose.wrist[1]       = getPos(obj["body_right_wrist"]);
+            pose.hip[0]         = getPos(obj["body_left_hip"]);
+            pose.hip[1]         = getPos(obj["body_right_hip"]);
+            pose.knee[0]        = getPos(obj["body_left_knee"]);
+            pose.knee[1]        = getPos(obj["body_right_knee"]);
+            pose.heel[0]        = getPos(obj["body_left_heel"]);
+            pose.heel[1]        = getPos(obj["body_right_heel"]);
+            pose.toes[0]        = getPos(obj["body_left_foot_index"]);
+            pose.toes[1]        = getPos(obj["body_right_foot_index"]);
+            pose.fingers[0]     = getPos(obj["left_hand"]);
+            pose.fingers[1]     = getPos(obj["right_hand"]);
+
+            pose.torso[0] = (pose.shoulder[0] + pose.shoulder[1]) / 2.f;
+            pose.torso[1] = (pose.hip[0] + pose.hip[1]) / 2.f;
+
+            // Adjust the skeleton
+            float bot = std::min(pose.heel[0].y, pose.heel[1].y);
+            float mid = pose.torso[1].x;
+
+            for(int i = 0; i < pose.jointCount; i ++) {
+                pose.joints[i].y += -1.f * bot;
+                pose.joints[i].x -= mid;
+                pose.joints[i] /= 12.5f;
+            }
+
+            pose.head = pose.torso[0].translate((pose.head - pose.torso[0]).getAngle(), 4.f);
+
+            keyFrames.push_back(add);
+
+            frame ++;
         }
-
-        if(max > 0) {
-            last_hit = max;
-            f_pos = 0;
-        }
-
-        f_pos += frame.duration;
     }
-    return last_hit - f_pos;
+    file.close();
+    return true;
 }

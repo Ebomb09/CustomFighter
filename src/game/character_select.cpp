@@ -145,19 +145,32 @@ struct Creator {
 
         vector<Menu::Option> out;
 
+        // Add each animation in the category which isn't already equiped
         for(auto anim : g::save.getAnimationsByFilter({Move::getValidCategories(moveSelected)[animCategorySelected]})) {
-            out.push_back({ID::Test, anim});
+            bool equiped = false;
 
-            Animation* ptr = g::save.getAnimation(anim);
+            for(int i = 0; i < Move::Total; i ++) {
 
-            Player test = dummy;
-            test.config.moves[moveSelected] = anim;
-            test.state.moveIndex = moveSelected;
+                if(dummy.config.moves[i] == anim) {
+                    equiped = true;
+                    break;
+                }
+            }
 
-            if(ptr && ptr->getFrameCount() > 0) 
-                test.state.moveFrame = (time / 17) % ptr->getFrameCount();
+            if(!equiped) {
+                out.push_back({ID::Test, anim});
 
-            out.push_back({0, test});
+                Animation* ptr = g::save.getAnimation(anim);
+
+                Player test = dummy;
+                test.config.moves[moveSelected] = anim;
+                test.state.moveIndex = moveSelected;
+
+                if(ptr && ptr->getFrameCount() > 0) 
+                    test.state.moveFrame = (time / 17) % ptr->getFrameCount();
+
+                out.push_back({0, test});
+            }
         }
 
         out.push_back({});
@@ -228,8 +241,20 @@ struct Creator {
     vector<Menu::Option> getClothingOptions() {
         vector<Menu::Option> out;
         
-        for(auto& clothing : g::save.getClothingList())
-            out.push_back({ID::Index, clothing});
+        for(auto& clothing : g::save.getClothingList()) {
+            bool equiped = false;
+
+            for(auto& item : dummy.config.clothes) {
+
+                if(item.name == clothing) {
+                    equiped = true;
+                    break;
+                }
+            }
+
+            if(!equiped)
+                out.push_back({ID::Index, clothing});
+        }
         
         out.push_back({});
         out.push_back({ID::Delete, "[-] Remove"});
@@ -555,9 +580,9 @@ struct Creator {
                 // Insert new clothing piece
                 if(options[itemHover].id == ID::Insert) {
                     backup = dummy.config;   
-                                     
+
+                    itemSelected = dummy.config.clothes.size();  
                     dummy.config.clothes.push_back({});
-                    itemSelected = dummy.config.clothes.size()-1;
                     mode = Mode::ListClothes;
 
                 }else if(options[itemHover].id == ID::Cancel) {
@@ -565,8 +590,10 @@ struct Creator {
 
                 // Modify existing clothing piece
                 }else if(options[itemHover].id == ID::Index) {
-                    itemSelected = options[itemHover].data;
                     backup = dummy.config;
+
+                    itemSelected = options[itemHover].data;
+                    dummy.config.clothes[itemSelected].name = "";
                     mode = Mode::ListClothes;
                 }
 
@@ -621,11 +648,28 @@ struct Creator {
 
         // List all available clothing items
         }else if(mode == Mode::ListClothes) {
-            Menu::renderPlayer(dummy, dummy.getRealBoundingBox(), getPlayerDiv());
-            dummy.advanceFrame();
 
             auto options = getClothingOptions();
             int res = Menu::List(options, &clothHover, dummy.seatIndex, getMenuDiv());
+
+            dummy.advanceFrame();
+            
+            // Highlight the clothing option hovered
+            if(options[clothHover].id == ID::Index) {
+                Player copy = dummy;
+                auto time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count(); 
+
+                copy.config.clothes[itemSelected].name = *options[clothHover].text;
+
+                copy.config.clothes[itemSelected].r = 255;
+                copy.config.clothes[itemSelected].g = 50 + std::sin(time * PI / 180 / 2) * 50;
+                copy.config.clothes[itemSelected].b = 50 + std::sin(time * PI / 180 / 2) * 50;
+
+                Menu::renderPlayer(copy, copy.getRealBoundingBox(), getPlayerDiv());
+
+            }else {
+                Menu::renderPlayer(dummy, dummy.getRealBoundingBox(), getPlayerDiv());
+            } 
 
             if(res == Menu::Accept) {
 
@@ -640,15 +684,10 @@ struct Creator {
                     mode = Mode::ListConfigItems;
 
                 }else if(options[clothHover].id == ID::Index) {
-
-                    // Reuse the backup colour if already specified
-                    if(itemSelected < backup.clothes.size()) {
-                        dummy.config.clothes[itemSelected].r = backup.clothes[itemSelected].r;
-                        dummy.config.clothes[itemSelected].g = backup.clothes[itemSelected].g;
-                        dummy.config.clothes[itemSelected].b = backup.clothes[itemSelected].b;
+                    dummy.config.clothes[itemSelected].name = *options[clothHover].text;
 
                     // Set default random colours
-                    }else {
+                    if(itemSelected >= backup.clothes.size()) {
                         dummy.config.clothes[itemSelected].r = rand() % 256;
                         dummy.config.clothes[itemSelected].g = rand() % 256;
                         dummy.config.clothes[itemSelected].b = rand() % 256;                        
@@ -661,18 +700,7 @@ struct Creator {
                 // Rollback changes
                 dummy.config = backup;
                 mode = Mode::ListConfigItems;
-            }else {
 
-                // Highlight the clothing option hovered
-                if(options[clothHover].id == ID::Index) {
-                    auto time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count(); 
-
-                    dummy.config.clothes[itemSelected].name = *options[clothHover].text;
-
-                    dummy.config.clothes[itemSelected].r = 255;
-                    dummy.config.clothes[itemSelected].g = 50 + std::sin(time * PI / 180 / 2) * 50;
-                    dummy.config.clothes[itemSelected].b = 50 + std::sin(time * PI / 180 / 2) * 50;
-                }                
             }
 
         }else if(mode == Mode::SetConfigItemColor) {
@@ -694,6 +722,7 @@ struct Creator {
 
             }else if(res == Menu::Decline) {
                 mode = Mode::ListClothes;
+                dummy.config.clothes[itemSelected].name = "";
             }
 
         // Draw the movelist selection
@@ -823,16 +852,18 @@ struct Creator {
 
             string category = MoveCategory::String[categories[animCategorySelected]];
             Menu::renderText("< " + category + " >", "Anton-Regular", sf::Color::White, headerDiv, 0);
-            drawPlayerPoints(barDiv);
 
             auto options = getAnimationOptions();
             int res = Menu::Table(options, 2, true, &animHover, dummy.seatIndex, menuDiv, 128);
 
-            // Set the dummy animation
+            // Show the points if selected
             if(options[animHover].id == ID::Test)
                 dummy.config.moves[moveSelected] = *options[animHover].text;
-            else
-                dummy.config.moves[moveSelected] = "";
+            
+            drawPlayerPoints(barDiv);
+
+            // Revert to empty so the options continue working
+            dummy.config.moves[moveSelected] = "";
 
             if(res == Menu::Accept) {
 
@@ -849,6 +880,7 @@ struct Creator {
 
                 // Go to next step and select a motion
                 }else if(options[animHover].id == ID::Test){
+                    dummy.config.moves[moveSelected] = *options[animHover].text;
                     dummy.config.motions[moveSelected] = "";
                     mode = Mode::SetConfigMotion;
                 }

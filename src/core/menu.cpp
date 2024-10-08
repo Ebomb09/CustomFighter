@@ -282,19 +282,21 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 			}
 
 	        // Mouse controls
-	        if(Screen::pointInRectangle(g::input.mousePosition + Vector2{0, scroll[user]}, renderBox)) {
+			if(Screen::pointInRectangle(g::input.mousePosition, area)) {
+				if(Screen::pointInRectangle(g::input.mousePosition + Vector2{0, scroll[user]}, renderBox)) {
 
-	        	if(options[i+j].type != Option::Type::Empty) {
+					if(options[i+j].type != Option::Type::Empty) {
 
-	        		if(selectByRow)
-	        			*hover = i;
-	        		else
-	        			*hover = i+j;
+						if(selectByRow)
+							*hover = i;
+						else
+							*hover = i+j;
 
-	       			if(g::input.pressed(MOUSE_INDEX, sf::Mouse::Left))
-	       				status = Menu::Accept;    		
-	        	}        	
-	        }
+						if(g::input.pressed(MOUSE_INDEX, sf::Mouse::Left))
+							status = Menu::Accept;    		
+					}        	
+				}
+			}
 		}
 		pos.y += rowHeight;
 	}

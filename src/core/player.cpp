@@ -253,6 +253,11 @@ void Player::advanceFrame(vector<Player>& others) {
         }
     }
 
+    // Taunt cancel from anything
+    if(getTaggedIn(others))
+        if((in.Taunt || state.aiMove == Move::Taunt) && state.position.y <= 0 && getFrame().cancel)
+            setMove(Move::Taunt);
+
     // Exit early if in HitStop
     if(state.hitStop != 0) 
         return;
@@ -273,8 +278,27 @@ void Player::advanceFrame(vector<Player>& others) {
 
     for(auto& ply : others) {
 
-        if(ply.team != team && ply.getTaggedIn(others))
+        if(ply.gameIndex != gameIndex && ply.team != team && ply.getTaggedIn(others))
             state.velocity += ply.state.pushBack;
+    }
+
+    // If in the air and opponents are tagging pause
+    if(inMove(Move::JumpCombo) || inMove(Move::KnockDown)) {
+        bool tagging = false;
+        int count = 0;
+
+        for(auto& ply : others) {
+
+            if(ply.gameIndex != gameIndex && ply.team != team & ply.state.health > 0) {
+                count ++;
+
+                if(ply.getTaggedIn(others) && ply.inMove(Move::Taunt))
+                    tagging = true;
+            }
+        }
+
+        if(count > 1 && tagging)
+            return;
     }
 
     // Special Move Check
@@ -431,8 +455,23 @@ void Player::advanceFrame(vector<Player>& others) {
             StageLeft, 
             StageRight
             );  
+
+        // Wait for teammate to take position before passing tag
+        if(inMove(Move::Taunt) || state.health <= 0) {
+
+            for(auto& ply : others) {
+
+                if(ply.gameIndex != gameIndex && ply.team == team && ply.state.health > 0) {
+
+                    if( (state.side > 0 && ply.state.position.x > state.position.x) ||
+                        (state.side < 0 && ply.state.position.x < state.position.x)) {
+                        state.tagCount ++;
+                    }
+                }
+            }
+        }            
     }
-  
+
     if(state.position.y <= 0) {
         state.position.y = 0;
         state.velocity.y = 0;
@@ -468,10 +507,8 @@ void Player::advanceFrame(vector<Player>& others) {
             setMove(Move::Stand);
 
         // Taunt cancel
-        if(inMove(Move::Taunt) && doneMove()) {
+        if(inMove(Move::Taunt) && doneMove())
             setMove(Move::Stand);
-            state.tagCount ++;
-        }
 
         // Player stay down once defeated
         if(state.health <= 0) {
@@ -480,10 +517,6 @@ void Player::advanceFrame(vector<Player>& others) {
             if(doneMove()) 
                 state.tagCount = -1;
         }
-
-        // Tag in / out animations
-        if((inMove(Move::TagIn) || inMove(Move::TagOut)) && doneMove())
-            setMove(Move::Stand);    
 
         // Hit States
         if(inMove(Move::JumpCombo)) 
@@ -504,17 +537,19 @@ void Player::advanceFrame(vector<Player>& others) {
         // Controls
         if(getTaggedIn(others)) {
 
+            // Cancel the special tag motions
+            if((inMove(Move::TagIn) || inMove(Move::TagOut)))
+                setMove(Move::Stand);
+
             // Movement options
             if(inMove(Move::Stand) || inMove(Move::Crouch)) {
 
                 // If on ground look in direction of opponent
                 if(getTarget(others) != -1)
                     state.side = (state.position.x < others[getTarget(others)].state.position.x) ? 1 : -1;
-
-                if((getSOCD().y == 0 && in.Taunt) || state.aiMove == Move::Taunt) {
-                    setMove(Move::Taunt);
         
-                }else if((getSOCD().y == 0 && getSOCD().x == state.side) || state.aiMove == Move::WalkForwards) {
+                // SOCD movement
+                if((getSOCD().y == 0 && getSOCD().x == state.side) || state.aiMove == Move::WalkForwards) {
                     setMove(Move::WalkForwards, true);
 
                 }else if((getSOCD().y == 0 && getSOCD().x == -state.side) || state.aiMove == Move::WalkBackwards) {
@@ -559,21 +594,13 @@ void Player::advanceFrame(vector<Player>& others) {
 
                 // Clamp within the camera once ready
                 state.position.x = std::clamp(state.position.x, center.x - CameraBounds.w / 2 - 16, center.x + CameraBounds.w / 2 + 16);
-
-                // Run in until up to player
-                if((state.side == 1 && state.position.x < others[curr].state.position.x + 16) ||
-                    (state.side == -1 && state.position.x > others[curr].state.position.x - 16)) {
-
-                    setMove(Move::TagIn, true);
-
-                // Reset to stand once arrived
-                }else{
-                    setMove(Move::Stand);
-                }
+                setMove(Move::TagIn, true);
 
             // In camera area, tag out
             }else if(state.position.x > center.x - CameraBounds.w / 2 - 16 && state.position.x < center.x + CameraBounds.w / 2 + 16) {
-                setMove(Move::TagOut, true);
+
+                if(inMove(Move::Stand))
+                    setMove(Move::TagOut, true);
 
             // Not in camera area, side line and prepare to move in
             }else if(curr != -1) {
@@ -581,7 +608,7 @@ void Player::advanceFrame(vector<Player>& others) {
 
                 // Just off screen
                 state.position = {
-                    (state.side == 1) ? StageBounds.x - 64 : StageBounds.x + StageBounds.w + 64,
+                    (state.side > 0) ? StageBounds.x - 64 : StageBounds.x + StageBounds.w + 64,
                     0
                 };
                 state.velocity = {0, 0};

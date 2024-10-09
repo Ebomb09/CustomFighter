@@ -283,7 +283,7 @@ void Player::advanceFrame(vector<Player>& others) {
     }
 
     // If in the air and opponents are tagging pause
-    if(inMove(Move::JumpCombo) || inMove(Move::KnockDown)) {
+    if(inMove(Move::JumpCombo)) {
         bool tagging = false;
         int count = 0;
 
@@ -371,16 +371,20 @@ void Player::advanceFrame(vector<Player>& others) {
 
             dealDamage(hit.damage);
 
+            // Signal tumble to reset via knockdown
             if(hit.knockdown) {
-                setMove(Move::KnockDown);
+                setMove(Move::EndCombo);
 
+            // Set airborne state
             }else if(state.position.y > 0 || state.velocity.y > 0){
                 setMove(Move::JumpCombo, true);
 
+            // Set crouching hit state
             }else if(inMove(Move::Crouch) || inMove(Move::CrouchBlock) || inMove(Move::CrouchCombo)){
                 setMove(Move::CrouchCombo, true);
                 state.stun = hit.hitStun;
 
+            // Set standing hit state
             }else{
                 setMove(Move::StandCombo);
                 state.stun = hit.hitStun;
@@ -521,10 +525,10 @@ void Player::advanceFrame(vector<Player>& others) {
         }
 
         // Hit States
-        if(inMove(Move::JumpCombo)) 
-            setMove(Move::GetUp);
+        if(inMove(Move::JumpCombo) || inMove(Move::EndCombo)) 
+            setMove(Move::KnockDown);
 
-        if(inMove(Move::KnockDown) && state.health > 0)
+        if(inMove(Move::KnockDown) && doneMove() && state.health > 0)
             setMove(Move::GetUp);
 
         if((inMove(Move::StandCombo) || inMove(Move::StandBlock)) && state.stun == 0) 
@@ -619,6 +623,10 @@ void Player::advanceFrame(vector<Player>& others) {
 
     }else{
         state.velocity.y -= 0.25;
+
+        // Loop the ender 
+        if(inMove(Move::EndCombo))
+            setMove(Move::EndCombo, true);
     }
 
     // Look at the target while still alive
@@ -948,31 +956,6 @@ const Frame& Player::getFrame() {
 
     if(!anim)
         return frame;
-
-    // Special case knockdown
-    if(state.moveIndex == Move::KnockDown) {
-
-        if(state.position.y == 0) {
-
-            if(state.moveFrame > 15)
-                state.moveFrame = 15;
-
-        }else if(std::abs(state.velocity.y) <= 1) {
-
-            if(state.moveFrame > 4)
-                state.moveFrame = 4;
-
-        }else if(state.velocity.y > 0) {
-
-            if(state.moveFrame > 3)
-                state.moveFrame = 3;
-
-        }else if(state.velocity.y < 0) {
-
-            if(state.moveFrame > 11)
-                state.moveFrame = 11;
-        }
-    }
 
     frame = anim->getFrame(state.moveFrame);
     cache.moveIndex = state.moveIndex;

@@ -341,13 +341,9 @@ void Player::advanceFrame(vector<Player>& others) {
                 break;
         }
 
-        state.velocity.x += hit.force.x;
-
         if(block) {
 
-            // If cornered self pushback
-            if(inCorner())
-                state.pushBack.x = -state.velocity.x;
+            state.velocity.x += hit.force.x;
 
             state.stun = hit.blockStun;
             state.accDamage = hit.blockStun;
@@ -362,16 +358,18 @@ void Player::advanceFrame(vector<Player>& others) {
 
         }else{
 
+            // Prevent launcher looping in the corner
+            if(hit.force.y > 0 && state.position.y > 0 && inMove(Move::JumpCombo))
+                hit.knockdown = true;
+
             // Float if a neutral hit, and already airborne
             if(hit.force.y == 0 && state.position.y > 0)
                 hit.force.y = 2;
-
-            dealDamage(hit.damage);
+                
+            state.velocity.x += hit.force.x;
             state.velocity.y = hit.force.y;
 
-            // If cornered self pushback
-            if(inCorner())
-                state.pushBack.x = -state.velocity.x;
+            dealDamage(hit.damage);
 
             if(hit.knockdown) {
                 setMove(Move::KnockDown);
@@ -395,6 +393,10 @@ void Player::advanceFrame(vector<Player>& others) {
                 g::audio.playSound(g::save.getSound("hit_hard"), true);      
             }
         }
+
+        // If cornered self pushback
+        if(inCorner())
+            state.pushBack.x = -state.velocity.x;
 
         // Create hitspark effect
         for(int i = 0; i < Effect::Max; i ++) {

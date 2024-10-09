@@ -48,6 +48,11 @@ sf::Sound* AudioManager::playMusic(sf::SoundBuffer* buffer) {
 	if(stackEnable > 0)
 		return NULL;
 
+	if(!buffer) {
+		std::cerr << "Invalid sound buffer provided\n";
+		return NULL;
+	}
+
 	music.setBuffer(*buffer);
 	music.setPlayingOffset(sf::seconds(0));
 	music.play();

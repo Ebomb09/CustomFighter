@@ -93,6 +93,8 @@ struct Player {
 		int 			aiMove			= -1;
 		int				moveIndex		= Move::Stand;
 		int				moveFrame		= 0;
+		int 			fromMoveIndex	= -1;
+		int				fromMoveFrame	= -1;
 		float 			look			= 0;
 		Button::Flag	button			[Button::History];
 		Effect			effects			[Effect::Max];

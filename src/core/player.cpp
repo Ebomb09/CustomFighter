@@ -662,6 +662,25 @@ void Player::advanceFrame(vector<Player>& others) {
         }
     }
 
+    // Move Index changed, interpolate signal interpolation
+    for(auto& ply : others) {
+
+        if(ply.gameIndex == gameIndex) {
+
+            if(ply.state.moveIndex != state.moveIndex) {
+                state.fromMoveIndex = ply.state.moveIndex;
+                state.fromMoveFrame = ply.state.moveFrame;
+            }
+            break;
+        }
+    }
+
+    // No longer need to signal from previous moveIndex/Frame
+    if(getKeyFrame() > 0) {
+        state.fromMoveIndex = -1;
+        state.fromMoveFrame = -1;
+    }
+
     // Reset input
     in = Button::Flag();
     state.aiMove = -1;
@@ -734,6 +753,7 @@ void Player::setMove(int move, bool loop) {
     if(!anim)
         return;
 
+    // Changing to a new move
     if(state.moveIndex != move) {
         state.moveIndex = move;
         state.moveFrame = 0;
@@ -947,24 +967,52 @@ const int& Player::getKeyFrame() {
 }
 
 const Frame& Player::getFrame() {
-    Frame& frame = cache.frame;
 
-    if(cache.enabled && cache.moveIndex == state.moveIndex && cache.moveFrame == state.moveFrame)
-        return frame;
+    if(cache.enabled && cache.moveIndex == state.moveIndex && cache.moveFrame == state.moveFrame && state.fromMoveFrame == -1 && state.fromMoveIndex == -1)
+        return cache.frame;
 
     Animation* anim = getAnimations()[state.moveIndex];
 
     if(!anim)
-        return frame;
+        return cache.frame;
 
-    frame = anim->getFrame(state.moveFrame);
+    // Attempt to use interpolated signals
+    bool usingInterp = false;
+
+    if(anim->getKeyFrame(0).duration > 1 && state.fromMoveFrame != -1 && state.fromMoveIndex != -1) {
+        Animation* fromAnim = getAnimations()[state.fromMoveIndex];
+
+        if(fromAnim) {
+            Animation interp = *anim;
+
+            // Calculate the maximum transition frames
+            int diff = std::min(interp.getKeyFrame(0).duration / 2, 4);
+
+            // Shorten the initial frame
+            interp.getKeyFrame(0).duration -= diff;
+
+            // Add the interpolated new frames
+            Frame copy = interp.getKeyFrame(0);
+            copy.duration = diff;
+            copy.pose = fromAnim->getFrame(state.fromMoveFrame).pose;
+            interp.insertKeyFrame(0, copy);
+
+            cache.frame = interp.getFrame(state.moveFrame);
+            usingInterp = true;
+        }
+    }
+
+    // No interpolation
+    if(!usingInterp)
+        cache.frame = anim->getFrame(state.moveFrame);
+
     cache.moveIndex = state.moveIndex;
     cache.moveFrame = state.moveFrame;
 
     // Correct directional attributes of the frame
-    frame.impulse.x *= state.side;
+    cache.frame.impulse.x *= state.side;
 
-    for(auto& box : frame.hitBoxes) {
+    for(auto& box : cache.frame.hitBoxes) {
 
         if(state.side == -1)
             box.x = -box.x - box.w;
@@ -975,7 +1023,7 @@ const Frame& Player::getFrame() {
         box.force.x *= state.side;            
     }
 
-    for(auto& box : frame.hurtBoxes) {
+    for(auto& box : cache.frame.hurtBoxes) {
 
         if(state.side == -1)
             box.x = -box.x - box.w;
@@ -984,18 +1032,17 @@ const Frame& Player::getFrame() {
         box.y += state.position.y;        
     }
 
-    for(int i = 0; i < frame.pose.jointCount; i ++) {
-        frame.pose.joints[i].x *= state.side;
-        frame.pose.joints[i] += state.position;
+    for(int i = 0; i < cache.frame.pose.jointCount; i ++) {
+        cache.frame.pose.joints[i].x *= state.side;
+        cache.frame.pose.joints[i] += state.position;
     }
 
     // Flip draw order array
     if(state.side == -1) {
         for(int i = 0; i < SkeletonDrawOrder::Total / 2; i ++) 
-            std::swap(frame.pose.order[i], frame.pose.order[SkeletonDrawOrder::Total - 1 - i]);
+            std::swap(cache.frame.pose.order[i], cache.frame.pose.order[SkeletonDrawOrder::Total - 1 - i]);
     }
-
-    return frame;
+    return cache.frame;
 }
 
 const Skeleton& Player::getSkeleton() {

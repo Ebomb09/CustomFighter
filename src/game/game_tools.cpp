@@ -15,6 +15,8 @@ void setCamera(Player* players, int count) {
 }
 
 void setCamera(std::vector<Player> players) {
+	Vector2 min = {1000, 1000};
+	Vector2 max = {-1000, -1000};
 	Vector2 pos = 0.f;
 	int n = 0;
 
@@ -22,8 +24,18 @@ void setCamera(std::vector<Player> players) {
 
 		if(players[i].getTaggedIn(players)) {
 			Rectangle area = players[i].getRealBoundingBox();
-			pos += {area.x + area.w / 2, area.y - area.h / 2 + g::video.camera.h / 6};
+			area.x -= 8.f;
+			area.y += 48.f;
+			area.w += 16.f;
+			area.h += 50.f;
+
+			pos += {area.x + area.w / 2, area.y - area.h / 2};
 			n ++;
+
+			min.x = std::min(min.x, area.x);
+			min.y = std::min(min.y, area.y - area.h);
+			max.x = std::max(max.x, area.x + area.w);
+			max.y = std::max(max.y, area.y);
 		}
 	}
 
@@ -31,12 +43,29 @@ void setCamera(std::vector<Player> players) {
 		n = 1;
 
 	// Smooth motion towards players
-    g::video.camera.x += (((pos.x / n) - (g::video.camera.w / 2.f)) - g::video.camera.x) * 0.10f;
-    g::video.camera.y += (((pos.y / n) + (g::video.camera.h / 2.f)) - g::video.camera.y) * 0.10f;
+	Vector2 center = {g::video.camera.x + g::video.camera.w / 2.f, g::video.camera.y - g::video.camera.h / 2.f};
+
+    center.x += ((pos.x / n) - center.x) * 0.05f;
+    center.y += ((pos.y / n) - center.y) * 0.05f;
+
+	// Smooth resize camera
+	Vector2 size = {max.x - min.x, max.y - min.y};
+	float delta1 = size.y * g::video.camera.w / g::video.camera.h;
+	float delta2 = size.x * g::video.camera.h / g::video.camera.w;
+
+	if(delta1 < size.x) size.y = delta2;
+	else size.x = delta1;
+	
+	g::video.camera.w += (size.x - g::video.camera.w) * 0.01f;
+	g::video.camera.h += (size.y - g::video.camera.h) * 0.01f;
+
+	// Recenter camera
+	g::video.camera.x = center.x - g::video.camera.w / 2.f;
+	g::video.camera.y = center.y + g::video.camera.h / 2.f;
 
     // Clamp camera within stage bounds
     g::video.camera.x = std::clamp(g::video.camera.x, StageBounds.x, StageBounds.x + StageBounds.w - g::video.camera.w);
-    g::video.camera.y = std::clamp(g::video.camera.y, StageBounds.y - StageBounds.h + g::video.camera.h, StageBounds.y);
+    g::video.camera.y = std::clamp(g::video.camera.y, StageBounds.y - StageBounds.h + g::video.camera.h, StageBounds.y);		
 }
 
 void drawHealthBars(Player* players, int count) {

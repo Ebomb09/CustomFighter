@@ -994,6 +994,7 @@ const Frame& Player::getFrame() {
             // Add the interpolated new frames
             Frame copy = interp.getKeyFrame(0);
             copy.duration = diff;
+            copy.sound = "";
             copy.pose = fromAnim->getFrame(state.fromMoveFrame).pose;
             interp.insertKeyFrame(0, copy);
 

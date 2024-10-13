@@ -110,6 +110,7 @@ struct Player {
 	void advanceFrame();
 	void advanceFrame(std::vector<Player>& others);
 	void draw(Renderer* renderer = NULL);
+	void drawShadow(Renderer* renderer = NULL);
 	void drawEffects(Renderer* renderer = NULL);
 
 	void dealDamage(int dmg);

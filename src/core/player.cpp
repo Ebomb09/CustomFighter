@@ -144,6 +144,28 @@ void Player::draw(Renderer* renderer) {
     pose.draw(renderer, getClothes(), state.look, config.armSize, config.legSize);
 }
 
+void Player::drawShadow(Renderer* renderer) {
+
+    if(!renderer)
+        renderer = &g::video;
+
+    // Draw Shadow
+    float height = 16.f;
+
+    Rectangle bounds = getRealBoundingBox();
+    bounds.x -= 4.f;
+    bounds.w += 8.f;
+    bounds.h = bounds.y;
+    bounds = renderer->toScreen(bounds);
+
+    sf::CircleShape shad;
+    shad.setPosition({bounds.x, bounds.y + bounds.h - height / 2.f});
+    shad.setRadius(bounds.w / 2.f);
+    shad.setScale({1.f, height / bounds.w});
+    shad.setFillColor(sf::Color(0, 0, 0, 128));
+    renderer->draw(shad);
+}
+
 void Player::drawEffects(Renderer* renderer) {
 
     if(!renderer)

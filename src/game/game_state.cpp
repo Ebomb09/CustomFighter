@@ -383,6 +383,9 @@ void Game::draw() {
 
     // Draw Players
     for(int i = 0; i < playerCount; i ++) 
+    	players[i].drawShadow();  
+
+    for(int i = 0; i < playerCount; i ++) 
     	players[i].draw();  
 
     for(int i = 0; i < playerCount; i ++) 

@@ -10,27 +10,11 @@
 #include "animation.h"
 #include "move.h"
 #include "video.h"
+#include "stage.h"
 
 #include "button.h"
 
 #define MAX_PLAYERS 4
-
-const Rectangle StageBounds = {
-	-384,
-	224,
-	768,
-	256
-};
-
-const float StageLeft = StageBounds.x + 16;
-const float StageRight = StageBounds.x + StageBounds.w - 16;
-
-const Rectangle CameraBounds = {
-	0, 
-	0,
-	256,
-	192
-};
 
 struct Player {
 

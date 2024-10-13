@@ -1,6 +1,7 @@
 #ifndef GAME_STATE_H
 #define GAME_STATE_H
 
+#include "core/stage.h"
 #include "core/player.h"
 
 struct Game {
@@ -12,10 +13,13 @@ struct Game {
 		TimeUp
 	};
 
+	// Game Constants
 	int playerCount;
 	int roundMax;
 	int timerMax;
+	Stage stage;
 
+	// State Control
 	Player players[MAX_PLAYERS];
 
 	struct State {

@@ -7,6 +7,7 @@
 #include <SFML/Audio.hpp>
 #include <SFML/Graphics.hpp>
 
+#include "stage.h"
 #include "animated_texture.h"
 #include "clothing.h"
 #include "animation.h"
@@ -81,10 +82,11 @@ private:
 /* Stages */
 public:
 	int 										getRandomStage();
-	sf::Texture* 								getStage(int index);
+	Stage 										getStage(std::filesystem::path path);
+	Stage 										getStage(int index);
 
 private:
-	std::vector<sf::Texture*> 					stages;
+	std::vector<Stage> 							stages;
 
 
 /* Button Configs */

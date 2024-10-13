@@ -33,6 +33,9 @@ void Game::init(int _playerCount, int _roundMax, int _timerMax) {
         players[3].team = 1;        
     }
 
+	// Get a stage
+	stage = g::save.getStage(g::save.getRandomStage());
+
     resetGame();
 }
 
@@ -335,7 +338,8 @@ void Game::advanceFrame() {
 }
 
 void Game::draw() {
-    drawStage(0);
+    stage.draw();
+
     drawHealthBars(players, playerCount);
 
     // Draw round wins

@@ -148,22 +148,3 @@ void drawRoundTokens(int lWin, int rWin, int winMax) {
 	text.setColor(sf::Color::White);
 	g::video.draw(text);	
 }
-
-void drawStage(int index) {
-	sf::Texture* tex = g::save.getStage(index);
-
-	sf::Vertex v[4] = {
-		sf::Vertex(Vector2(StageBounds.x, StageBounds.y), 									Vector2(0, 0)),
-		sf::Vertex(Vector2(StageBounds.x + StageBounds.w, StageBounds.y), 					Vector2(tex->getSize().x, 0)),
-		sf::Vertex(Vector2(StageBounds.x + StageBounds.w, StageBounds.y - StageBounds.h),	Vector2(tex->getSize().x, tex->getSize().y)),	
-		sf::Vertex(Vector2(StageBounds.x, StageBounds.y - StageBounds.h), 					Vector2(0, tex->getSize().y)),
-	};
-
-	for(int i = 0; i < 4; i ++) 
-		v[i].position = g::video.toScreen(v[i].position);
-
-	sf::RenderStates states;
-	states.texture = tex;
-
-	g::video.draw(v, 4, sf::PrimitiveType::Quads, states);
-}

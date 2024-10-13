@@ -39,12 +39,8 @@ SaveManager::SaveManager() {
 	for(auto& entry : std::filesystem::directory_iterator("data/fonts"))
 		getFont(entry);
 
-	for(auto& entry : std::filesystem::directory_iterator("data/stages")) {
-		sf::Texture* ptr = getTexture(entry);
-
-		if(ptr) 
-			stages.push_back(ptr);
-	}
+	for(auto& entry : std::filesystem::directory_iterator("data/stages"))
+		getStage(entry);
 
 	for(auto& entry : std::filesystem::directory_iterator("data/effects"))
 		getEffect(entry);
@@ -453,10 +449,19 @@ int SaveManager::getRandomStage() {
 	return rand() % stages.size();
 }
 
-sf::Texture* SaveManager::getStage(int index) {
+Stage SaveManager::getStage(std::filesystem::path path) {
+	Stage add;
+
+	if(add.loadFromFile(path)) 
+		stages.push_back(add);
+
+	return add;
+}
+
+Stage SaveManager::getStage(int index) {
 	
 	if(index < 0 || index > stages.size()-1 || stages.size() == 0)
-		return NULL;
+		return {};
 
 	return stages[index];
 }

@@ -22,6 +22,7 @@ set(Core
 	src/core/button.cpp
 	src/core/clothing.cpp
 	src/core/animated_texture.cpp
+	src/core/stage.cpp	
 	)
 
 set(ImGui

@@ -658,7 +658,7 @@ void Menu::renderText(string str, string font, sf::Color color, Rectangle area, 
 	text.setCharacterSize(Menu::fontHeight);
 	text.setOutlineColor(sf::Color::Black);
 	text.setOutlineThickness(1);
-	text.setColor(color);	
+	text.setFillColor(color);	
 	text.setString(str);
 
     // Ensure the text isn't overlapping into the next column

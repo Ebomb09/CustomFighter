@@ -58,7 +58,7 @@ bool verify_UDP_hole_punch(int localPort, vector<string> remotes) {
 
     // Initialize the test socket
     sockpp::udp_socket sock;
-    sock.bind(sockpp::inet_address(NULL, localPort));
+    sock.bind(sockpp::inet_address(localPort));
     sock.set_non_blocking(true);
 
     if(!sock)

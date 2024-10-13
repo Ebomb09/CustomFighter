@@ -138,13 +138,13 @@ void drawRoundTokens(int lWin, int rWin, int winMax) {
 	text.setFont(*g::save.getFont("fight"));
 	text.setCharacterSize(32);
 	text.setPosition(center + Vector2(-32 - text.getLocalBounds().width, 0));
-	text.setColor(sf::Color::White);
+	text.setFillColor(sf::Color::White);
 	g::video.draw(text);
 
 	text.setString(rString);
 	text.setFont(*g::save.getFont("fight"));
 	text.setCharacterSize(32);
 	text.setPosition(center + Vector2(32, 0));
-	text.setColor(sf::Color::White);
+	text.setFillColor(sf::Color::White);
 	g::video.draw(text);	
 }

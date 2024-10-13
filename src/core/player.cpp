@@ -697,12 +697,6 @@ void Player::advanceFrame(vector<Player>& others) {
         }
     }
 
-    // No longer need to signal from previous moveIndex/Frame
-    if(getKeyFrame() > 0) {
-        state.fromMoveIndex = -1;
-        state.fromMoveFrame = -1;
-    }
-
     // Reset input
     in = Button::Flag();
     state.aiMove = -1;
@@ -990,7 +984,7 @@ const int& Player::getKeyFrame() {
 
 const Frame& Player::getFrame() {
 
-    if(cache.enabled && cache.moveIndex == state.moveIndex && cache.moveFrame == state.moveFrame && state.fromMoveFrame == -1 && state.fromMoveIndex == -1)
+    if(cache.enabled && cache.frameCounter == state.counter)
         return cache.frame;
 
     Animation* anim = getAnimations()[state.moveIndex];
@@ -1021,6 +1015,10 @@ const Frame& Player::getFrame() {
             interp.insertKeyFrame(0, copy);
 
             cache.frame = interp.getFrame(state.moveFrame);
+
+            // Manually fix the key frame index
+            cache.frame.key = std::max(0, cache.frame.key - 1);
+
             usingInterp = true;
         }
     }
@@ -1029,8 +1027,13 @@ const Frame& Player::getFrame() {
     if(!usingInterp)
         cache.frame = anim->getFrame(state.moveFrame);
 
-    cache.moveIndex = state.moveIndex;
-    cache.moveFrame = state.moveFrame;
+    // No longer need to signal from previous moveIndex/Frame
+    if(cache.frame.key > 0) {
+        state.fromMoveIndex = -1;
+        state.fromMoveFrame = -1;
+    }
+
+    cache.frameCounter = state.counter;
 
     // Correct directional attributes of the frame
     cache.frame.impulse.x *= state.side;

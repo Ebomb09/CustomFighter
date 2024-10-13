@@ -88,8 +88,7 @@ struct Player {
 		bool enabled 					= false;
 
 		Frame			frame;
-		int 			moveIndex		= -1;
-		int 			moveFrame		= -1;
+		int 			frameCounter	= -1;
 
 		Vector2			socd;
 		int 			socdCounter		= -1;

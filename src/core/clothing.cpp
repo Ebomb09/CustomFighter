@@ -5,7 +5,7 @@ Clothing::Clothing() {
 	name = "";
 	blend = sf::Color::White;
 
-	for(int i = 0; i < Total; i ++)
+	for(int i = 0; i < ClothingSpace::Total; i ++)
 		part[i] = NULL;
 }
 
@@ -26,7 +26,7 @@ bool Clothing::loadFromFile(std::filesystem::path path) {
 	head 		= g::save.getTexture(path/"head.png");
 
 	// Check if any part was loaded
-	for(int i = 0; i < Clothing::Total; i ++)
+	for(int i = 0; i < ClothingSpace::Total; i ++)
 		if(part[i])
 			return true;
 

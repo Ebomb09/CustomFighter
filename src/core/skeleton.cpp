@@ -284,7 +284,7 @@ void Skeleton::drawTorso(Renderer* renderer, std::vector<Clothing> list) {
 
 void Skeleton::drawNeck(Renderer* renderer, std::vector<Clothing> list) {
     float width = ((shoulder[0] - torso[0]).getDistance() + (shoulder[1] - torso[0]).getDistance()) / 3.f;
-    drawBone(renderer, list, Clothing::Neck, neck, width);
+    drawBone(renderer, list, ClothingSpace::Neck, neck, width);
 }
 
 void Skeleton::drawHead(Renderer* renderer, std::vector<Clothing> list, float headAngle) {
@@ -299,7 +299,7 @@ void Skeleton::drawHead(Renderer* renderer, std::vector<Clothing> list, float he
 
     Bone psuedoBone {head, psuedoHeadTop};
 
-    drawBone(renderer, list, Clothing::Head, psuedoBone, height / 2.f, !(headAngle >= -PI / 2 && headAngle < PI / 2.f));  
+    drawBone(renderer, list, ClothingSpace::Head, psuedoBone, height / 2.f, !(headAngle >= -PI / 2 && headAngle < PI / 2.f));  
 }
 
 void Skeleton::drawUpperArm(Renderer* renderer, std::vector<Clothing> list, int side, float width) {
@@ -307,22 +307,22 @@ void Skeleton::drawUpperArm(Renderer* renderer, std::vector<Clothing> list, int 
 
     Bone psuedoBone {psuedoShoulder, elbow[side]};
 
-    drawBone(renderer, list, Clothing::UpperArm, psuedoBone, width, torsoTopFlipped());
+    drawBone(renderer, list, ClothingSpace::UpperArm, psuedoBone, width, torsoTopFlipped());
 }
 
 void Skeleton::drawForeArm(Renderer* renderer, std::vector<Clothing> list, int side, float width) {
-    drawBone(renderer, list, Clothing::ForeArm, forearm[side], width, torsoTopFlipped());   
+    drawBone(renderer, list, ClothingSpace::ForeArm, forearm[side], width, torsoTopFlipped());   
 }
 
 void Skeleton::drawHand(Renderer* renderer, std::vector<Clothing> list, int side, float width) {
 
     // Determine back or front of hand showing
-    int index = Clothing::HandFront;
+    int index = ClothingSpace::HandFront;
 
     if(side == 0 && hand[side].end.x < hand[side].start.x) 
-        index = Clothing::HandBack;
+        index = ClothingSpace::HandBack;
     else if(side == 1 && hand[side].end.x > hand[side].start.x) 
-        index = Clothing::HandBack;           
+        index = ClothingSpace::HandBack;           
 
     drawBone(renderer, list, index, hand[side], width, hand[side].end.x < hand[side].start.x);       
 }
@@ -331,18 +331,18 @@ void Skeleton::drawThigh(Renderer* renderer, std::vector<Clothing> list, int sid
     Vector2 psuedoHip = torso[1] + (hip[side] - torso[1]) / 2.f;
 
     Bone psuedoBone {psuedoHip, knee[side]};
-    drawBone(renderer, list, Clothing::Thigh, psuedoBone, width, torsoBottomFlipped()); 
+    drawBone(renderer, list, ClothingSpace::Thigh, psuedoBone, width, torsoBottomFlipped()); 
 }
 
 void Skeleton::drawCalf(Renderer* renderer, std::vector<Clothing> list, int side, float width) {
-    drawBone(renderer, list, Clothing::Calf, calf[side], width, torsoBottomFlipped());   
+    drawBone(renderer, list, ClothingSpace::Calf, calf[side], width, torsoBottomFlipped());   
 }
 
 void Skeleton::drawFoot(Renderer* renderer, std::vector<Clothing> list, int side, float width) {
     float rotate = PI/2 - (knee[side] - heel[side]).getAngle();
     Vector2 norm = toes[side].rotate(rotate, heel[side]);
 
-    drawBone(renderer, list, Clothing::Foot, foot[side], width, norm.x < heel[side].x);    
+    drawBone(renderer, list, ClothingSpace::Foot, foot[side], width, norm.x < heel[side].x);    
 }
 
 void Skeleton::draw(vector<Clothing> list, float headAngle, float armWidth, float legWidth) {

@@ -4,9 +4,7 @@
 #include <filesystem>
 #include <SFML/Graphics.hpp>
 
-struct Clothing {
-	std::string name;
-	sf::Color blend;
+namespace ClothingSpace {
 
 	enum {
 		TorsoFront,
@@ -24,8 +22,29 @@ struct Clothing {
 		Total
 	};
 
+	const std::string String[] {
+		"TorsoFront",
+		"TorsoBack",
+		"Neck",
+		"UpperArm",
+		"ForeArm",
+		"Pelvis",
+		"Thigh",
+		"Calf",
+		"HandFront",
+		"HandBack",
+		"Foot",
+		"Head",
+		"Total"
+	};
+};
+
+struct Clothing {
+	std::string name;
+	sf::Color blend;
+
 	union {
-		sf::Texture* part[Total];
+		sf::Texture* part[ClothingSpace::Total];
 
 		struct{
 			sf::Texture *torsoFront,

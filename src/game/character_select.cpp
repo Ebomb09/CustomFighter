@@ -57,6 +57,7 @@ struct Creator {
     int animCategorySelected = 0;
     int itemHover       = 0;
     int clothHover      = 0;
+    int clothCategorySelected = 0;
     int configSelected  = 0;
     int moveSelected    = 0;
     int itemSelected    = 0;
@@ -108,17 +109,6 @@ struct Creator {
         vector<Menu::Option> out;
 
         for(int i = 0; i < Move::Total; i ++) {
-
-            // If a stance move has nothing selected, pick first valid from category
-            if(moveCategorySelected == 0 && i < Move::Custom00) {
-
-                if(dummy.config.moves[i] == "") {
-                    auto moves = g::save.getAnimationsByFilter(Move::getValidCategories(i));
-
-                    if(moves.size() > 0)
-                        dummy.config.moves[i] = moves[0];
-                }
-            }   
 
             if((moveCategorySelected == 0 && i < Move::Custom00) ||
                 (moveCategorySelected == 1 && i >= Move::Custom00)) {
@@ -244,6 +234,17 @@ struct Creator {
         for(auto& clothing : g::save.getClothingList()) {
             bool equiped = false;
 
+            // Check validity of the clothing
+            Clothing* cloth = g::save.getClothing(clothing);
+
+            if(!cloth)
+                continue;
+
+            // Check it has a part that is in the category we want
+            if(!cloth->part[clothCategorySelected])
+                continue;
+
+            // Check already equiped
             for(auto& item : dummy.config.clothes) {
 
                 if(item.name == clothing) {
@@ -422,7 +423,7 @@ struct Creator {
             if(customOnly) {
                 pos += 32;
                 txt.setString(anim->customFrom);
-                txt.setColor(sf::Color(255, 255, 255));
+                txt.setFillColor(sf::Color(255, 255, 255));
                 txt.setPosition({area.x + width, area.y + pos});
                 g::video.draw(txt);
                 pos += fontHeight;                 
@@ -502,6 +503,18 @@ struct Creator {
 
             dummy.config = g::save.getPlayerConfig(options[configHover].id);
 
+            // Ensure stance moves always have something equiped
+            for(int i = 0; i < Move::Custom00; i ++) {
+
+                if(dummy.config.moves[i] == "" && i < Move::Custom00) {
+                    auto moves = g::save.getAnimationsByFilter(Move::getValidCategories(i));
+
+                    if(moves.size() > 0)
+                        dummy.config.moves[i] = moves[0];
+                }
+            }
+
+            // Selected a config player
             if(res == Menu::Accept) {
                 configSelected = options[configHover].id;
                 mode = Mode::ModifyConfig;
@@ -649,8 +662,51 @@ struct Creator {
         // List all available clothing items
         }else if(mode == Mode::ListClothes) {
 
+            // Select clothing cateogry by parts in it
+            Button::Config b = g::save.getButtonConfig(dummy.seatIndex);
+
+            if(g::input.pressed(b.index, b.Left)) {
+                clothCategorySelected --;
+                clothHover = 0;
+            }
+
+            if(g::input.pressed(b.index, b.Right)) {
+                clothCategorySelected ++;
+                clothHover = 0;
+            }
+
+            if(clothCategorySelected < 0)
+                clothCategorySelected = ClothingSpace::Total - 1;
+
+            else if(clothCategorySelected >= ClothingSpace::Total)
+                clothCategorySelected = 0;
+
+            // List the selected clothing Category and Options
+            Rectangle div = getMenuDiv();
+
+            Rectangle headerDiv {
+                div.x,
+                div.y,
+                div.w,
+                div.h * 1/16
+            };
+
+            Rectangle menuDiv {
+                div.x,
+                headerDiv.y + headerDiv.h * 2,
+                div.w,
+                div.h - headerDiv.h * 2
+            };
+
+            Menu::renderText(
+                "< " + ClothingSpace::String[clothCategorySelected] + "(" + std::to_string(clothCategorySelected+1) + "/" + std::to_string(ClothingSpace::Total) + ") >", 
+                "Anton-Regular", 
+                sf::Color::White,
+                headerDiv, 
+                0);
+
             auto options = getClothingOptions();
-            int res = Menu::List(options, &clothHover, dummy.seatIndex, getMenuDiv());
+            int res = Menu::List(options, &clothHover, dummy.seatIndex, menuDiv);
 
             dummy.advanceFrame();
             
@@ -737,11 +793,15 @@ struct Creator {
             Button::Config b = g::save.getButtonConfig(dummy.seatIndex);
             vector<string> categories = {"Stance", "Custom Moves"};
 
-            if(g::input.pressed(b.index, b.Left))
+            if(g::input.pressed(b.index, b.Left)) {
                 moveCategorySelected --;
+                moveHover = 0;
+            }
 
-            if(g::input.pressed(b.index, b.Right))
+            if(g::input.pressed(b.index, b.Right)) {
                 moveCategorySelected ++;
+                moveHover = 0;
+            }
 
             if(moveCategorySelected < 0)
                 moveCategorySelected = categories.size() - 1;
@@ -760,13 +820,13 @@ struct Creator {
 
             Rectangle menuDiv {
                 div.x,
-                headerDiv.y + headerDiv.h,
+                headerDiv.y + headerDiv.h * 2,
                 div.w,
-                div.h - headerDiv.h
+                div.h - headerDiv.h * 2
             };
 
             // Draw which category we selected
-            string header = "< " + categories[moveCategorySelected] + " >";
+            string header = "< " + categories[moveCategorySelected] + " (" + std::to_string(moveCategorySelected+1) + "/" + std::to_string(categories.size()) + ") >";
             Menu::renderText(header, "Anton-Regular", sf::Color::White, headerDiv, 0);
 
             auto options = getConfigMoves();
@@ -814,11 +874,15 @@ struct Creator {
             Button::Config b = g::save.getButtonConfig(dummy.seatIndex);
             vector<int> categories = Move::getValidCategories(moveSelected);
 
-            if(g::input.pressed(b.index, b.Left))
+            if(g::input.pressed(b.index, b.Left)) {
                 animCategorySelected --;
+                animHover = 0;
+            }
 
-            if(g::input.pressed(b.index, b.Right))
+            if(g::input.pressed(b.index, b.Right)) {
                 animCategorySelected ++;
+                animHover = 0;
+            }
 
             if(animCategorySelected < 0)
                 animCategorySelected = categories.size() - 1;
@@ -840,18 +904,22 @@ struct Creator {
                 div.x,
                 barDiv.y + barDiv.h,
                 div.w,
-                div.h * 1/16
+                div.h * 1/32
             };         
 
             Rectangle menuDiv {
                 div.x,
-                headerDiv.y + headerDiv.h,
+                headerDiv.y + headerDiv.h * 2,
                 div.w,
-                div.h - (barDiv.h + headerDiv.h)             
+                div.h - (barDiv.h + headerDiv.h * 2)
             };
 
             string category = MoveCategory::String[categories[animCategorySelected]];
-            Menu::renderText("< " + category + " >", "Anton-Regular", sf::Color::White, headerDiv, 0);
+            Menu::renderText(
+                "< " + category + " (" + std::to_string(animCategorySelected+1) + "/" + std::to_string(categories.size()) + ") >", 
+                "Anton-Regular", 
+                sf::Color::White, headerDiv, 0
+                );
 
             auto options = getAnimationOptions();
             int res = Menu::Table(options, 2, true, &animHover, dummy.seatIndex, menuDiv, 128);

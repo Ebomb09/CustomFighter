@@ -255,6 +255,29 @@ int main() {
                 ImGui::SliderInt("Playback Speed", &editor.settings.playbackSpeed, 1, 10, "Every %d frame(s)");
                 ImGui::EndMenu();
             }
+
+            // Editing mode
+            vector<string> modes {"Frames", "Joints", "HitBoxes", "HurtBoxes"};
+
+            if(ImGui::BeginCombo("##Editor Mode", modes[editor.settings.mode].c_str(), ImGuiComboFlags_WidthFitPreview)) {
+
+                for(int i = 0; i < modes.size(); i ++) {
+
+                    if(ImGui::Selectable(modes[i].c_str(), i == editor.settings.mode))
+                        editor.settings.mode = i;
+                }
+                ImGui::EndCombo();
+            }
+
+            if(ImGui::BeginMenu("Stats")) {
+                ImGui::Text("Frames: %d", editor.anim.getFrameCount());
+                ImGui::Text("Startup: %d", editor.anim.getStartup());
+                ImGui::Text("On Hit: %d", editor.anim.getOnHit());
+                ImGui::Text("On Block: %d", editor.anim.getOnBlock());
+                ImGui::Text("Damage: %d", editor.anim.getDamage());
+                ImGui::EndMenu();
+            }
+
             ImGui::EndMainMenuBar();
         }
 
@@ -346,12 +369,7 @@ int main() {
                 }
             }
 
-            if(ImGui::CollapsingHeader("Selection")) {
-
-                const char* modes[] = {"Frames", "Joints", "HitBoxes", "HurtBoxes"};
-                if(ImGui::Combo("Mode", &editor.settings.mode, modes, 4)) {
-                    editor.selectDefault();
-                }     
+            if(ImGui::CollapsingHeader("Selection")) { 
 
                 if(editor.settings.mode == Editor::Mode::Joints) {
 

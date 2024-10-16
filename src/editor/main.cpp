@@ -263,8 +263,10 @@ int main() {
 
                 for(int i = 0; i < modes.size(); i ++) {
 
-                    if(ImGui::Selectable(modes[i].c_str(), i == editor.settings.mode))
+                    if(ImGui::Selectable(modes[i].c_str(), i == editor.settings.mode)) {
                         editor.settings.mode = i;
+                        editor.selectDefault();
+                    }
                 }
                 ImGui::EndCombo();
             }

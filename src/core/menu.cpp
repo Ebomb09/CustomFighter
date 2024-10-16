@@ -149,7 +149,7 @@ void cycleIndex(std::vector<Menu::Option> options, int* index, int quantity) {
 		else if(quantity < 0)
 			quantity = -1;
 
-	}while(options[*index].type == Menu::Option::Type::Empty);
+	}while(options[*index].type == Menu::Option::Type::Empty || options[*index].id < 0);
 }
 
 static float scroll[MAX_PLAYERS] {0, 0, 0, 0};

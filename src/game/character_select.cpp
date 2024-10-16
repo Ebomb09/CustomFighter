@@ -19,10 +19,10 @@ using namespace std::chrono;
 struct Creator {
 
     enum ID {
+        Disregard = -1,
         Save,
         Delete,
         Cancel,
-        Disregard,
         Test,
         MoveList,
         Confirm,

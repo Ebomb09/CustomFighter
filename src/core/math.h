@@ -66,6 +66,7 @@ namespace HitType {
 		Mid,
 		Low,
 		Unblockable,
+		Grab,
 		Total
 	};
 
@@ -74,6 +75,7 @@ namespace HitType {
 		"Mid",
 		"Low",
 		"Unblockable",
+		"Grab",
 		"Total"
 	};
 };

@@ -116,8 +116,9 @@ int main() {
         if(ImGui::Button("+Add")) {
             Frame src;
 
-            if(editor.keyFrame >= 0)
-                src = editor.getKeyFrame();
+            // If selecting a frame copy it over
+            if(editor.getKeyFrame())
+                src = *editor.getKeyFrame();
 
             editor.anim.insertKeyFrame(editor.keyFrame + 1, src); 
             editor.keyFrame ++;         
@@ -286,8 +287,9 @@ int main() {
         ImGui::SetNextWindowPos({(float)g::video.getSize().x - 300, 0});
         ImGui::SetNextWindowSize({300, (float)g::video.getSize().y - 200});
         ImGui::Begin("Properties");
-        if(editor.keyFrame >= 0) {  
-            Frame& keyFrame = editor.getKeyFrame();    
+
+        if(editor.getKeyFrame()) {  
+            Frame& keyFrame = *editor.getKeyFrame();
 
             if(ImGui::CollapsingHeader("Animation Category...")) {
 
@@ -369,6 +371,8 @@ int main() {
 
                     ImGui::EndCombo();
                 }
+
+                ImGui::Checkbox("isGrab", &keyFrame.isGrab);
             }
 
             if(ImGui::CollapsingHeader("Selection")) { 
@@ -377,7 +381,7 @@ int main() {
 
                     if(ImGui::BeginListBox("Joints")){
 
-                        for(int i = 0; i < keyFrame.pose.jointCount; i ++) {
+                        for(int i = 0; i < editor.getJoints().size(); i ++) {
 
                             if(ImGui::Selectable(("joint [" + std::to_string(i) + "]").c_str(), i == editor.selected)) 
                                 editor.setSelected(i);
@@ -385,19 +389,20 @@ int main() {
                         ImGui::EndListBox();                        
                     }
 
-                    if(editor.selected >= 0) {
+                    if(editor.getJoint()) {
                         ImGui::SeparatorText("Attributes");
-                        Vector2& joint = keyFrame.pose.joints[editor.selected];
-                        ImGui::InputFloat("X", &joint.x);
-                        ImGui::InputFloat("Y", &joint.y);                    
+                        Vector2& joint = *editor.getJoints()[editor.selected];
+                        ImGui::InputFloat("X", &editor.getJoint()->x);
+                        ImGui::InputFloat("Y", &editor.getJoint()->y);                    
                     }   
                 } 
 
-                if(editor.settings.mode == Editor::Mode::HitBoxes) {
-                    
+                if(editor.settings.mode == Editor::Mode::HitBoxes && editor.getHitBoxes()) {
+                    vector<HitBox>* hitBoxes = editor.getHitBoxes();
+
                     if(ImGui::BeginListBox("HitBoxes")){
 
-                        for(int i = 0; i < editor.getHitBoxes().size(); i ++) {
+                        for(int i = 0; i < hitBoxes->size(); i ++) {
 
                             if(ImGui::Selectable(("hitBox [" + std::to_string(i) + "]").c_str(), i == editor.selected)) 
                                 editor.setSelected(i);
@@ -405,36 +410,37 @@ int main() {
                         ImGui::EndListBox();
                     }
 
-                    if(editor.selected >= 0) {
+                    if(editor.getHitBox()) {
                         ImGui::SeparatorText("Attributes");
-                        ImGui::InputFloat("X", &editor.getHitBoxes()[editor.selected].x);
-                        ImGui::InputFloat("Y", &editor.getHitBoxes()[editor.selected].y);
-                        ImGui::InputFloat("W", &editor.getHitBoxes()[editor.selected].w);
-                        ImGui::InputFloat("H", &editor.getHitBoxes()[editor.selected].h);
+                        ImGui::InputFloat("X", &editor.getHitBox()->x);
+                        ImGui::InputFloat("Y", &editor.getHitBox()->y);
+                        ImGui::InputFloat("W", &editor.getHitBox()->w);
+                        ImGui::InputFloat("H", &editor.getHitBox()->h);
 
-                        if(ImGui::BeginCombo("Type", HitType::String[editor.getHitBoxes()[editor.selected].type].c_str())) {
+                        if(ImGui::BeginCombo("Type", HitType::String[editor.getHitBox()->type].c_str())) {
 
                             for(int i = 0; i < HitType::Total; i ++) {
 
-                                if(ImGui::Selectable(HitType::String[i].c_str(), i == editor.getHitBoxes()[editor.selected].type)) 
-                                    editor.getHitBoxes()[editor.selected].type = i;
+                                if(ImGui::Selectable(HitType::String[i].c_str(), i == editor.getHitBox()->type)) 
+                                    editor.getHitBox()->type = i;
                             }
                             ImGui::EndCombo();
                         }
 
-                        ImGui::InputInt("Damage", &editor.getHitBoxes()[editor.selected].damage);
-                        ImGui::InputInt("Hit Stun", &editor.getHitBoxes()[editor.selected].hitStun);
-                        ImGui::InputInt("Block Stun", &editor.getHitBoxes()[editor.selected].blockStun);
-                        ImGui::Checkbox("Knockdown", &editor.getHitBoxes()[editor.selected].knockdown);
-                        ImGui::InputFloat("Force X", &editor.getHitBoxes()[editor.selected].force.x);     
-                        ImGui::InputFloat("Force Y", &editor.getHitBoxes()[editor.selected].force.y);                                      
+                        ImGui::InputInt("Damage", &editor.getHitBox()->damage);
+                        ImGui::InputInt("Hit Stun", &editor.getHitBox()->hitStun);
+                        ImGui::InputInt("Block Stun", &editor.getHitBox()->blockStun);
+                        ImGui::Checkbox("Knockdown", &editor.getHitBox()->knockdown);
+                        ImGui::InputFloat("Force X", &editor.getHitBox()->force.x);     
+                        ImGui::InputFloat("Force Y", &editor.getHitBox()->force.y);                                      
                     }
                 } 
 
-                if(editor.settings.mode == Editor::Mode::HurtBoxes) {
-                    
+                if(editor.settings.mode == Editor::Mode::HurtBoxes && editor.getHurtBoxes()) {
+                    vector<HurtBox>* hurtBoxes = editor.getHurtBoxes();
+
                     if(ImGui::BeginListBox("Hurt Boxes")) {
-                        for(int i = 0; i < editor.getHurtBoxes().size(); i ++) {
+                        for(int i = 0; i < hurtBoxes->size(); i ++) {
 
                             if(ImGui::Selectable(("hurtBox [" + std::to_string(i) + "]").c_str(), i == editor.selected)) 
                                 editor.setSelected(i);
@@ -442,13 +448,13 @@ int main() {
                         ImGui::EndListBox();
                     }
 
-                    if(editor.selected >= 0) {
+                    if(editor.getHurtBox()) {
                         ImGui::SeparatorText("Attributes");
-                        ImGui::InputFloat("X", &editor.getHurtBoxes()[editor.selected].x);
-                        ImGui::InputFloat("Y", &editor.getHurtBoxes()[editor.selected].y);
-                        ImGui::InputFloat("W", &editor.getHurtBoxes()[editor.selected].w);
-                        ImGui::InputFloat("H", &editor.getHurtBoxes()[editor.selected].h);
-                        ImGui::InputInt("Armour", &editor.getHurtBoxes()[editor.selected].armour);
+                        ImGui::InputFloat("X", &editor.getHurtBox()->x);
+                        ImGui::InputFloat("Y", &editor.getHurtBox()->y);
+                        ImGui::InputFloat("W", &editor.getHurtBox()->w);
+                        ImGui::InputFloat("H", &editor.getHurtBox()->h);
+                        ImGui::InputInt("Armour", &editor.getHurtBox()->armour);
                     }
                 } 
             }     

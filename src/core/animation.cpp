@@ -69,6 +69,17 @@ Frame Animation::getFrame(int t) {
                     Vector2 mov = (poseB.joints[j] - poseA.joints[j]) * progress;
                     frame.pose.joints[j] += mov;
                 }
+
+                // Interpolate grab
+                if(keyFrames[i].isGrab && keyFrames[i + 1].isGrab) {
+                    Skeleton poseA = keyFrames[i].grabee;                
+                    Skeleton poseB = keyFrames[i + 1].grabee;
+
+                    for(int j = 0; j < poseB.jointCount; j ++) {
+                        Vector2 mov = (poseB.joints[j] - poseA.joints[j]) * progress;
+                        frame.grabee.joints[j] += mov;
+                    }
+                }
             }
             break;
         }
@@ -182,6 +193,7 @@ void Animation::saveToFile(std::filesystem::path path) {
         newFrame["duration"] = keyFrames[i].duration;
         newFrame["cancel"]   = keyFrames[i].cancel;
         newFrame["sound"]    = keyFrames[i].sound;
+        newFrame["isGrab"]   = keyFrames[i].isGrab;
 
         newFrame["impulse"]["x"] = keyFrames[i].impulse.x;
         newFrame["impulse"]["y"] = keyFrames[i].impulse.y;
@@ -195,6 +207,17 @@ void Animation::saveToFile(std::filesystem::path path) {
             obj["y"] = keyFrames[i].pose.joints[j].y;      
             newFrame["joints"].push_back(obj);      
         } 
+
+        if(keyFrames[i].isGrab) {
+            newFrame["grabee"] = nlohmann::json::array();
+
+            for(int j = 0; j < keyFrames[i].grabee.jointCount; j ++) {
+                nlohmann::json obj;
+                obj["x"] = keyFrames[i].grabee.joints[j].x;
+                obj["y"] = keyFrames[i].grabee.joints[j].y;      
+                newFrame["grabee"].push_back(obj);      
+            } 
+        }
 
         // Save draw order
         newFrame["order"] = keyFrames[i].pose.order;
@@ -294,6 +317,7 @@ bool Animation::loadFromFile(std::filesystem::path path) {
         if(frame["duration"].is_number_integer())       newFrame.duration = frame["duration"];
         if(frame["cancel"].is_boolean())                newFrame.cancel = frame["cancel"];
         if(frame["sound"].is_string())                  newFrame.sound = frame["sound"];
+        if(frame["isGrab"].is_boolean())                newFrame.isGrab = frame["isGrab"];
 
         if(frame["impulse"]["x"].is_number_float())     newFrame.impulse.x = frame["impulse"]["x"];
         if(frame["impulse"]["y"].is_number_float())     newFrame.impulse.y = frame["impulse"]["y"];
@@ -306,6 +330,17 @@ bool Animation::loadFromFile(std::filesystem::path path) {
             if(joint["y"].is_number_float())            newFrame.pose.joints[i].y = joint["y"];   
 
             i ++;
+        }
+
+        if(newFrame.isGrab) {
+            i = 0;
+            for(auto& joint : frame["grabee"]) {
+
+                if(joint["x"].is_number_float())        newFrame.grabee.joints[i].x = joint["x"];
+                if(joint["y"].is_number_float())        newFrame.grabee.joints[i].y = joint["y"];   
+
+                i ++;
+            }
         }
 
         // Load Draw Order

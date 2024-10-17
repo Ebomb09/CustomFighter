@@ -280,6 +280,22 @@ void Player::advanceFrame(vector<Player>& others) {
         if((in.Taunt || state.aiMove == Move::Taunt) && state.position.y <= 0 && getFrame().cancel)
             setMove(Move::Taunt);
 
+    // Cancel if whiffed grab
+    if(getFrame().isGrab && getFrame().duration <= 1) {
+        bool grabAny = false;
+
+        for(auto& ply : others) {
+
+            if(ply.state.grabIndex == gameIndex) {
+                grabAny = true;
+                break;
+            }
+        }
+
+        if(!grabAny)
+            setMove(Move::Stand);
+    }
+
     // Exit early if in HitStop
     if(state.hitStop != 0) 
         return;
@@ -291,6 +307,52 @@ void Player::advanceFrame(vector<Player>& others) {
     // Increment frames
     state.moveFrame ++;
     state.counter ++;
+
+    // While in a grab state
+    if(state.grabIndex >= 0) {
+
+        // Force grab animation
+        if(others[state.grabIndex].getFrame().isGrab) {
+            cache.frameCounter = state.counter;
+            cache.frame = Frame();
+            cache.frame.pose = others[state.grabIndex].getFrame().grabee;
+            cache.frame.key = others[state.grabIndex].getFrame().key;
+            cache.frame.duration = others[state.grabIndex].getFrame().duration;
+
+        // Grabber is no longer in the grab state
+        }else {
+            Vector2 min {100000, 100000};
+            Vector2 max {-100000, -100000};
+
+            for(int i = 0; i < cache.frame.pose.jointCount; i ++) {
+                min = {std::min(min.x, cache.frame.pose.joints[i].x), std::min(min.y, cache.frame.pose.joints[i].y)};
+                max = {std::max(max.x, cache.frame.pose.joints[i].x), std::max(max.y, cache.frame.pose.joints[i].y)};
+            }
+
+            state.position = {
+                min.x + (max.x - min.x) / 2.f,
+                min.y
+            };
+
+            // Set recovery state
+            if(state.position.y > 0) 
+                setMove(Move::EndCombo);
+            else
+                setMove(Move::GetUp);
+
+            // Dead from last hit, set to end of knockback
+            if(state.health <= 0) {
+                Animation* anim = getAnimations()[Move::KnockDown];
+
+                if(anim) {
+                    state.moveIndex = Move::KnockDown;
+                    state.moveFrame = anim->getFrameCount();
+                }
+            }
+
+            state.grabIndex = -1;
+        }
+    }
 
     if(state.stun > 0)
         state.stun --;
@@ -337,10 +399,11 @@ void Player::advanceFrame(vector<Player>& others) {
     }
 
     // Check Hit/Hurtbox Collisions
+    HitBox hit;
+    int hitIndex;
     Vector2 hitLocation;
-    HitBox hit = getCollision(others, &hitLocation);
 
-    if(hit.damage > 0) {  
+    if(getCollision(others, &hit, &hitIndex, &hitLocation)) {  
         bool block = false;
 
         // Block: if input in the opposite direction of opponent   
@@ -361,22 +424,32 @@ void Player::advanceFrame(vector<Player>& others) {
             case HitType::Low: 
                 block = (block && getSOCD().y < 0) || state.aiMove == Move::CrouchBlock;
                 break;
+
+            case HitType::Unblockable:
+                block = false;
+                break;
+
+            case HitType::Grab:
+                block = (state.position.y > 0 || state.stun != 0) && state.grabIndex < 0;
+                break;
         }
 
         if(block) {
 
-            state.velocity.x += hit.force.x;
+            if(hit.type != HitType::Grab) {
+                state.velocity.x += hit.force.x;
 
-            state.stun = hit.blockStun;
-            state.accDamage = hit.blockStun;
+                state.stun = hit.blockStun;
+                state.accDamage = hit.blockStun;
 
-            if(inMove(Move::Stand) || inMove(Move::StandBlock)){
-                setMove(Move::StandBlock);
+                if(inMove(Move::Stand) || inMove(Move::StandBlock)){
+                    setMove(Move::StandBlock);
 
-            }else{
-                setMove(Move::CrouchBlock);
+                }else{
+                    setMove(Move::CrouchBlock);
+                }
+                g::audio.playSound(g::save.getSound("block"), true);
             }
-            g::audio.playSound(g::save.getSound("block"), true);
 
         }else{
 
@@ -393,8 +466,12 @@ void Player::advanceFrame(vector<Player>& others) {
 
             dealDamage(hit.damage);
 
+            // Signal grab
+            if(hit.type == HitType::Grab) {
+                state.grabIndex = hitIndex;
+
             // Signal tumble to reset via knockdown
-            if(hit.knockdown) {
+            }else if(hit.knockdown) {
                 setMove(Move::EndCombo);
 
             // Set airborne state
@@ -689,7 +766,7 @@ void Player::advanceFrame(vector<Player>& others) {
 
         if(ply.gameIndex == gameIndex) {
 
-            if(ply.state.moveIndex != state.moveIndex) {
+            if(ply.state.moveIndex != state.moveIndex && ply.state.grabIndex < 0) {
                 state.fromMoveIndex = ply.state.moveIndex;
                 state.fromMoveFrame = ply.state.moveFrame;
             }
@@ -928,10 +1005,10 @@ const bool& Player::getTaggedIn(vector<Player>& others) {
     return cache.tagged;
 }
 
-HitBox Player::getCollision(vector<Player>& others, Vector2* outLocation) {
+bool Player::getCollision(vector<Player>& others, HitBox* hitBox, int* index, Vector2* outLocation) {
 
     if(!getTaggedIn(others))
-        return {};
+        return false;
 
     for(int i = 0; i < others.size(); i ++) {
 
@@ -944,9 +1021,38 @@ HitBox Player::getCollision(vector<Player>& others, Vector2* outLocation) {
 
             // Check HurtBox <-> HitBox collisions, for only one match
             for(auto& hit : others[i].getHitBoxes()) {
+
+                if(hit.type == HitType::Grab && state.grabIndex >= 0) {
+
+                    // Output the enemy hitbox
+                    if(hitBox)
+                        *hitBox = hit;
+
+                    // Output the originating player index
+                    if(index)
+                        *index = i;
+
+                    // Output the location where hit occured
+                    if(outLocation) {
+                        outLocation->x = hit.x + hit.w/2;
+                        outLocation->y = hit.y - hit.h/2;
+                    }
+
+                    state.hitKeyFrame[i] = others[i].getKeyFrame();
+                    return true;
+                }
+
                 for(auto& hurt : getHurtBoxes()) {
 
                     if(Real::rectangleInRectangle(hurt, hit)) {
+
+                        // Output the enemy hitbox
+                        if(hitBox)
+                            *hitBox = hit;
+
+                        // Output the originating player index
+                        if(index)
+                            *index = i;
 
                         // Output the location where hit occured
                         if(outLocation) {
@@ -955,13 +1061,13 @@ HitBox Player::getCollision(vector<Player>& others, Vector2* outLocation) {
                         }
 
                         state.hitKeyFrame[i] = others[i].getKeyFrame();
-                        return hit;
+                        return true;
                     }
                 }
             }
         }
     }
-    return {};
+    return false;
 }
 
 Vector2 Player::getCameraCenter(std::vector<Player>& others) {
@@ -1061,6 +1167,11 @@ const Frame& Player::getFrame() {
     for(int i = 0; i < cache.frame.pose.jointCount; i ++) {
         cache.frame.pose.joints[i].x *= state.side;
         cache.frame.pose.joints[i] += state.position;
+    }
+
+    for(int i = 0; i < cache.frame.grabee.jointCount; i ++) {
+        cache.frame.grabee.joints[i].x *= state.side;
+        cache.frame.grabee.joints[i] += state.position;
     }
 
     // Flip draw order array

@@ -54,14 +54,25 @@ void Editor::drawModel() {
 	if(!settings.drawModel)
 		return;
 
-    Skeleton copy;
+    vector<Skeleton> copy;
 
-    if(settings.playback)
-        copy = player.getSkeleton();
-    else
-        copy = getSkeleton();
+    if(settings.playback) {
+        copy.push_back(player.getFrame().pose);
 
-    copy.draw(player.getClothes());	
+        if(player.getFrame().isGrab)
+            copy.push_back(player.getFrame().grabee);
+
+    }else {
+
+        if(getPose()) 
+            copy.push_back(*getPose());
+
+        if(getGrabee())
+            copy.push_back(*getGrabee());
+    }
+
+    for(int i = 0; i < copy.size(); i ++)
+        copy[i].draw(player.getClothes());
 }
 
 void Editor::drawSkeleton() {
@@ -72,23 +83,36 @@ void Editor::drawSkeleton() {
     if(keyFrame < 0)
         return;
 
-    Skeleton copy;
+    vector<Skeleton> copy;
 
-    if(settings.playback)
-        copy = player.getSkeleton();
-    else
-        copy = getSkeleton();
+    if(settings.playback) {
+        copy.push_back(player.getSkeleton());
 
-    for(int i = 0; i < copy.boneCount; i ++) {
-        Bone& b = copy.bones[i];
+        if(player.getFrame().isGrab)
+            copy.push_back(player.getFrame().grabee);
 
-        sf::Vertex line[2];
-        line[0].position = g::video.toScreen(b.start);
-        line[0].color = {255, 255, 255, 255};
-        line[1].position = g::video.toScreen(b.end);
-        line[1].color = {255, 255, 255, 255};
+    }else {
 
-        g::video.draw((const sf::Vertex*)&line, 2, sf::PrimitiveType::Lines);
+        if(getPose()) 
+            copy.push_back(*getPose());
+
+        if(getGrabee())
+            copy.push_back(*getGrabee());
+    }
+
+    for(int i = 0; i < copy.size(); i ++) {
+
+        for(int j = 0; j < copy[i].boneCount; j ++) {
+            Bone& b = copy[i].bones[j];
+
+            sf::Vertex line[2];
+            line[0].position = g::video.toScreen(b.start);
+            line[0].color = {255, 255, 255, 255};
+            line[1].position = g::video.toScreen(b.end);
+            line[1].color = {255, 255, 255, 255};
+
+            g::video.draw((const sf::Vertex*)&line, 2, sf::PrimitiveType::Lines);
+        }
     }
 }
 
@@ -102,10 +126,13 @@ void Editor::drawHitBox() {
 
     vector<HitBox> copy;
 
-    if(settings.playback)
+    if(settings.playback) {
         copy = player.getHitBoxes();
-    else
-        copy = getHitBoxes();
+    }else {
+
+        if(getHitBoxes())
+            copy = *getHitBoxes();
+    }
 
     for(auto& box : copy) {
         sf::RectangleShape rect = g::video.toScreen(box);
@@ -126,10 +153,13 @@ void Editor::drawHurtBox() {
 
     vector<HurtBox> copy;
 
-    if(settings.playback)
+    if(settings.playback) {
         copy = player.getHurtBoxes();
-    else
-        copy = getHurtBoxes();
+    }else {
+
+        if(getHurtBoxes())
+            copy = *getHurtBoxes();
+    }
 
     for(auto& box : copy) {
         sf::RectangleShape rect = g::video.toScreen(box);
@@ -148,9 +178,10 @@ void Editor::resetPlayer() {
 
     // Set player to test and copy in the save
     player.config.moves[Move::Stand] = "";
-    player.config.moves[Move::Custom00] = "";    
+    player.config.moves[Move::Custom00] = "";
 
     string test = g::save.getAnimationsList()[0];
+    *g::save.getAnimation(test) = anim;
 
     if(anim.category < Move::Custom00) {
         player.config.moves[Move::Stand] = test;
@@ -160,47 +191,167 @@ void Editor::resetPlayer() {
         player.config.moves[Move::Custom00] = test;
         player.state.moveIndex = Move::Custom00;     
     }
-    *g::save.getAnimation(test) = anim;
 }
 
-Skeleton Editor::getSkeleton() {
+Frame* Editor::getKeyFrame(int key) {
+    
+    if(key == -1)
+        key = keyFrame;
 
-	if(keyFrame >= 0)
-		return getKeyFrame().pose;
-
-	return Skeleton();
+    if(key < 0 || key >= anim.keyFrames.size())
+        return NULL;
+    
+    return &anim.keyFrames[key];
 }
 
-std::vector<Rectangle*> Editor::getBoxes() {
-    std::vector<Rectangle*> boxes;
+Skeleton* Editor::getPose(int key) {
+    Frame* frame = getKeyFrame(key);
 
-    if(keyFrame < 0) {
-        return boxes;
+    if(frame)
+        return &frame->pose;
 
-    }else if(settings.mode == Mode::HitBoxes) {
+	return NULL;
+}
 
-        for(int i = 0; i < getHitBoxes().size(); i ++)
-            boxes.push_back(&getHitBoxes()[i]);
+Skeleton* Editor::getGrabee(int key) {
+    Frame* frame = getKeyFrame(key);
 
-    }else if(settings.mode == Mode::HurtBoxes) {
+    if(frame && frame->isGrab)
+        return &frame->grabee;
 
-        for(int i = 0; i < getHurtBoxes().size(); i ++)
-            boxes.push_back(&getHurtBoxes()[i]);
+	return NULL;
+}
+
+vector<Vector2*> Editor::getJoints(int key) {
+    Frame* frame = getKeyFrame(key);
+    vector<Vector2*> joints;
+
+    if(frame) {
+
+        for(int i = 0; i < frame->pose.jointCount; i ++) 
+            joints.push_back(&frame->pose.joints[i]);
+
+        if(frame->isGrab) {
+            for(int i = 0; i < frame->grabee.jointCount; i ++) 
+                joints.push_back(&frame->grabee.joints[i]);
+        }
+    }
+    return joints;
+}
+
+Vector2* Editor::getJoint(int index, int key) {
+    vector<Vector2*> joints = getJoints(key);
+
+    if(settings.mode == Mode::Joints && index == -1)
+        index = selected;
+
+    if(index < 0 || index >= joints.size())
+        return NULL;
+
+    return joints[index];
+}
+
+Skeleton* Editor::getJointOwner(int index, int key) {
+    Vector2* joint = getJoint(index, key);
+    Skeleton* pose = getPose();
+    Skeleton* grabee = getGrabee();
+
+    // Check if the memory location matches for either of the skeletons
+    if(pose) {
+
+        for(int i = 0; i < pose->jointCount; i ++)
+            if(&pose->joints[i] == joint)
+                return pose;
+    }
+
+    if(grabee) {
+
+        for(int i = 0; i < grabee->jointCount; i ++)
+            if(&grabee->joints[i] == joint)
+                return grabee;
+    }
+    return NULL;
+}
+
+vector<Rectangle*> Editor::getBoxes(int key) {
+    Frame* frame = getKeyFrame(key);
+    vector<Rectangle*> boxes;
+
+    if(frame) {
+
+        if(settings.mode == Mode::HitBoxes) {
+
+            for(auto& box : frame->hitBoxes)
+                boxes.push_back(&box);
+
+        }else if(settings.mode == Mode::HurtBoxes) {
+
+            for(auto& box : frame->hurtBoxes)
+                boxes.push_back(&box);
+        }
     }
     return boxes;
 }
 
-Frame& Editor::getKeyFrame() {
-    return anim.getKeyFrame(keyFrame);
+Rectangle* Editor::getBox(int index, int key) {
+    vector<Rectangle*> boxes = getBoxes(key);
+
+    if(index == -1 && (settings.mode == Mode::HitBoxes || settings.mode == Mode::HurtBoxes))
+        index = selected;
+
+    if(index < 0 || index >= boxes.size())
+        return NULL;
+
+    return boxes[index];
 }
 
-std::vector<HitBox>& Editor::getHitBoxes() {
-    return getKeyFrame().hitBoxes;
+vector<HitBox>* Editor::getHitBoxes(int key) {
+    Frame* frame = getKeyFrame(key);
+
+    if(frame) 
+        return &frame->hitBoxes;
+
+    return NULL;
 }
 
-std::vector<HurtBox>& Editor::getHurtBoxes() {
-    return getKeyFrame().hurtBoxes;
-}  
+HitBox* Editor::getHitBox(int index, int key) {
+    vector<HitBox>* boxes = getHitBoxes(key);
+
+    if(settings.mode == Mode::HitBoxes && index == -1)
+        index = selected;
+
+    if(!boxes)
+        return NULL;
+
+    if(index < 0 || index >= boxes->size())
+        return NULL;
+
+    return &(*boxes)[index];
+}
+
+vector<HurtBox>* Editor::getHurtBoxes(int key) {
+    Frame* frame = getKeyFrame(key);
+
+    if(frame) 
+        return &frame->hurtBoxes;
+        
+    return NULL;
+}
+
+HurtBox* Editor::getHurtBox(int index, int key) {
+    vector<HurtBox>* boxes = getHurtBoxes(key);
+
+    if(settings.mode == Mode::HurtBoxes && index == -1)
+        index = selected;
+
+    if(!boxes)
+        return NULL;
+
+    if(index < 0 || index >= boxes->size())
+        return NULL;
+
+    return &(*boxes)[index];
+}
 
 void Editor::update() {
     drawGrid();
@@ -265,34 +416,23 @@ void Editor::selectDefault() {
 }
 
 void Editor::selectJoint() {
-    Skeleton& skele = getKeyFrame().pose;     
 
-    if(selected >= 0) {
-        Vector2 j = g::video.toScreen(skele.getJoint(selected));
+    // Selections
+    if(g::input.pressed(MOUSE_INDEX, sf::Mouse::Button::Left)) {
+        bool pickSame = false;
 
-        if(g::input.pressed(MOUSE_INDEX, sf::Mouse::Button::Left)) {
-            setDragZone(-1);
+        if(getJoint()) 
+            pickSame = Screen::pointInCircle(g::input.mousePosition, {getJoint()->x, getJoint()->y, 8});
 
-            if(Screen::pointInCircle(g::input.mousePosition, {j.x, j.y, 8}))
-                setDragZone(1);
-        }
-    }
-
-    if(g::input.pressed(MOUSE_INDEX, sf::Mouse::Button::Left) && dragZone == -1) {
-        bool pick_same = false;
-
-        if(selected >= 0) {
-            Vector2 j = g::video.toScreen(skele.getJoint(selected));
-            pick_same = Screen::pointInCircle(g::input.mousePosition, {j.x, j.y, 8});
-        }
-        
-        if(!pick_same) {
+        // Pick Joint
+        if(!pickSame) {
+            vector<Vector2*> joints = getJoints();
             setSelected(-1);
 
-            for(int i = 0; i < skele.jointCount; i ++) {
-                Vector2 j = g::video.toScreen(skele.joints[i]);
+            for(int i = 0; i < joints.size(); i ++) {
+                Vector2 joint = g::video.toScreen(*joints[i]);
 
-                if(Screen::pointInCircle(g::input.mousePosition, {j.x, j.y, 8})) {
+                if(Screen::pointInCircle(g::input.mousePosition, {joint.x, joint.y, 8})) {
                     setSelected(i);
                     break;
                 }
@@ -300,26 +440,33 @@ void Editor::selectJoint() {
         }
     }
 
-    // Rotate Joint
-    if(g::input.held(MOUSE_INDEX, sf::Mouse::Button::Right) && selected >= 0) {
-        skele.rotateJoint(selected, -g::input.mouseMove.x * PI / 180);   
-    }
+    // Modifications
+    if(getJoint()) {
+        Skeleton* skele = getJointOwner();
 
-    // Move Joint
-    if(g::input.held(MOUSE_INDEX, sf::Mouse::Button::Left) && selected >= 0 && dragZone == 1) {
+        // Rotate Joint
+        if(g::input.held(MOUSE_INDEX, sf::Mouse::Button::Right)) {
 
-        skele.moveJoint(selected,
-            {
-                g::input.mouseMove.x * (g::video.camera.w / g::video.getSize().x),
-                -g::input.mouseMove.y * (g::video.camera.h / g::video.getSize().y)
+            if(skele) {
+                skele->rotateJoint(*getJoint(), *getJoint(), -g::input.mouseMove.x * PI / 180);
             }
-        );   
-    }
+        }
 
-    if(selected >= 0) {
-        Vector2& joint = skele.getJoint(selected);
+        // Move Joint
+        if(g::input.held(MOUSE_INDEX, sf::Mouse::Button::Left)) {
 
-        Vector2 pos = g::video.toScreen(joint);
+            if(skele) {
+                skele->moveJoint(*getJoint(),
+                    {
+                        g::input.mouseMove.x * (g::video.camera.w / g::video.getSize().x),
+                        -g::input.mouseMove.y * (g::video.camera.h / g::video.getSize().y)
+                    }
+                );  
+            }
+        }
+
+        // Draw clickable area
+        Vector2 pos = g::video.toScreen(*getJoint());
 
         sf::CircleShape highlight; 
         highlight.setFillColor({0, 0, 0, 0});
@@ -327,8 +474,8 @@ void Editor::selectJoint() {
         highlight.setOutlineThickness(2);
         highlight.setPosition({pos.x - 8, pos.y - 8});
         highlight.setRadius(8);
-        g::video.draw(highlight);
-    }     
+        g::video.draw(highlight);        
+    }
 }
 
 void Editor::selectRectangle() {
@@ -338,20 +485,27 @@ void Editor::selectRectangle() {
         Vector2 pos = g::video.toReal(g::input.mousePosition);
         
         if(settings.mode == Mode::HitBoxes) {
-            getHitBoxes().push_back({pos.x - 25, pos.y + 25, 50, 50});
-            setSelected(getHitBoxes().size() - 1);
+            vector<HitBox>* boxes = getHitBoxes();
+
+            if(boxes) {
+                boxes->push_back({pos.x - 25, pos.y + 25, 50, 50});
+                setSelected(boxes->size() - 1);
+            }
 
         }else if(settings.mode == Mode::HurtBoxes) {
-            getHurtBoxes().push_back({pos.x - 25, pos.y + 25, 50, 50});
-            setSelected(getHurtBoxes().size() - 1);
+            vector<HurtBox>* boxes = getHurtBoxes();
+
+            if(boxes) {
+                boxes->push_back({pos.x - 25, pos.y + 25, 50, 50});
+                setSelected(boxes->size() - 1);
+            }
         }
     }
 
-    // Drag Zones
-    if(selected >= 0) {
-        std::vector<Rectangle*> boxes = getBoxes();
+    // Create the drag zones
+    Rectangle zone[9];
 
-        Rectangle zone[9];
+    if(getBox()) {
 
         for(int i = 0; i < 9; i ++) {
 
@@ -359,8 +513,8 @@ void Editor::selectRectangle() {
                 continue;
 
             Vector2 pos {
-                boxes[selected]->x + (boxes[selected]->w/2) * (i % 3),
-                boxes[selected]->y - (boxes[selected]->h/2) * (i / 3)
+                getBox()->x + (getBox()->w/2) * (i % 3),
+                getBox()->y - (getBox()->h/2) * (i / 3)
             };
 
             pos = g::video.toScreen(pos);
@@ -377,33 +531,36 @@ void Editor::selectRectangle() {
 
             g::video.draw(rect);
         }
+    }
 
-        if(g::input.pressed(MOUSE_INDEX, sf::Mouse::Button::Left)) {
-            setDragZone(-1);
+    // Selection
+    if(g::input.pressed(MOUSE_INDEX, sf::Mouse::Button::Left)) {
+        bool pickSame = false;
 
-            if(Screen::pointInRectangle(g::input.mousePosition, g::video.toScreen(*boxes[selected])))
+        if(getBox()) {
+
+            // Check each drag zone to determine selection
+            if(Screen::pointInRectangle(g::input.mousePosition, g::video.toScreen(*getBox()))) {
                 setDragZone(4);
+                pickSame = true;
+            }
 
             for(int i = 0; i < 9; i ++) {
 
                 if(i == 4)
                     continue;
 
-                if(Screen::pointInRectangle(g::input.mousePosition, zone[i]))
+                if(Screen::pointInRectangle(g::input.mousePosition, zone[i])) {
                     setDragZone(i);
+                    pickSame = true;
+                    break;
+                }
             }
         }
-    }
 
-    // Mouse in rectangle area
-    if(g::input.pressed(MOUSE_INDEX, sf::Mouse::Button::Left) && dragZone == -1) {
-        std::vector<Rectangle*> boxes = getBoxes();        
-        bool pick_same = false;
-
-        if(selected >= 0) 
-            pick_same = Screen::pointInRectangle(g::input.mousePosition, g::video.toScreen(*boxes[selected]));
-        
-        if(!pick_same) {
+        // Make new selection
+        if(!pickSame) {
+            vector<Rectangle*> boxes = getBoxes();
             setSelected(-1);
 
             for(int i = 0; i < boxes.size(); i ++) {
@@ -412,74 +569,78 @@ void Editor::selectRectangle() {
                     setSelected(i);
                     break;
                 }
-            }                        
+            }
         }
     }
 
-    if(g::input.held(MOUSE_INDEX, sf::Mouse::Button::Left) && selected >= 0) {
-        std::vector<Rectangle*> boxes = getBoxes();
-        Vector2 mov = g::input.mouseMove * (g::video.camera.w / g::video.getSize().x);
+    // Modifications
+    if(getBox()) {
 
-        switch(dragZone) {
+        if(g::input.held(MOUSE_INDEX, sf::Mouse::Button::Left)) {
+            vector<Rectangle*> boxes = getBoxes();
+            Vector2 mov = g::input.mouseMove * (g::video.camera.w / g::video.getSize().x);
 
-        // Generic drag position
-        case 4:
-            boxes[selected]->x += mov.x;
-            boxes[selected]->y += -mov.y;
-            break;
+            switch(dragZone) {
 
-        case 0:
-            boxes[selected]->x += mov.x;
-            boxes[selected]->y += -mov.y;
-            boxes[selected]->w += -mov.x;
-            boxes[selected]->h += -mov.y;
-            break;
+            // Generic drag position
+            case 4:
+                boxes[selected]->x += mov.x;
+                boxes[selected]->y += -mov.y;
+                break;
 
-        case 1:
-            boxes[selected]->y += -mov.y;              
-            boxes[selected]->h += -mov.y;
-            break;    
+            case 0:
+                boxes[selected]->x += mov.x;
+                boxes[selected]->y += -mov.y;
+                boxes[selected]->w += -mov.x;
+                boxes[selected]->h += -mov.y;
+                break;
 
-        case 2:
-            boxes[selected]->y += -mov.y;            
-            boxes[selected]->w += mov.x;
-            boxes[selected]->h += -mov.y;
-            break;   
+            case 1:
+                boxes[selected]->y += -mov.y;              
+                boxes[selected]->h += -mov.y;
+                break;    
 
-        case 3:
-            boxes[selected]->x += mov.x;
-            boxes[selected]->w += -mov.x;
-            break;
+            case 2:
+                boxes[selected]->y += -mov.y;            
+                boxes[selected]->w += mov.x;
+                boxes[selected]->h += -mov.y;
+                break;   
 
-        case 5:
-            boxes[selected]->w += mov.x;
-            break;
+            case 3:
+                boxes[selected]->x += mov.x;
+                boxes[selected]->w += -mov.x;
+                break;
 
-        case 6:
-            boxes[selected]->x += mov.x;
-            boxes[selected]->w += -mov.x;
-            boxes[selected]->h += mov.y;
-            break;
+            case 5:
+                boxes[selected]->w += mov.x;
+                break;
 
-        case 7:
-            boxes[selected]->h += mov.y;
-            break;
+            case 6:
+                boxes[selected]->x += mov.x;
+                boxes[selected]->w += -mov.x;
+                boxes[selected]->h += mov.y;
+                break;
 
-        case 8:
-            boxes[selected]->w += mov.x;
-            boxes[selected]->h += mov.y;
-            break;      
+            case 7:
+                boxes[selected]->h += mov.y;
+                break;
+
+            case 8:
+                boxes[selected]->w += mov.x;
+                boxes[selected]->h += mov.y;
+                break;      
+            }
         }
-    }   
 
-    if(g::input.pressed(KEYBOARD_INDEX, sf::Keyboard::Delete) && selected >= 0) {
+        if(g::input.pressed(KEYBOARD_INDEX, sf::Keyboard::Delete)) {
 
-        if(settings.mode == Mode::HitBoxes) 
-            getHitBoxes().erase(getHitBoxes().begin() + selected);
+            if(settings.mode == Mode::HitBoxes && getHitBox()) {
+                getHitBoxes()->erase(getHitBoxes()->begin() + selected);
 
-        else if(settings.mode == Mode::HurtBoxes) 
-            getHurtBoxes().erase(getHurtBoxes().begin() + selected);
-        
-        setSelected(-1);
-    }  
+            }else if(settings.mode == Mode::HurtBoxes && getHurtBoxes()) {
+                getHurtBoxes()->erase(getHurtBoxes()->begin() + selected);
+            }
+            setSelected(-1);
+        }          
+    }
 }

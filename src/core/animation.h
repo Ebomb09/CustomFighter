@@ -17,6 +17,9 @@ struct Frame {
     bool cancel         = false;
     std::string sound   = "";
 
+    bool isGrab         = false;
+    Skeleton grabee     = Skeleton();
+
     std::vector<HitBox> hitBoxes;
     std::vector<HurtBox> hurtBoxes;
 };

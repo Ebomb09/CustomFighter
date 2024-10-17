@@ -80,6 +80,7 @@ struct Player {
 		int 			fromMoveIndex	= -1;
 		int				fromMoveFrame	= -1;
 		float 			look			= 0;
+		int				grabIndex		= -1;
 		Button::Flag	button			[Button::History];
 		Effect			effects			[Effect::Max];
 	}state;
@@ -127,7 +128,7 @@ struct Player {
 
 	bool inCorner();
 
-	HitBox getCollision(std::vector<Player>& others, Vector2* outLocation=NULL);
+	bool getCollision(std::vector<Player>& others, HitBox* hitBox, int* index=NULL, Vector2* outLocation=NULL);
 
 	Vector2 getCameraCenter(std::vector<Player>& others);
 

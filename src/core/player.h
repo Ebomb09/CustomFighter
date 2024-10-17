@@ -81,6 +81,7 @@ struct Player {
 		int				fromMoveFrame	= -1;
 		float 			look			= 0;
 		int				grabIndex		= -1;
+		int				grabeeIndex		= -1;
 		Button::Flag	button			[Button::History];
 		Effect			effects			[Effect::Max];
 	}state;

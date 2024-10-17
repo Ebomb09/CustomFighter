@@ -280,20 +280,35 @@ void Player::advanceFrame(vector<Player>& others) {
         if((in.Taunt || state.aiMove == Move::Taunt) && state.position.y <= 0 && getFrame().cancel)
             setMove(Move::Taunt);
 
-    // Cancel if whiffed grab
-    if(getFrame().isGrab && getFrame().duration <= 1) {
-        bool grabAny = false;
+    // Grabber state control
+    if(getFrame().isGrab) {
+
+        // Get current grabee and the previous
+        int prevIndex = -1;
+        state.grabeeIndex = -1;
 
         for(auto& ply : others) {
 
-            if(ply.state.grabIndex == gameIndex) {
-                grabAny = true;
-                break;
-            }
+            if(ply.gameIndex == gameIndex)
+                prevIndex = ply.state.grabeeIndex;
+
+            if(ply.state.grabIndex == gameIndex) 
+                state.grabeeIndex = ply.gameIndex;
         }
 
-        if(!grabAny)
+        // Was grab broken
+        if(state.grabeeIndex < 0 && prevIndex >= 0){            
+            state.stun = 20;
+            state.velocity.x = state.side * -3.f;
+            setMove(Move::StandCombo);
+
+        // Was whiffed
+        }else if(state.grabeeIndex < 0 && getFrame().cancel) {
             setMove(Move::Stand);
+        }
+
+    }else {
+        state.grabeeIndex = -1;
     }
 
     // Exit early if in HitStop
@@ -308,31 +323,56 @@ void Player::advanceFrame(vector<Player>& others) {
     state.moveFrame ++;
     state.counter ++;
 
-    // While in a grab state
+    // Grabee state control
     if(state.grabIndex >= 0) {
+        bool inputBreak = false;
+
+        // Check if the inputs match the required grab break
+        switch(others[state.grabIndex].getFrame().grabBreak) {
+
+            case GrabBreak::A:
+                inputBreak = state.button[0].A;
+                break;
+
+            case GrabBreak::C:
+                inputBreak = state.button[0].C;
+                break;
+
+            case GrabBreak::AC:
+                inputBreak = state.button[0].A || state.button[0].C;
+                break;
+        }
+
+        // Break if grabbed at the same time
+        if(others[state.grabIndex].state.grabIndex == gameIndex)
+            inputBreak = true;
 
         // Force grab animation
-        if(others[state.grabIndex].getFrame().isGrab) {
+        if(others[state.grabIndex].getFrame().isGrab && !inputBreak) {
             cache.frameCounter = state.counter;
             cache.frame = Frame();
             cache.frame.pose = others[state.grabIndex].getFrame().grabee;
             cache.frame.key = others[state.grabIndex].getFrame().key;
             cache.frame.duration = others[state.grabIndex].getFrame().duration;
 
-        // Grabber is no longer in the grab state
-        }else {
-            Vector2 min {100000, 100000};
-            Vector2 max {-100000, -100000};
-
-            for(int i = 0; i < cache.frame.pose.jointCount; i ++) {
-                min = {std::min(min.x, cache.frame.pose.joints[i].x), std::min(min.y, cache.frame.pose.joints[i].y)};
-                max = {std::max(max.x, cache.frame.pose.joints[i].x), std::max(max.y, cache.frame.pose.joints[i].y)};
-            }
+            Rectangle bounds = getRealBoundingBox();
 
             state.position = {
-                min.x + (max.x - min.x) / 2.f,
-                min.y
+                bounds.x + bounds.w / 2.f,
+                bounds.y - bounds.h
             };
+
+        // Broke out of the grab
+        }else if(inputBreak){
+            state.grabIndex = -1;           
+            state.position.y = 0;
+            state.velocity.x = state.side * -3.f;
+            state.stun = 20;
+            setMove(Move::StandCombo);
+
+        // Grabber is no longer in the grab state
+        }else {
+            state.grabIndex = -1;
 
             // Set recovery state
             if(state.position.y > 0) 
@@ -349,8 +389,6 @@ void Player::advanceFrame(vector<Player>& others) {
                     state.moveFrame = anim->getFrameCount();
                 }
             }
-
-            state.grabIndex = -1;
         }
     }
 
@@ -731,7 +769,7 @@ void Player::advanceFrame(vector<Player>& others) {
     // Look at the target while still alive
     if(state.health > 0) {
 
-        if(getTarget(others) != -1 && state.stun == 0) {
+        if(getTarget(others) != -1 && state.stun == 0 && state.grabIndex < 0) {
             Skeleton myPose = getFrame().pose;
             Skeleton opPose = others[getTarget(others)].getSkeleton();
 

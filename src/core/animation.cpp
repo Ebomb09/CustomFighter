@@ -217,6 +217,8 @@ void Animation::saveToFile(std::filesystem::path path) {
                 obj["y"] = keyFrames[i].grabee.joints[j].y;      
                 newFrame["grabee"].push_back(obj);      
             } 
+
+            newFrame["grabBreak"] = keyFrames[i].grabBreak;
         }
 
         // Save draw order
@@ -341,6 +343,9 @@ bool Animation::loadFromFile(std::filesystem::path path) {
 
                 i ++;
             }
+
+            if(frame["grabBreak"].is_number())
+                newFrame.grabBreak = frame["grabBreak"];
         }
 
         // Load Draw Order

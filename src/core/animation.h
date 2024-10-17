@@ -1,6 +1,7 @@
 #ifndef GAME_ANIMATION_KEY_FRAME_H
 #define GAME_ANIMATION_KEY_FRAME_H
 
+#include "hit.h"
 #include "math.h"
 #include "skeleton.h"
 #include "move.h"
@@ -19,6 +20,7 @@ struct Frame {
 
     bool isGrab         = false;
     Skeleton grabee     = Skeleton();
+    int grabBreak       = GrabBreak::Unbreakable;
 
     std::vector<HitBox> hitBoxes;
     std::vector<HurtBox> hurtBoxes;

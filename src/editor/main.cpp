@@ -372,7 +372,21 @@ int main() {
                     ImGui::EndCombo();
                 }
 
-                ImGui::Checkbox("isGrab", &keyFrame.isGrab);
+                ImGui::Checkbox("Grab", &keyFrame.isGrab);
+
+                if(keyFrame.isGrab) {
+
+                    if(ImGui::BeginCombo("Grab Break", GrabBreak::String[keyFrame.grabBreak].c_str())) {
+
+                        for(int i = 0; i < GrabBreak::Total; i ++) {
+
+                            if(ImGui::Selectable(GrabBreak::String[i].c_str(), i == keyFrame.grabBreak))
+                                keyFrame.grabBreak = i;
+                        }
+
+                        ImGui::EndCombo();
+                    }
+                }           
             }
 
             if(ImGui::CollapsingHeader("Selection")) { 

@@ -151,6 +151,15 @@ Rectangle::operator sf::FloatRect() {
 	return sf::FloatRect(x, y, w, h);
 }
 
+Rectangle::operator sf::VertexArray() {
+	sf::VertexArray ar;
+	ar.append(Vector2(x, y));
+	ar.append(Vector2(x + w, y));
+	ar.append(Vector2(x + w, y + h));
+	ar.append(Vector2(x, y + h));
+	return ar;
+}
+
 Rectangle Rectangle::getRatio(float width, float height) {
 
 	return {

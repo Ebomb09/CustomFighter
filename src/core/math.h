@@ -53,6 +53,7 @@ struct Rectangle {
 
 	operator sf::RectangleShape();
 	operator sf::FloatRect();
+	operator sf::VertexArray();
 };
 
 namespace Real {

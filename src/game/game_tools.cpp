@@ -80,6 +80,14 @@ void drawHealthBars(Player* players, int count) {
 static float healthBar[MAX_PLAYERS] {0.f, 0.f, 0.f, 0.f};
 
 void drawHealthBars(vector<Player> players) {
+
+	// Get the needed textures
+	sf::Texture* texBar = g::save.getTexture("data/hud/bar.png");
+
+	if(!texBar)
+		return;
+
+	// Set the drawing order by nontagged -> tagged
 	vector<Player*> order;
 
 	for(auto& ply : players) {
@@ -117,56 +125,79 @@ void drawHealthBars(vector<Player> players) {
 		sf::RectangleShape sh = rect;
 		sh.setFillColor(sf::Color::Black);
 		sh.setOutlineColor(sf::Color::White);
-		sh.setOutlineThickness(2);		
+		sh.setOutlineThickness(2);
 
 		g::video.draw(sh);
 
-		// Get the red health bar
-		Rectangle redBar;
-		Rectangle yelBar;
-		float redPct = healthBar[ptr->gameIndex] / 100.f;
-		float yelPct = ptr->state.health / 100.f;
+		// Get the health bars
+		Rectangle lossBar;
+		Rectangle lifeBar;
+		float lossPct = healthBar[ptr->gameIndex] / 100.f;
+		float lifePct = ptr->state.health / 100.f;
 
 		if(ptr->team == 0) {
 
-			redBar = {
-				rect.x + rect.w - rect.w * redPct,
+			lossBar = {
+				rect.x + rect.w - rect.w * lossPct,
 				rect.y,
-				rect.w * redPct,
+				rect.w * lossPct,
 				rect.h
 			};
 
-			yelBar = {
-				rect.x + rect.w - rect.w * yelPct,
+			lifeBar = {
+				rect.x + rect.w - rect.w * lifePct,
 				rect.y,
-				rect.w * yelPct,
+				rect.w * lifePct,
 				rect.h
 			};
 
 		}else{
 
-			redBar = {
+			lossBar = {
 				rect.x,
 				rect.y,
-				rect.w * redPct,
+				rect.w * lossPct,
 				rect.h
 			};
 
-			yelBar = {
+			lifeBar = {
 				rect.x,
 				rect.y,
-				rect.w * yelPct,
+				rect.w * lifePct,
 				rect.h
 			};			
 		}
 
-		sh = redBar;
-		sh.setFillColor(sf::Color::Red);
-		g::video.draw(sh);
+		sf::VertexArray ar;
+		sf::RenderStates states;
 
-		sh = yelBar;
-		sh.setFillColor(sf::Color::Yellow);
-		g::video.draw(sh);		
+		// Draw loss bar
+		ar = lossBar;
+		ar.setPrimitiveType(sf::PrimitiveType::Quads);
+		states.texture = texBar;
+
+		for(int i = 0; i < ar.getVertexCount(); i ++)
+			ar[i].color = sf::Color::Red;
+
+		ar[0].texCoords = {0.f, 0.f};
+		ar[1].texCoords = {(float)texBar->getSize().x, 0.f};
+		ar[2].texCoords = {(float)texBar->getSize().x, (float)texBar->getSize().y};
+		ar[3].texCoords = {0.f, (float)texBar->getSize().y};
+		g::video.draw(ar, states);
+
+		// Draw life bar
+		ar = lifeBar;
+		ar.setPrimitiveType(sf::PrimitiveType::Quads);
+		states.texture = texBar;
+
+		for(int i = 0; i < ar.getVertexCount(); i ++)
+			ar[i].color = sf::Color::Cyan;
+
+		ar[0].texCoords = {0.f, 0.f};
+		ar[1].texCoords = {(float)texBar->getSize().x, 0.f};
+		ar[2].texCoords = {(float)texBar->getSize().x, (float)texBar->getSize().y};
+		ar[3].texCoords = {0.f, (float)texBar->getSize().y};
+		g::video.draw(ar, states);	
 	}
 }
 

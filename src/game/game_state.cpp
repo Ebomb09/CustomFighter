@@ -170,7 +170,8 @@ void Game::readInput() {
 
 	for(int i = 0; i < playerCount; i ++)
 		others.push_back(players[i]);
-
+		
+	/*
 	// Start worker threads to read in the inputs
 	vector<std::thread> tasks(playerCount);
 
@@ -179,6 +180,11 @@ void Game::readInput() {
 	
 	for(int i = 0; i < playerCount; i ++)
 		tasks[i].join();
+	*/
+
+	// Read inputs
+	for(int i = 0; i < playerCount; i ++)
+		players[i].in = players[i].readInput(others);
 }
 
 static void advancePlayerFrame(Player& ply, vector<Player>& others) {
@@ -240,6 +246,7 @@ void Game::advanceFrame() {
 				players[i].in = Button::Flag();
 		}		
 
+		/*
 		// Start worker threads to determine the next player state
 		vector<std::thread> tasks(playerCount);
 
@@ -248,6 +255,11 @@ void Game::advanceFrame() {
 
 		for(int i = 0; i < playerCount; i ++) 
 			tasks[i].join();
+		*/
+
+		// Advance frame
+		for(int i = 0; i < playerCount; i ++)
+			players[i].advanceFrame(others);
 
 		// Check for any KOs
 		for(int i = 0; i < playerCount; i ++) {

@@ -77,39 +77,97 @@ void drawHealthBars(Player* players, int count) {
 	drawHealthBars(vec);
 }
 
+static float healthBar[MAX_PLAYERS] {0.f, 0.f, 0.f, 0.f};
+
 void drawHealthBars(vector<Player> players) {
-	float health[2] = {0.f, 0.f};
+	vector<Player*> order;
 
 	for(auto& ply : players) {
 
-		if(ply.team == 0 && ply.getTaggedIn(players))
-			health[0] = ply.state.health;
+		if(ply.getTaggedIn(players)) {
+			order.push_back(&ply);
 
-		if(ply.team == 1 && ply.getTaggedIn(players))
-			health[1] = ply.state.health;		
+		}else{
+			order.insert(order.begin(), &ply);
+		}
 	}
 
-    float width = (g::video.getSize().x - 32 * 3) / 2.f;
-    sf::RectangleShape outline, fill;
+	for(auto& ptr : order) {
 
-    outline.setOutlineColor(sf::Color::White);
-    outline.setOutlineThickness(2);
-    outline.setFillColor(sf::Color::Transparent);
-    fill.setFillColor(sf::Color::Red);
+		// Normalize the healthbar
+		healthBar[ptr->gameIndex] += (ptr->state.health - healthBar[ptr->gameIndex]) * 0.05f;
 
-    outline.setSize({width, 32});
+		// Get the general health bar rect
+		Rectangle rect;
+		rect.h = g::video.getSize().y / 20;
+		rect.w = g::video.getSize().x / 2 - rect.h * 2;
 
-    outline.setPosition(32, 32);
-    fill.setPosition(32 + width * (1. - health[0] / 100.), 32);
-    fill.setSize({width * players[0].state.health / 100, 32});
-    g::video.draw(fill);
-    g::video.draw(outline);
+		rect.y = rect.h / 2;
+		rect.x = g::video.getSize().x / 2 * ptr->team + rect.h;
 
-    outline.setPosition(64 + width, 32);
-    fill.setPosition(64 + width, 32);
-    fill.setSize({width * health[1] / 100, 32});
-    g::video.draw(fill);
-    g::video.draw(outline);
+		if(!ptr->getTaggedIn(players)) {
+			rect.y -= rect.h;
+
+			if(ptr->team == 0) 
+				rect.x -= rect.h;
+			else
+				rect.x += rect.h;
+		}
+
+		sf::RectangleShape sh = rect;
+		sh.setFillColor(sf::Color::Black);
+		sh.setOutlineColor(sf::Color::White);
+		sh.setOutlineThickness(2);		
+
+		g::video.draw(sh);
+
+		// Get the red health bar
+		Rectangle redBar;
+		Rectangle yelBar;
+		float redPct = healthBar[ptr->gameIndex] / 100.f;
+		float yelPct = ptr->state.health / 100.f;
+
+		if(ptr->team == 0) {
+
+			redBar = {
+				rect.x + rect.w - rect.w * redPct,
+				rect.y,
+				rect.w * redPct,
+				rect.h
+			};
+
+			yelBar = {
+				rect.x + rect.w - rect.w * yelPct,
+				rect.y,
+				rect.w * yelPct,
+				rect.h
+			};
+
+		}else{
+
+			redBar = {
+				rect.x,
+				rect.y,
+				rect.w * redPct,
+				rect.h
+			};
+
+			yelBar = {
+				rect.x,
+				rect.y,
+				rect.w * yelPct,
+				rect.h
+			};			
+		}
+
+		sh = redBar;
+		sh.setFillColor(sf::Color::Red);
+		g::video.draw(sh);
+
+		sh = yelBar;
+		sh.setFillColor(sf::Color::Yellow);
+		g::video.draw(sh);		
+	}
 }
 
 void drawRoundTokens(int lWin, int rWin, int winMax) {

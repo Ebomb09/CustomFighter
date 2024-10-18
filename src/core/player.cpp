@@ -1414,7 +1414,23 @@ Rectangle Player::getRealBoundingBox() {
         min = {std::min(min.x, pose.joints[i].x), std::min(min.y, pose.joints[i].y)};
         max = {std::max(max.x, pose.joints[i].x), std::max(max.y, pose.joints[i].y)};
     }
-    return {min.x, max.y, max.x - min.x, max.y};
+
+    Rectangle rect {min.x, max.y, max.x - min.x, max.y};
+
+    // Ensure it encapsulates some part of the skeleton
+    if(rect.w < 1.f) {
+        float diff = 1.f - rect.w;
+        rect.x -= diff / 2.f;
+        rect.w = 1.f;
+    }
+
+    if(rect.h < 1.f) {
+        float diff = 1.f - rect.w;
+        rect.y += diff / 2.f;
+        rect.h = 1.f;
+    }
+
+    return rect;
 }
 
 int Player::Config::calculatePoints() {

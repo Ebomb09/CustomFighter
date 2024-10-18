@@ -339,7 +339,7 @@ void Player::advanceFrame(vector<Player>& others) {
                 break;
 
             case GrabBreak::AC:
-                inputBreak = state.button[0].A || state.button[0].C;
+                inputBreak = state.button[0].A && state.button[0].C;
                 break;
         }
 
@@ -354,6 +354,8 @@ void Player::advanceFrame(vector<Player>& others) {
             cache.frame.pose = others[state.grabIndex].getFrame().grabee;
             cache.frame.key = others[state.grabIndex].getFrame().key;
             cache.frame.duration = others[state.grabIndex].getFrame().duration;
+            state.fromMoveIndex = -1;
+            state.fromMoveFrame = -1;
 
             Rectangle bounds = getRealBoundingBox();
 
@@ -657,8 +659,16 @@ void Player::advanceFrame(vector<Player>& others) {
         if(state.health <= 0) {
             setMove(Move::KnockDown);
 
-            if(doneMove()) 
-                state.tagCount = -1;
+            // Signal tagCount is to be ignored when there is still more alive team members
+            if(doneMove()) {
+
+                for(auto& ply : others) {
+                    if(ply.team == team && ply.state.health > 0){
+                        state.tagCount = -1;
+                        break;
+                    }
+                }
+            }
         }
 
         // Hit States

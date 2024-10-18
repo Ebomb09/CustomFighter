@@ -1407,14 +1407,14 @@ Rectangle Player::getRealBoundingBox() {
     Skeleton pose = getSkeleton();
     Vector2 min, max;
     
-    min = {state.position.x, 0};
-    max = state.position;
+    min = {1000, 1000};
+    max = {-1000, -1000};
 
     for(int i = 0; i < pose.jointCount; i ++) {
         min = {std::min(min.x, pose.joints[i].x), std::min(min.y, pose.joints[i].y)};
         max = {std::max(max.x, pose.joints[i].x), std::max(max.y, pose.joints[i].y)};
     }
-    return {min.x, max.y, max.x - min.x, max.y - min.y};
+    return {min.x, max.y, max.x - min.x, max.y};
 }
 
 int Player::Config::calculatePoints() {

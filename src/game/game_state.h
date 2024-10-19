@@ -4,35 +4,6 @@
 #include "core/stage.h"
 #include "core/player.h"
 
-const std::vector<std::string> PredefinedMotions {
-	"",
-	"6",
-	"4",
-	"2",
-	"3",
-	"1",
-	"66",
-	"44",
-	"236",
-	"623",
-	"214",
-	"421",
-	"236236",
-	"214214"
-	"41236",
-	"63214",
-	"2141236",
-	"2363214",
-	"632146",
-	"1632143"
-};
-
-const std::vector<std::string> PredefinedButtons {
-	"A",
-	"B",
-	"A+B"
-};
-
 struct Game {
 
 	enum Mode {
@@ -50,6 +21,22 @@ struct Game {
 		TimeUp,
 		RoundsScreen
 	};
+
+	// Game Mode: Rounds
+	struct __Rounds__Choice {
+		bool isDefault = false;
+		std::string move = "";
+		std::string motion = "";
+	};
+
+	static const int __Rounds__confSize = Move::Total - Move::Custom00;
+
+	std::vector<__Rounds__Choice> __Rounds__choices;
+	void __Rounds__loadChoices();
+	void __Rounds__resetPlayerConfigs();
+	void __Rounds__fixPlayerConfigs();
+	void __Rounds__prepareChoices();
+	std::vector<int> __Rounds__getQualifiedChoices(int choice);
 
 	// Game Constants
 	int gameMode;
@@ -79,10 +66,8 @@ struct Game {
 		int rematch			[MAX_PLAYERS];
 
 		// Mode::Rounds specific state variables
-		int confMove		[MAX_PLAYERS][Move::Total];
-		int confMotion		[MAX_PLAYERS][Move::Total];
-		int confButton		[MAX_PLAYERS][Move::Total];
-		int roundsChoice	[4][3];
+		int roundsConf		[MAX_PLAYERS][__Rounds__confSize];
+		int roundsChoice	[4];
 		int roundsChooser	= 0;
 	}state;
 
@@ -97,14 +82,6 @@ struct Game {
 	void resetGame();
 	void resetRound();
 	void nextRound();
-
-	void __Rounds__resetPlayerConfigs();
-	void __Rounds__fixPlayerConfigs();
-	void __Rounds__prepareChoices();
-	std::vector<std::string> __Rounds__getAnimations();
-	std::vector<int> __Rounds__getQualifiedAnimations(int choice);
-	std::vector<int> __Rounds__getQualifiedMotions(int choice);
-	std::vector<int> __Rounds__getQualifiedButtons(int choice);
 
 	SaveState saveState();
 	void loadState(SaveState state);

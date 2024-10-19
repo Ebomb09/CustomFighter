@@ -7,6 +7,10 @@
 #include "core/video.h"
 #include "core/save.h"
 
+#include <json.hpp>
+
+#include <iostream>
+#include <fstream>
 #include <chrono>
 #include <thread>
 #include <string>
@@ -40,6 +44,9 @@ void Game::init(int _playerCount, int _roundMax, int _timerMax, int _gameMode) {
 
 	// Get a stage
 	stage = g::save.getStage(g::save.getRandomStage());
+
+	if(gameMode == Mode::Rounds)
+		__Rounds__loadChoices();
 
     resetGame();
 }
@@ -201,27 +208,15 @@ void Game::__Rounds__prepareChoices() {
 
 	// Create the four choices
 	for(int i = 0; i < 4; i ++) {
-		vector<int> qualifiedAnims = __Rounds__getQualifiedAnimations(i);
-		vector<int> qualifiedMotions = __Rounds__getQualifiedMotions(i);
-		vector<int> qualifiedButtons = __Rounds__getQualifiedButtons(i);
+		vector<int> qualified = __Rounds__getQualifiedChoices(i);
 
-		state.roundsChoice[i][0] = qualifiedAnims[Random::Integer[seed] % qualifiedAnims.size()];
-		seed ++;
-
-		state.roundsChoice[i][1] = qualifiedMotions[Random::Integer[seed] % qualifiedMotions.size()];
-		seed ++;
-
-		state.roundsChoice[i][2] = qualifiedButtons[Random::Integer[seed] % qualifiedButtons.size()];
+		state.roundsChoice[i] = qualified[Random::Integer[seed] % qualified.size()];
 		seed ++;
 	}
 }
 
-vector<string> Game::__Rounds__getAnimations() {
-	return g::save.getAnimationsByFilter(Move::getValidCategories(Move::Custom00));
-}
-
-vector<int> Game::__Rounds__getQualifiedAnimations(int choice) {
-	vector<string> list = Game::__Rounds__getAnimations();
+vector<int> Game::__Rounds__getQualifiedChoices(int choice) {
+	vector<__Rounds__Choice> list = __Rounds__choices;
 	vector<int> out;
 
 	for(int i = 0; i < list.size(); i ++) {
@@ -229,117 +224,78 @@ vector<int> Game::__Rounds__getQualifiedAnimations(int choice) {
 
 		for(int j = 0; j < Move::Total; j ++) {
 
-			if(players[state.roundsChooser].config.moves[j] == list[i]) {
+			if(players[state.roundsChooser].config.moves[j] == list[i].move) {
+				equiped = true;
+				break;
+			}
+
+			if(players[state.roundsChooser].config.motions[j] == list[i].motion) {
 				equiped = true;
 				break;
 			}
 		}
 
-		if(equiped)
-			continue;
+		if(!equiped)
+			out.push_back(i);
+	}
+	return out;
+}
 
-		Animation* anim = g::save.getAnimation(list[i]);
+void Game::__Rounds__loadChoices() {
+	std::fstream file("data/gamemode/rounds_choices.json", std::fstream::in);
+	nlohmann::json json;
 
-		if(anim) {
+	if(file.good()) {
 
-			if(choice == 0)
-				if(anim->category == MoveCategory::Normal || anim->category == MoveCategory::AirNormal)
-					out.push_back(i);
+		try {
+			json = nlohmann::json::parse(file);
+			file.close();
 
-			if(choice == 1)
-				if(anim->category == MoveCategory::CommandNormal || anim->category == MoveCategory::AirCommandNormal)
-					out.push_back(i);
+			for(auto& entry : json) {
+				__Rounds__Choice ch;
 
-			if(choice == 2)
-				if(anim->category == MoveCategory::Special || anim->category == MoveCategory::AirSpecial)
-					out.push_back(i);
+				if(entry["isDefault"].is_boolean())
+					ch.isDefault = entry["isDefault"];
 
-			if(choice == 3)
-				if(anim->category == MoveCategory::Grab || anim->category == MoveCategory::AirGrab)
-					out.push_back(i);
+				if(entry["move"].is_string())
+					ch.move = entry["move"];
+
+				if(entry["motion"].is_string())
+					ch.motion = entry["motion"];
+
+				__Rounds__choices.push_back(ch);
+			}
+
+		}catch(nlohmann::json::exception e) {
+			file.close();
+			return;
 		}
 	}
-	return out;
-}
-
-vector<int> Game::__Rounds__getQualifiedMotions(int choice) {
-	vector<int> out;
-
-	for(int i = 0; i < PredefinedMotions.size(); i ++) {
-
-		if(choice == 0 || choice == 3)
-			if(PredefinedMotions[i].size() == 0)
-				out.push_back(i);
-
-		if(choice == 1)
-			if(PredefinedMotions[i].size() == 1)
-				out.push_back(i);
-
-		if(choice == 2)
-			if(PredefinedMotions[i].size() >= 2 && PredefinedMotions[i].size() <= 3)
-				out.push_back(i);
-	}
-	return out;
-}
-
-vector<int> Game::__Rounds__getQualifiedButtons(int choice) {
-	vector<int> out;
-
-	for(int i = 0; i < PredefinedButtons.size(); i ++) {
-
-		if(choice == 0 || choice == 1 || choice == 2)
-			if(PredefinedButtons[i].size() == 1) 
-				out.push_back(i);
-		
-		if(choice == 3)
-			if(PredefinedButtons[i].size() > 1)
-				out.push_back(i);
-	}
-	return out;
+	file.close();
+	return;
 }
 
 void Game::__Rounds__resetPlayerConfigs() {
-	vector<string> anims = __Rounds__getAnimations();
 
 	for(int i = 0; i < playerCount; i ++) {
 
-		for(int j = Move::Custom00; j < Move::Total; j ++) {
-			state.confMove[i][j] = -1;
-			state.confMotion[i][j] = 0;
-			state.confButton[i][j] = 0;
-		}
+		// Set to no choice
+		for(int j = 0; j < __Rounds__confSize; j ++)
+			state.roundsConf[i][j] = -1;
 
 		// Set the default config to specific animations
-		for(int j = 0; j < anims.size(); j ++) {
+		for(int j = 0; j < __Rounds__choices.size(); j ++) {
 
-			if(anims[j] == "Stand Light Punch") {
-				state.confMove[i][Move::Custom00] = j;
-				state.confButton[i][Move::Custom00] = 0;
+			// Find first free slot to fill
+			if(__Rounds__choices[j].isDefault)  {
 
-			}else if(anims[j] == "Stand Light Kick") {
-				state.confMove[i][Move::Custom01] = j;
-				state.confButton[i][Move::Custom01] = 1;
+				for(int u = 0; u < __Rounds__confSize; u ++) {
 
-			}else if(anims[j] == "Crouch Light Punch") {
-				state.confMove[i][Move::Custom02] = j;
-				state.confButton[i][Move::Custom02] = 0;
-
-			}else if(anims[j] == "Crouch Light Kick") {
-				state.confMove[i][Move::Custom03] = j;
-				state.confButton[i][Move::Custom03] = 1;
-
-			}else if(anims[j] == "Jump Light Punch") {
-				state.confMove[i][Move::Custom04] = j;
-				state.confButton[i][Move::Custom04] = 0;
-
-			}else if(anims[j] == "Jump Light Kick") {
-				state.confMove[i][Move::Custom05] = j;
-				state.confButton[i][Move::Custom05] = 1;
-
-			}else if(anims[j] == "Upper Cut") {
-				state.confMove[i][Move::Custom06] = j;
-				state.confMotion[i][Move::Custom06] = 4;
-				state.confButton[i][Move::Custom06] = 0;
+					if(state.roundsConf[i][u] == -1) {
+						state.roundsConf[i][u] = j;
+						break;
+					}
+				}
 			}
 		}
 	}
@@ -349,18 +305,18 @@ void Game::__Rounds__fixPlayerConfigs() {
 
 	for(int i = 0; i < playerCount; i ++) {
 
-		for(int j = Move::Custom00; j < Move::Total; j ++) {
+		for(int j = 0; j < __Rounds__confSize; j ++) {
 
-			if(state.confMove[i][j] != -1) {
-				players[i].config.moves[j] = __Rounds__getAnimations()[state.confMove[i][j]];
-				players[i].config.motions[j] = PredefinedMotions[state.confMotion[i][j]] + PredefinedButtons[state.confButton[i][j]];
+			if(state.roundsConf[i][j] != -1) {
+				players[i].config.moves[Move::Custom00 + j] = __Rounds__choices[state.roundsConf[i][j]].move;
+				players[i].config.motions[Move::Custom00 + j] = __Rounds__choices[state.roundsConf[i][j]].motion;
 
 				// Clear the cache to signal change has occured
 				players[i].cache.anims.clear();
 
 			}else {
-				players[i].config.moves[j] = "";
-				players[i].config.motions[j] = "";
+				players[i].config.moves[Move::Custom00 + j] = "";
+				players[i].config.motions[Move::Custom00 + j] = "";
 			}
 		}
 	}
@@ -566,12 +522,10 @@ void Game::advanceFrame() {
 			if(choice != -1) {
 
 				// Save the choosen moves
-				for(int i = Move::Custom00; i < Move::Total; i ++) {
+				for(int i = 0; i < __Rounds__confSize; i ++) {
 
-					if(state.confMove[state.roundsChooser][i] == -1) {
-						state.confMove[state.roundsChooser][i] = state.roundsChoice[choice][0];
-						state.confMotion[state.roundsChooser][i] = state.roundsChoice[choice][1];
-						state.confButton[state.roundsChooser][i] = state.roundsChoice[choice][2];
+					if(state.roundsConf[state.roundsChooser][i] == -1) {
+						state.roundsConf[state.roundsChooser][i] = state.roundsChoice[choice];
 						break;
 					}
 				}
@@ -724,13 +678,13 @@ void Game::draw() {
 			Player dummy;
 			dummy.config = players[state.roundsChooser].config;
 			auto time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count(); 
-			dummy.config.moves[0] = __Rounds__getAnimations()[state.roundsChoice[i][0]];
+			dummy.config.moves[0] = __Rounds__choices[state.roundsChoice[i]].move;
 			dummy.state.moveIndex = 0;                                         
 			dummy.state.moveFrame = (time / 17) % dummy.getAnimations()[0]->getFrameCount();
 
 			Menu::renderPlayer(dummy, dummy.getRealBoundingBox(), plyDiv);
-			Menu::renderText(__Rounds__getAnimations()[state.roundsChoice[i][0]], "Anton-Regular", sf::Color::White, moveDiv, -1);
-			Menu::renderText(PredefinedMotions[state.roundsChoice[i][1]] + PredefinedButtons[state.roundsChoice[i][2]], "fight", sf::Color::White, inputDiv, 0);
+			Menu::renderText(__Rounds__choices[state.roundsChoice[i]].move, "Anton-Regular", sf::Color::White, moveDiv, -1);
+			Menu::renderText(__Rounds__choices[state.roundsChoice[i]].motion, "fight", sf::Color::White, inputDiv, 0);
 
 			sh = iconDiv;
 			sh.setFillColor(sf::Color::White);

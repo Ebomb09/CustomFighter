@@ -32,6 +32,19 @@ namespace Button {
 		"Total"
 	};
 
+	const std::string Notation[] = {
+		"8", 
+		"2", 
+		"4", 
+		"6",
+		"A", 	
+		"B", 	
+		"C", 	
+		"D", 	
+		"P",
+		"Total"
+	};
+
 	const int History = 30;
 
 	struct Config {

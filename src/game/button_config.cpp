@@ -58,7 +58,7 @@ void ButtonConfig::run() {
 
 				// Show all inputs
 				for(int i = 0; i < Button::Total; i ++) {
-					options.push_back({i, Button::String[i]});
+					options.push_back({i, Button::Notation[i], "fight"});
 					options.push_back({i, g::input.buttonName(b.index, b.button[i])});			
 				}
 

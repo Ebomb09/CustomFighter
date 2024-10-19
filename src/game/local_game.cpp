@@ -6,9 +6,8 @@
 
 using std::vector;
 
-bool LocalGame::run(vector<Player::Config> configs) {
+bool LocalGame::run(vector<Player::Config> configs, int gameMode) {
 	Game game;
-    game.init(configs.size());
 
     // Configure players
     for(int i = 0; i < configs.size(); i ++) {
@@ -18,6 +17,8 @@ bool LocalGame::run(vector<Player::Config> configs) {
 
     //game.players[1].seatIndex = -1;
     //game.players[1].aiLevel = 5;
+
+    game.init(configs.size(), 3, 60, gameMode);
 
     while(g::video.isOpen()) {
         g::input.pollEvents();

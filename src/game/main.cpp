@@ -16,8 +16,10 @@
 using std::vector, std::string;
 
 enum {
-    LocalFight2P,
-    LocalFight4P,
+    VersusFight2P,
+    VersusFight4P,
+    RoundsFight2P,
+    RoundsFight4P,
     NetPlay,
     OptionMenu,
     Exit
@@ -25,8 +27,10 @@ enum {
 
 vector<Menu::Option> menuOptions = {
     {NetPlay, "NetPlay"},    
-    {LocalFight2P, "Local 2P Fight"},
-    {LocalFight4P, "Local 4P Fight"},
+    {VersusFight2P, "Versus Mode: 2P Fight"},
+    {VersusFight4P, "Versus Mode: 4P Fight"},
+    {RoundsFight2P, "Rounds Mode: 2P Fight"},
+    {RoundsFight4P, "Rounds Mode: 4P Fight"},
     {OptionMenu, "Options"},
     {Exit, "Exit"}
 };
@@ -53,18 +57,32 @@ int main(int argc, char* argv[]) {
 
         if(res == Menu::Accept) {
 
-            if(menuOptions[hover].id == LocalFight2P) {
+            if(menuOptions[hover].id == VersusFight2P) {
                 vector<Player::Config> configs = CharacterSelect::run(2);
 
                 if(configs.size() == 2) {
                     LocalGame::run(configs);
                 }
                 
-            }else if(menuOptions[hover].id == LocalFight4P) {
+            }else if(menuOptions[hover].id == VersusFight4P) {
                 vector<Player::Config> configs = CharacterSelect::run(4);
 
                 if(configs.size() == 4) {
                     LocalGame::run(configs);
+                }
+                
+            }else if(menuOptions[hover].id == RoundsFight2P) {
+                vector<Player::Config> configs = CharacterSelect::run(2);
+
+                if(configs.size() == 2) {
+                    LocalGame::run(configs, Game::Mode::Rounds);
+                }
+                
+            }else if(menuOptions[hover].id == RoundsFight4P) {
+                vector<Player::Config> configs = CharacterSelect::run(4);
+
+                if(configs.size() == 4) {
+                    LocalGame::run(configs, Game::Mode::Rounds);
                 }
                 
             }else if(menuOptions[hover].id == NetPlay) {

@@ -1,17 +1,22 @@
 #include "game_state.h"
 #include "game_tools.h"
+#include "random.h"
 
+#include "core/menu.h"
 #include "core/audio.h"
 #include "core/video.h"
 #include "core/save.h"
 
+#include <chrono>
 #include <thread>
 #include <string>
 #include <vector>
 
 using std::vector, std::string;
+using namespace std::chrono;
 
-void Game::init(int _playerCount, int _roundMax, int _timerMax) {
+void Game::init(int _playerCount, int _roundMax, int _timerMax, int _gameMode) {
+	gameMode = _gameMode;
 	playerCount = _playerCount;
 	roundMax = _roundMax;
 	timerMax = _timerMax;
@@ -40,7 +45,7 @@ void Game::init(int _playerCount, int _roundMax, int _timerMax) {
 }
 
 bool Game::done() {
-	return state.done;
+	return state.flow == Flow::Done;
 }
 
 Game::SaveState Game::saveState() {
@@ -67,19 +72,23 @@ void Game::resetGame() {
 	// Reset game state
 	state = Game::State();
 
+	// Reset the vote for rematch
     for(int i = 0; i < playerCount; i ++)
     	state.rematch[i] = 0;
 
-	resetRound();
+	// Set the configs to the default punch / kicks
+	if(gameMode == Mode::Rounds) 
+		__Rounds__resetPlayerConfigs();
+	
+	nextRound();
 }
 
 void Game::resetRound() {
+	state.flow = Flow::Countdown;
+	state.timer = 2 * 60;
+
 	state.round ++;
-	state.timer = (timerMax + 3) * 60;
-	state.judge = false;
 	state.slomo = 0;
-	state.playJudgement = false;
-	state.playFight = false;
 
 	// Reset players to default states
 	for(int i = 0; i < playerCount; i ++) 
@@ -90,19 +99,30 @@ void Game::resetRound() {
         players[0].state.position = -75;
         players[0].state.side = 1;
         players[1].state.position = 75; 
-        players[1].state.side = -1;        
+        players[1].state.side = -1;
 
     // 4 Player Tag Game
     } else if(playerCount == 4) {
         players[0].state.position = -75;
-        players[0].state.side = 1;        
+        players[0].state.side = 1;
         players[1].state.position = -25;
-        players[1].state.side = 1;        
+        players[1].state.side = 1;
         players[2].state.position = 75;
-        players[2].state.side = -1;       
+        players[2].state.side = -1;
         players[3].state.position = 25;
-        players[3].state.side = -1;        
+        players[3].state.side = -1;
     }	
+
+	// Game mode specific configuration
+	switch(gameMode) {
+
+		case Mode::Rounds:
+
+			for(int i = 0; i < playerCount; i ++) {
+				players[i].state.health = state.round * 10;
+			}
+			break;
+	}
 
 	// Set camera size
 	g::video.camera.w = CameraBounds.w;
@@ -124,7 +144,7 @@ void Game::resetRound() {
     };
 
     // One point away
-    if(state.lWins == roundMax - 1 || state.rWins == roundMax - 1) {
+    if(state.lWins >= roundMax - 1 || state.rWins >= roundMax - 1) {
 
     	if(!state.songClimax)
     		g::audio.playMusic(g::save.getMusic(climax[rand() % climax.size()]));
@@ -149,146 +169,316 @@ void Game::resetRound() {
 void Game::nextRound() {
 
 	if(state.rWins == roundMax || state.lWins == roundMax) {
-		state.gameOver = true;
+		state.flow = Flow::RematchScreen;
 
-	}else {
+	// Get back into the next fight
+	}else if(gameMode == Mode::Versus){
 		resetRound();
+
+	// Prepare to select new moves
+	}else if(gameMode == Mode::Rounds){
+
+		if(state.round > 0) {
+			state.flow = Flow::RoundsScreen;
+			state.roundsChooser = 0;
+			__Rounds__prepareChoices();
+
+		}else {
+			resetRound();
+		}
 	}
 }
 
-static void readPlayerInput(Player& ply, vector<Player>& others) {
-	ply.in = ply.readInput(others);
+void Game::__Rounds__prepareChoices() {
+	Player& ply = players[state.roundsChooser];
+
+	int seed = (
+		std::abs(state.timer) + 
+		ply.state.health +
+		ply.state.counter +
+		state.roundsChooser
+		) % Random::Total;
+
+	// Create the four choices
+	for(int i = 0; i < 4; i ++) {
+		vector<int> qualifiedAnims = __Rounds__getQualifiedAnimations(i);
+		vector<int> qualifiedMotions = __Rounds__getQualifiedMotions(i);
+		vector<int> qualifiedButtons = __Rounds__getQualifiedButtons(i);
+
+		state.roundsChoice[i][0] = qualifiedAnims[Random::Integer[seed] % qualifiedAnims.size()];
+		seed ++;
+
+		state.roundsChoice[i][1] = qualifiedMotions[Random::Integer[seed] % qualifiedMotions.size()];
+		seed ++;
+
+		state.roundsChoice[i][2] = qualifiedButtons[Random::Integer[seed] % qualifiedButtons.size()];
+		seed ++;
+	}
+}
+
+vector<string> Game::__Rounds__getAnimations() {
+	return g::save.getAnimationsByFilter(Move::getValidCategories(Move::Custom00));
+}
+
+vector<int> Game::__Rounds__getQualifiedAnimations(int choice) {
+	vector<string> list = Game::__Rounds__getAnimations();
+	vector<int> out;
+
+	for(int i = 0; i < list.size(); i ++) {
+		bool equiped = false;
+
+		for(int j = 0; j < Move::Total; j ++) {
+
+			if(players[state.roundsChooser].config.moves[j] == list[i]) {
+				equiped = true;
+				break;
+			}
+		}
+
+		if(equiped)
+			continue;
+
+		Animation* anim = g::save.getAnimation(list[i]);
+
+		if(anim) {
+
+			if(choice == 0)
+				if(anim->category == MoveCategory::Normal || anim->category == MoveCategory::AirNormal)
+					out.push_back(i);
+
+			if(choice == 1)
+				if(anim->category == MoveCategory::CommandNormal || anim->category == MoveCategory::AirCommandNormal)
+					out.push_back(i);
+
+			if(choice == 2)
+				if(anim->category == MoveCategory::Special || anim->category == MoveCategory::AirSpecial)
+					out.push_back(i);
+
+			if(choice == 3)
+				if(anim->category == MoveCategory::Grab || anim->category == MoveCategory::AirGrab)
+					out.push_back(i);
+		}
+	}
+	return out;
+}
+
+vector<int> Game::__Rounds__getQualifiedMotions(int choice) {
+	vector<int> out;
+
+	for(int i = 0; i < PredefinedMotions.size(); i ++) {
+
+		if(choice == 0 || choice == 3)
+			if(PredefinedMotions[i].size() == 0)
+				out.push_back(i);
+
+		if(choice == 1)
+			if(PredefinedMotions[i].size() == 1)
+				out.push_back(i);
+
+		if(choice == 2)
+			if(PredefinedMotions[i].size() >= 2 && PredefinedMotions[i].size() <= 3)
+				out.push_back(i);
+	}
+	return out;
+}
+
+vector<int> Game::__Rounds__getQualifiedButtons(int choice) {
+	vector<int> out;
+
+	for(int i = 0; i < PredefinedButtons.size(); i ++) {
+
+		if(choice == 0 || choice == 1 || choice == 2)
+			if(PredefinedButtons[i].size() == 1) 
+				out.push_back(i);
+		
+		if(choice == 3)
+			if(PredefinedButtons[i].size() > 1)
+				out.push_back(i);
+	}
+	return out;
+}
+
+void Game::__Rounds__resetPlayerConfigs() {
+	vector<string> anims = __Rounds__getAnimations();
+
+	for(int i = 0; i < playerCount; i ++) {
+
+		for(int j = Move::Custom00; j < Move::Total; j ++) {
+			state.confMove[i][j] = -1;
+			state.confMotion[i][j] = 0;
+			state.confButton[i][j] = 0;
+		}
+
+		// Set the default config to specific animations
+		for(int j = 0; j < anims.size(); j ++) {
+
+			if(anims[j] == "Stand Light Punch") {
+				state.confMove[i][Move::Custom00] = j;
+				state.confButton[i][Move::Custom00] = 0;
+
+			}else if(anims[j] == "Stand Light Kick") {
+				state.confMove[i][Move::Custom01] = j;
+				state.confButton[i][Move::Custom01] = 1;
+
+			}else if(anims[j] == "Crouch Light Punch") {
+				state.confMove[i][Move::Custom02] = j;
+				state.confButton[i][Move::Custom02] = 0;
+
+			}else if(anims[j] == "Crouch Light Kick") {
+				state.confMove[i][Move::Custom03] = j;
+				state.confButton[i][Move::Custom03] = 1;
+
+			}else if(anims[j] == "Jump Light Punch") {
+				state.confMove[i][Move::Custom04] = j;
+				state.confButton[i][Move::Custom04] = 0;
+
+			}else if(anims[j] == "Jump Light Kick") {
+				state.confMove[i][Move::Custom05] = j;
+				state.confButton[i][Move::Custom05] = 1;
+
+			}else if(anims[j] == "Upper Cut") {
+				state.confMove[i][Move::Custom06] = j;
+				state.confMotion[i][Move::Custom06] = 4;
+				state.confButton[i][Move::Custom06] = 0;
+			}
+		}
+	}
+}
+
+void Game::__Rounds__fixPlayerConfigs() {
+
+	for(int i = 0; i < playerCount; i ++) {
+
+		for(int j = Move::Custom00; j < Move::Total; j ++) {
+
+			if(state.confMove[i][j] != -1) {
+				players[i].config.moves[j] = __Rounds__getAnimations()[state.confMove[i][j]];
+				players[i].config.motions[j] = PredefinedMotions[state.confMotion[i][j]] + PredefinedButtons[state.confButton[i][j]];
+
+				// Clear the cache to signal change has occured
+				players[i].cache.anims.clear();
+
+			}else {
+				players[i].config.moves[j] = "";
+				players[i].config.motions[j] = "";
+			}
+		}
+	}
 }
 
 void Game::readInput() {
-
-	// Only start reading input once the match begins
-	if(state.timer > timerMax * 60) 
-		return;
-
 	vector<Player> others;
 
 	for(int i = 0; i < playerCount; i ++)
 		others.push_back(players[i]);
-		
-	/*
-	// Start worker threads to read in the inputs
-	vector<std::thread> tasks(playerCount);
 
-	for(int i = 0; i < playerCount; i ++) 
-		tasks[i] = std::thread(readPlayerInput, std::ref(players[i]), std::ref(others));
-	
-	for(int i = 0; i < playerCount; i ++)
-		tasks[i].join();
-	*/
-
-	// Read inputs
 	for(int i = 0; i < playerCount; i ++)
 		players[i].in = players[i].readInput(others);
 }
 
-static void advancePlayerFrame(Player& ply, vector<Player>& others) {
-	ply.advanceFrame(others);
-}
-
 void Game::advanceFrame() {
 
-	if(state.done)
-		return;
+	// Update the configs continuously to account for rollback frames during move selection
+	if(gameMode == Mode::Rounds) 
+		__Rounds__fixPlayerConfigs();
 
-	state.timer --;
+	if(state.timer > 0)
+		state.timer --;
 
-	// Check if want to rematch
-	if(state.gameOver) {
+	switch(state.flow) {
 
-		// Steal the players buttons
-		for(int i = 0; i < playerCount; i ++) {
+		case Flow::Countdown: {
+			vector<Player> others;
 
-			if(players[i].in.D) {
-				state.rematch[i] = -1;
-
-			}else if(players[i].in.B) {
-				state.rematch[i] = 1;				
-			}
-			players[i].in = Button::Flag();
-		}
-
-		// If all agreed resetGame, if one didn't we are done
-		int sum = 0;
-
-		for(int i = 0; i < playerCount; i ++) {
-			sum += state.rematch[i];
-
-			if(state.rematch[i] < 0)
-				state.done = true;
-		}
-
-		if(sum == playerCount)
-			resetGame();
-
-		return;
-	}
-
-	// Slomo every other frame
-	if(state.slomo > 0)
-		state.slomo --;
-
-	if(state.slomo % 2 == 0) {
-
-		// Update players
-		vector<Player> others;
-
-		for(int i = 0; i < playerCount; i ++) {
-			others.push_back(players[i]);
-
-			// Still in round start
-			if(state.timer > timerMax * 60) 
+			for(int i = 0; i < playerCount; i ++) {
 				players[i].in = Button::Flag();
-		}		
-
-		/*
-		// Start worker threads to determine the next player state
-		vector<std::thread> tasks(playerCount);
-
-		for(int i = 0; i < playerCount; i ++) 
-			tasks[i] = std::thread(advancePlayerFrame, std::ref(players[i]), std::ref(others));
-
-		for(int i = 0; i < playerCount; i ++) 
-			tasks[i].join();
-		*/
-
-		// Advance frame
-		for(int i = 0; i < playerCount; i ++)
-			players[i].advanceFrame(others);
-
-		// Check for any KOs
-		for(int i = 0; i < playerCount; i ++) {
-
-			// Slomo on player KO
-			if(players[i].state.health <= 0 && others[i].state.health > 0) {
-				state.slomo = 120;
-
-				// Hyperbolize the player KO
-				if(std::abs(players[i].state.velocity.x) < 2)
-					players[i].state.velocity.x = -players[i].state.side * 2;
-
-				players[i].state.velocity.y += 3;
+				others.push_back(players[i]);
 			}
+
+			for(int i = 0; i < playerCount; i ++) 
+				players[i].advanceFrame(others);
+
+			if(state.timer <= 0) {
+				state.flow = Flow::PlayRound;
+				state.timer = timerMax * 60;
+
+				g::audio.playSound(g::save.getSound("announcer_fight"));
+			}
+			break;
 		}
-	}
 
-	setCamera(players, playerCount);
+		case Flow::KO:
+		case Flow::DoubleKO:
+		case Flow::TimeUp: {
+			vector<Player> others;
 
-	// Consider win conditions
-	if(state.timer > 0) {
+			for(int i = 0; i < playerCount; i ++) {
+				players[i].in = Button::Flag();
+				others.push_back(players[i]);
+			}
 
-		// Check alive status of teams
-		if(state.judge == Judgement::None) {
+			for(int i = 0; i < playerCount; i ++) 
+				players[i].advanceFrame(others);
+
+			if(state.timer <= 0) {
+				nextRound();
+			}
+			break;
+		}
+
+		case Flow::PlayRound: {
+
+			if(state.slomo > 0)
+				state.slomo --;
+
+			if(state.slomo % 2 == 1)
+				break;
+
+			vector<Player> others;
+
+			for(int i = 0; i < playerCount; i ++)
+				others.push_back(players[i]);
+
+			for(int i = 0; i < playerCount; i ++)
+				players[i].advanceFrame(others);
+
+			if(state.timer <= 0) {
+				state.flow = Flow::TimeUp;
+				state.timer = 4 * 60;
+
+				// Check which team has the most health
+				int lTeamHP = 0;
+				int rTeamHP = 0;
+
+				for(int i = 0; i < playerCount; i ++) {
+
+					if(players[i].team == 0)
+						lTeamHP += players[i].state.health;
+					else
+						rTeamHP += players[i].state.health;
+				}
+
+				if(rTeamHP < lTeamHP) {
+					state.lWins ++;
+
+				}else if(rTeamHP > lTeamHP) {
+					state.rWins ++;
+
+				}else {
+					state.rWins ++;
+					state.lWins ++;
+				}
+				g::audio.playSound(g::save.getSound("announcer_timeup"));
+				break;
+			}
+
+			// Check for any knockouts
 			int lTeamAlive = 0;
 			int rTeamAlive = 0;
 
 			for(int i = 0; i < playerCount; i ++) {
 
+				// Count alive players
 				if(players[i].state.health > 0) {
 
 					if(players[i].team == 0) {
@@ -298,55 +488,110 @@ void Game::advanceFrame() {
 						rTeamAlive ++;
 					}
 				}
-			}
 
+				// Slomo on player KO
+				if(players[i].state.health <= 0 && others[i].state.health > 0) {
+
+					// Hyperbolize the player KO
+					if(std::abs(players[i].state.velocity.x) < 2)
+						players[i].state.velocity.x = -players[i].state.side * 2;
+
+					players[i].state.velocity.y += 3;
+					state.slomo = 120;
+				}
+			}
+	
+			// Check knockout win conditions
 			if(lTeamAlive == 0 && rTeamAlive == 0) {
-				state.timer = 0;
+				state.flow = Flow::DoubleKO;
+				state.timer = 4 * 60;
 				state.rWins ++;
 				state.lWins ++;
-				state.judge = Judgement::DoubleKO;
+				g::audio.playSound(g::save.getSound("announcer_ko"));
 
 			}else if(lTeamAlive == 0) {
-				state.timer = 0;
+				state.flow = Flow::KO;
+				state.timer = 4 * 60;
 				state.rWins ++;
-				state.judge = Judgement::KO;
+				g::audio.playSound(g::save.getSound("announcer_ko"));
 
 			}else if(rTeamAlive == 0) {
-				state.timer = 0;
+				state.flow = Flow::KO;
+				state.timer = 4 * 60;
 				state.lWins ++;
-				state.judge = Judgement::KO;
+				g::audio.playSound(g::save.getSound("announcer_ko"));
 			}
+
+			break;
 		}
 
-	// Round over
-	}else {
+		case Flow::RematchScreen: {
 
-		// Check which team has the most health
-		if(state.judge == Judgement::None) {
-			int lTeamHP = 0;
-			int rTeamHP = 0;
-
+			// Steal the players buttons
 			for(int i = 0; i < playerCount; i ++) {
 
-				if(players[i].team == 0)
-					lTeamHP += players[i].state.health;
-				else
-					rTeamHP += players[i].state.health;
+				if(players[i].in.D) 
+					state.rematch[i] = -1;
+
+				else if(players[i].in.B)
+					state.rematch[i] = 1;
 			}
 
-			if(rTeamHP < lTeamHP)
-				state.lWins ++;
+			// If all agreed resetGame, if one didn't we are done
+			int sum = 0;
 
-			else if(rTeamHP > lTeamHP)
-				state.rWins ++;
+			for(int i = 0; i < playerCount; i ++) {
+				sum += state.rematch[i];
 
-			state.judge = Judgement::TimeUp;
+				if(state.rematch[i] < 0)
+					state.flow = Flow::Done;
+			}
+
+			if(sum == playerCount)
+				resetGame();
+				
+			break;
 		}
 
-		// Wait a couple seconds after judgement to go next
-		if(state.timer < -4 * 60)
-			nextRound();
+		case Flow::RoundsScreen: {
+			Player& ply = players[state.roundsChooser];
+
+			int choice = -1;
+
+			if(ply.in.A) choice = 0;
+			if(ply.in.B) choice = 1;
+			if(ply.in.C) choice = 2;
+			if(ply.in.D) choice = 3;
+
+			if(choice != -1) {
+
+				// Save the choosen moves
+				for(int i = Move::Custom00; i < Move::Total; i ++) {
+
+					if(state.confMove[state.roundsChooser][i] == -1) {
+						state.confMove[state.roundsChooser][i] = state.roundsChoice[choice][0];
+						state.confMotion[state.roundsChooser][i] = state.roundsChoice[choice][1];
+						state.confButton[state.roundsChooser][i] = state.roundsChoice[choice][2];
+						break;
+					}
+				}
+
+				state.roundsChooser ++;
+
+				// All players have choosen their new power
+				if(state.roundsChooser >= playerCount) {
+					resetRound();
+
+				// Continue picking new moves
+				}else{
+					__Rounds__prepareChoices();
+				}
+			}
+			break;
+		}
 	}
+
+	setCamera(players, playerCount);
 }
 
 void Game::draw() {
@@ -358,7 +603,7 @@ void Game::draw() {
     drawRoundTokens(state.lWins, state.rWins, roundMax);
 
     // Draw rematch
-    if(state.gameOver) {
+    if(state.flow == Flow::RematchScreen) {
 
     	for(int i = 0; i < playerCount; i ++) {
 
@@ -381,7 +626,7 @@ void Game::draw() {
     }
 
     // Draw clock
-    if(state.timer < timerMax * 60 && state.timer >= 0) {
+    if(state.flow == Flow::PlayRound) {
 	    sf::Text txt;
 	    txt.setString(std::to_string(state.timer / 60));
 	    txt.setFont(*g::save.getFont("Anton-Regular"));
@@ -398,76 +643,127 @@ void Game::draw() {
     	players[i].drawShadow();  
 
     for(int i = 0; i < playerCount; i ++) 
-    	players[i].draw();  
+    	players[i].draw();
 
     for(int i = 0; i < playerCount; i ++) 
     	players[i].drawEffects();  
 
     // Draw round header
-    if(state.timer > (timerMax + 1) * 60) {
+    if(state.flow == Flow::Countdown) {
 	    sf::Text txt;
 	    txt.setString("Round " + std::to_string(state.round));
 	    txt.setFont(*g::save.getFont("Anton-Regular"));
 	    txt.setCharacterSize(64);
 	    txt.setFillColor(sf::Color::Red);
-		txt.setOutlineThickness(1);	    
-		txt.setOutlineColor(sf::Color::Black);	    
+		txt.setOutlineThickness(1);
+		txt.setOutlineColor(sf::Color::Black);
 	    txt.setPosition({g::video.getSize().x / 2.f - txt.getLocalBounds().width / 2.f, g::video.getSize().y / 2.f});
 	    g::video.draw(txt); 
+    }
+	
+	if(state.flow == Flow::PlayRound) {
 
-    }else if(state.timer > timerMax * 60) {
+		if(state.timer > (timerMax - 1) * 60) {
+			sf::Text txt;
+			txt.setString("Fight!");
+			txt.setFont(*g::save.getFont("Anton-Regular"));
+			txt.setCharacterSize(64);
+			txt.setFillColor(sf::Color::Red);
+			txt.setOutlineThickness(1);
+			txt.setOutlineColor(sf::Color::Black);
+			txt.setPosition({g::video.getSize().x / 2.f - txt.getLocalBounds().width / 2.f, g::video.getSize().y / 2.f});
+			g::video.draw(txt);  
+		}
+    }
+	
+	if(state.flow == Flow::RoundsScreen) {
+
+		// Render the choices
+		for(int i = 0; i < 4; i ++) {
+
+			Rectangle area = {
+				(float)g::video.getSize().x / 2 * (float)(i % 2), 
+				(float)g::video.getSize().y / 2 * (float)(i / 2), 
+				(float)g::video.getSize().x / 2, 
+				(float)g::video.getSize().y / 2
+			};	
+
+			Rectangle iconDiv = {
+				area.x,
+				area.y,
+				64,
+				64
+			};
+
+			Rectangle plyDiv = {
+				area.x,
+				area.y,
+				area.w,
+				area.h / 2.f
+			};
+
+			Rectangle moveDiv = {
+				area.x,
+				plyDiv.y + plyDiv.h,
+				area.w,
+				area.h / 4.f
+			};
+
+			Rectangle inputDiv = {
+				area.x,
+				moveDiv.y + moveDiv.h,
+				area.w,
+				area.h / 4.f
+			};
+
+			sf::RectangleShape sh = area;
+			sh.setFillColor(sf::Color::Black);
+			g::video.draw(sh);
+
+			// Create the dummy animation
+			Player dummy;
+			dummy.config = players[state.roundsChooser].config;
+			auto time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count(); 
+			dummy.config.moves[0] = __Rounds__getAnimations()[state.roundsChoice[i][0]];
+			dummy.state.moveIndex = 0;                                         
+			dummy.state.moveFrame = (time / 17) % dummy.getAnimations()[0]->getFrameCount();
+
+			Menu::renderPlayer(dummy, dummy.getRealBoundingBox(), plyDiv);
+			Menu::renderText(__Rounds__getAnimations()[state.roundsChoice[i][0]], "Anton-Regular", sf::Color::White, moveDiv, -1);
+			Menu::renderText(PredefinedMotions[state.roundsChoice[i][1]] + PredefinedButtons[state.roundsChoice[i][2]], "fight", sf::Color::White, inputDiv, 0);
+
+			sh = iconDiv;
+			sh.setFillColor(sf::Color::White);
+			g::video.draw(sh);
+
+			string buttonStr = "";
+			if(i == 0)	buttonStr = "A";
+			if(i == 1)	buttonStr = "B";
+			if(i == 2)	buttonStr = "C";
+			if(i == 3)	buttonStr = "D";
+
+			Menu::renderText(buttonStr, "fight", sf::Color::Black, iconDiv, 0);
+		}
+	}
+
+	if(state.flow == Flow::KO || state.flow == Flow::DoubleKO || state.flow == Flow::TimeUp) {
 	    sf::Text txt;
-	    txt.setString("Fight!");
+
+		if(state.flow == Flow::KO)
+			txt.setString("KO");
+
+		else if(state.flow == Flow::DoubleKO)
+			txt.setString("Double KO");
+
+		else if(state.flow == Flow::TimeUp)
+			txt.setString("Time Up");
+
 	    txt.setFont(*g::save.getFont("Anton-Regular"));
 	    txt.setCharacterSize(64);
 	    txt.setFillColor(sf::Color::Red);
 		txt.setOutlineThickness(1);
 	    txt.setOutlineColor(sf::Color::Black);
 	    txt.setPosition({g::video.getSize().x / 2.f - txt.getLocalBounds().width / 2.f, g::video.getSize().y / 2.f});
-	    g::video.draw(txt);  
-
-	    if(!state.playFight) {
-	    	g::audio.playSound(g::save.getSound("announcer_fight"));
-	    	state.playFight = true;
-	    }
-
-    }else if(state.judge) {
-
-	    sf::Text txt;
-
-	    if(state.judge == Judgement::KO) {
-	    	txt.setString("KO");
-
-		    if(!state.playJudgement) {
-		    	g::audio.playSound(g::save.getSound("announcer_ko"));
-		    	state.playJudgement = true;
-		    }	 
-
-
-	    }else if(state.judge == Judgement::TimeUp) {
-	    	txt.setString("Time Up");
-
-		    if(!state.playJudgement) {
-		    	g::audio.playSound(g::save.getSound("announcer_timeup"));
-		    	state.playJudgement = true;
-		    }	 
-
-
-	    }else if(state.judge == Judgement::DoubleKO) {
-	    	txt.setString("Double KO");
-
-		    if(!state.playJudgement) {
-		    	g::audio.playSound(g::save.getSound("announcer_ko"));
-		    	state.playJudgement = true;
-		    }	    	
-	    }
-
-	    txt.setFont(*g::save.getFont("Anton-Regular"));
-	    txt.setCharacterSize(64);
-	    txt.setFillColor(sf::Color::Red);
-		txt.setOutlineThickness(1);
-	    txt.setOutlineColor(sf::Color::Black);
-	    txt.setPosition({g::video.getSize().x / 2.f - txt.getLocalBounds().width / 2.f, g::video.getSize().y / 2.f});
-	    g::video.draw(txt);  
+	    g::video.draw(txt);
     }
 }

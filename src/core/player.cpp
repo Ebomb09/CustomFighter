@@ -1008,7 +1008,7 @@ int Player::searchBestMove(const string& buffer) {
             if(best == -1)
                 best = i;
 
-            else if(config.motions[i].size() > config.motions[best].size()) 
+            else if(config.motions[i].size() >= config.motions[best].size()) 
                 best = i;
         }
     }

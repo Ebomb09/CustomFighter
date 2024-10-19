@@ -662,18 +662,17 @@ void Menu::renderText(string str, string font, sf::Color color, Rectangle area, 
 	text.setString(str);
 
     // Ensure the text isn't overlapping into the next column
-    float testSize = text.getCharacterSize();
-
-    while(text.getGlobalBounds().width > area.w || text.getGlobalBounds().height > area.h) {
-    	text.setCharacterSize(testSize);
-    	testSize --;
-    }
+    while(text.getGlobalBounds().width > area.w || text.getGlobalBounds().height > area.h) 
+    	text.setCharacterSize(text.getCharacterSize() - 1);
 
     // Calculate free space within cell
     Vector2 freeSpace{
     	area.w - text.getGlobalBounds().width,
     	area.h - text.getGlobalBounds().height
     };
+
+	// Set the origin from the top left pixel of the font
+	text.setOrigin(text.getLocalBounds().left, text.getLocalBounds().top);
 
     // Align text
     if(align == 0) {

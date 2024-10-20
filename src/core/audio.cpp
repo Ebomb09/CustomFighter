@@ -60,11 +60,18 @@ sf::Sound* AudioManager::playMusic(sf::SoundBuffer* buffer) {
 }
 
 void AudioManager::setVolume(float volume) {
+	setSoundVolume(volume);
+	setMusicVolume(volume);
+}
+
+void AudioManager::setMusicVolume(float volume) {
+	music.setVolume(volume);
+}
+
+void AudioManager::setSoundVolume(float volume) {
 
 	for(int i = 0; i < SOUND_LIMIT; i ++)
 		sounds[i].setVolume(volume);
-
-	music.setVolume(volume);
 }
 
 void AudioManager::disable() {

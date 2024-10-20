@@ -18,6 +18,8 @@ public:
 	sf::Sound* playMusic(sf::SoundBuffer* buffer);
 
 	void setVolume(float volume);
+	void setMusicVolume(float volume);
+	void setSoundVolume(float volume);
 
 	void disable();
 	void enable();

@@ -117,8 +117,10 @@ struct Player {
 	void dealDamage(int dmg);
 
 	const Vector2& getSOCD(int index = 0);
-	std::string getInputBuffer();
-	int searchBestMove(const std::string& buffer);
+	std::vector<std::string> getInputBuffer();
+	std::vector<std::string> getMotionBuffer(const std::string& motion);
+	bool matchLeftConform(const std::string& a, const std::string& b);
+	int searchBestMove(const std::vector<std::string>& inputBuffer);
 
 	bool inMove(int move);
 	bool doneMove();

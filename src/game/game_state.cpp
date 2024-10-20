@@ -187,7 +187,6 @@ void Game::nextRound() {
 
 		if(state.round > 0) {
 			state.flow = Flow::RoundsScreen;
-			state.roundsChooser = 0;
 			__Rounds__prepareChoices();
 
 		}else {
@@ -197,21 +196,49 @@ void Game::nextRound() {
 }
 
 void Game::__Rounds__prepareChoices() {
-	Player& ply = players[state.roundsChooser];
+	bool nextPicking = false;
 
-	int seed = (
-		std::abs(state.timer) + 
-		ply.state.health +
-		ply.state.counter +
-		state.roundsChooser
-		) % Random::Total;
+	for(int i = 0; i < playerCount; i ++) {
 
-	// Create the four choices
-	for(int i = 0; i < 4; i ++) {
-		vector<int> qualified = __Rounds__getQualifiedChoices(i);
+		if(players[i].team != state.winner && i > state.roundsChooser) {
+			state.roundsChooser = i;
+			nextPicking = true;
+			break;
+		}
+	}
 
-		state.roundsChoice[i] = qualified[Random::Integer[seed] % qualified.size()];
-		seed ++;
+	// Prepare for the next player to choose
+	if(nextPicking) {
+		g::audio.setMusicVolume(25);
+
+		Player& ply = players[state.roundsChooser];
+
+		int seed = (
+			std::abs(state.timer) + 
+			ply.state.health +
+			ply.state.counter +
+			state.roundsChooser
+			) % Random::Total;
+
+		// Reset choices
+		for(int i = 0; i < 4; i ++)
+			state.roundsChoice[i] = -1;
+
+		// Create the four choices
+		for(int i = 0; i < 4; i ++) {
+			vector<int> qualified = __Rounds__getQualifiedChoices(i);
+
+			state.roundsChoice[i] = qualified[Random::Integer[seed] % qualified.size()];
+			seed ++;
+		}
+		state.roundsChoicePage = 0;
+
+	// Continue on playing the round
+	}else {
+		g::audio.setMusicVolume(100);
+
+		state.roundsChooser = -1;
+		resetRound();
 	}
 }
 
@@ -222,6 +249,7 @@ vector<int> Game::__Rounds__getQualifiedChoices(int choice) {
 	for(int i = 0; i < list.size(); i ++) {
 		bool equiped = false;
 
+		// Move / Motion already in use, don't want to override previous selections
 		for(int j = 0; j < Move::Total; j ++) {
 
 			if(players[state.roundsChooser].config.moves[j] == list[i].move) {
@@ -230,6 +258,20 @@ vector<int> Game::__Rounds__getQualifiedChoices(int choice) {
 			}
 
 			if(players[state.roundsChooser].config.motions[j] == list[i].motion) {
+				equiped = true;
+				break;
+			}
+		}
+
+		// Already in use by another choice, don't want duplicate choices
+		for(int j = 0; j < choice; j ++) {
+
+			if(__Rounds__choices[state.roundsChoice[j]].move == list[i].move) {
+				equiped = true;
+				break;
+			}
+
+			if(__Rounds__choices[state.roundsChoice[j]].motion == list[i].motion) {
 				equiped = true;
 				break;
 			}
@@ -366,6 +408,13 @@ void Game::advanceFrame() {
 		case Flow::KO:
 		case Flow::DoubleKO:
 		case Flow::TimeUp: {
+
+			if(state.slomo > 0)
+				state.slomo --;
+
+			if(state.slomo % 2 == 1)
+				break;
+
 			vector<Player> others;
 
 			for(int i = 0; i < playerCount; i ++) {
@@ -416,13 +465,16 @@ void Game::advanceFrame() {
 
 				if(rTeamHP < lTeamHP) {
 					state.lWins ++;
+					state.winner = 0;
 
 				}else if(rTeamHP > lTeamHP) {
 					state.rWins ++;
+					state.winner = 1;
 
 				}else {
 					state.rWins ++;
 					state.lWins ++;
+					state.winner = -1;
 				}
 				g::audio.playSound(g::save.getSound("announcer_timeup"));
 				break;
@@ -463,18 +515,21 @@ void Game::advanceFrame() {
 				state.timer = 4 * 60;
 				state.rWins ++;
 				state.lWins ++;
+				state.winner = -1;
 				g::audio.playSound(g::save.getSound("announcer_ko"));
 
 			}else if(lTeamAlive == 0) {
 				state.flow = Flow::KO;
 				state.timer = 4 * 60;
 				state.rWins ++;
+				state.winner = 1;
 				g::audio.playSound(g::save.getSound("announcer_ko"));
 
 			}else if(rTeamAlive == 0) {
 				state.flow = Flow::KO;
 				state.timer = 4 * 60;
 				state.lWins ++;
+				state.winner = 0;
 				g::audio.playSound(g::save.getSound("announcer_ko"));
 			}
 
@@ -512,34 +567,43 @@ void Game::advanceFrame() {
 		case Flow::RoundsScreen: {
 			Player& ply = players[state.roundsChooser];
 
-			int choice = -1;
+			// Continue updating inputs
+			for(int i = Button::History - 1; i > 0; i --) 
+        		ply.state.button[i] = ply.state.button[i - 1];
 
-			if(ply.in.A) choice = 0;
-			if(ply.in.B) choice = 1;
-			if(ply.in.C) choice = 2;
-			if(ply.in.D) choice = 3;
+			ply.state.button[0] = ply.in;
 
-			if(choice != -1) {
+			// Inputs for changing choice page number
+			if(ply.state.button[0].Right && !ply.state.button[1].Right) {
+				state.roundsChoicePage ++;
+				g::audio.playSound(g::save.getSound("cycle"));
+			}
+
+			if(ply.state.button[0].Left && !ply.state.button[1].Left) {
+				state.roundsChoicePage --;
+				g::audio.playSound(g::save.getSound("cycle"));
+			}
+
+			if(state.roundsChoicePage < 0)
+				state.roundsChoicePage = 3;
+
+			else if(state.roundsChoicePage >= 4)
+				state.roundsChoicePage = 0;
+
+			// Inputs for selecting the choice
+			if(ply.state.button[0].B && !ply.state.button[1].B) {
 
 				// Save the choosen moves
 				for(int i = 0; i < __Rounds__confSize; i ++) {
 
 					if(state.roundsConf[state.roundsChooser][i] == -1) {
-						state.roundsConf[state.roundsChooser][i] = state.roundsChoice[choice];
+						state.roundsConf[state.roundsChooser][i] = state.roundsChoice[state.roundsChoicePage];
 						break;
 					}
 				}
 
-				state.roundsChooser ++;
-
-				// All players have choosen their new power
-				if(state.roundsChooser >= playerCount) {
-					resetRound();
-
-				// Continue picking new moves
-				}else{
-					__Rounds__prepareChoices();
-				}
+				g::audio.playSound(g::save.getSound("select"));
+				__Rounds__prepareChoices();
 			}
 			break;
 		}
@@ -630,74 +694,102 @@ void Game::draw() {
 		}
     }
 	
+	// Draw the choices
 	if(state.flow == Flow::RoundsScreen) {
 
-		// Render the choices
-		for(int i = 0; i < 4; i ++) {
+		Rectangle area = {
+			(g::video.getSize().x) / 2.f - (g::video.getSize().x / 3.f) / 2.f, 
+			(g::video.getSize().y) / 2.f - (g::video.getSize().y * 7.f / 8.f) / 2.f,
+			g::video.getSize().x / 3.f,
+			g::video.getSize().y * 7.f / 8.f
+		};	
 
-			Rectangle area = {
-				(float)g::video.getSize().x / 2 * (float)(i % 2), 
-				(float)g::video.getSize().y / 2 * (float)(i / 2), 
-				(float)g::video.getSize().x / 2, 
-				(float)g::video.getSize().y / 2
-			};	
+		Rectangle nameDiv = {
+			area.x,
+			area.y + (area.h * 1.f / 10.f),
+			area.w,
+			area.h * 1.f / 10.f
+		};
 
-			Rectangle iconDiv = {
-				area.x,
-				area.y,
-				64,
-				64
-			};
+		Rectangle plyDiv = {
+			area.x,
+			area.y + (area.h * 3.f / 10.f),
+			area.w,
+			area.h * 4.f / 10.f
+		};
 
-			Rectangle plyDiv = {
-				area.x,
-				area.y,
-				area.w,
-				area.h / 2.f
-			};
+		Rectangle moveDiv = {
+			area.x,
+			area.y + (area.h * 7.f / 10.f),
+			area.w,
+			area.h * 1.f / 10.f
+		};
 
-			Rectangle moveDiv = {
-				area.x,
-				plyDiv.y + plyDiv.h,
-				area.w,
-				area.h / 4.f
-			};
+		Rectangle inputDiv = {
+			area.x,
+			area.y + (area.h * 8.f / 10.f),
+			area.w,
+			area.h * 1.f / 10.f
+		};
 
-			Rectangle inputDiv = {
-				area.x,
-				moveDiv.y + moveDiv.h,
-				area.w,
-				area.h / 4.f
-			};
+		Rectangle iconDiv {
+			area.x,
+			area.y + (area.h * 9.f / 10.f),
+			area.w,
+			area.h * 1.f / 10.f
+		};
 
-			sf::RectangleShape sh = area;
-			sh.setFillColor(sf::Color::Black);
-			g::video.draw(sh);
+		// Increase padding for area
+		area.x -= 32;
+		area.w += 64;
+		area.y -= 32;
+		area.h += 64;
 
-			// Create the dummy animation
-			Player dummy;
-			dummy.config = players[state.roundsChooser].config;
-			auto time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count(); 
-			dummy.config.moves[0] = __Rounds__choices[state.roundsChoice[i]].move;
-			dummy.state.moveIndex = 0;                                         
-			dummy.state.moveFrame = (time / 17) % dummy.getAnimations()[0]->getFrameCount();
+		// Get colour from player config
+		sf::Color bg = sf::Color(96, 96, 128);
 
-			Menu::renderPlayer(dummy, dummy.getRealBoundingBox(), plyDiv);
-			Menu::renderText(__Rounds__choices[state.roundsChoice[i]].move, "Anton-Regular", sf::Color::White, moveDiv, -1);
-			Menu::renderText(__Rounds__choices[state.roundsChoice[i]].motion, "fight", sf::Color::White, inputDiv, 0);
+		for(auto& cloth : players[state.roundsChooser].config.clothes) {
 
-			sh = iconDiv;
-			sh.setFillColor(sf::Color::White);
-			g::video.draw(sh);
-
-			string buttonStr = "";
-			if(i == 0)	buttonStr = "A";
-			if(i == 1)	buttonStr = "B";
-			if(i == 2)	buttonStr = "C";
-			if(i == 3)	buttonStr = "D";
-
-			Menu::renderText(buttonStr, "fight", sf::Color::Black, iconDiv, 0);
+			if(cloth.name != "skin") {
+				bg = sf::Color(cloth.r, cloth.g, cloth.b);
+				break;
+			}
 		}
+
+		sf::RectangleShape sh = area;
+		sh.setFillColor(bg);
+		g::video.draw(sh);
+
+		// Draw who is currently picking
+		Menu::renderText("Player " + std::to_string(state.roundsChooser+1) + " select a new move!", "Anton-Regular", sf::Color::Yellow, nameDiv, -1);
+
+		// Create the dummy animation
+		Player dummy;
+		dummy.config = players[state.roundsChooser].config;
+		auto time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count(); 
+		dummy.config.moves[0] = __Rounds__choices[state.roundsChoice[state.roundsChoicePage]].move;
+		dummy.state.moveIndex = 0;                                         
+		dummy.state.moveFrame = (time / 17) % dummy.getAnimations()[0]->getFrameCount();
+
+		Menu::renderPlayer(dummy, dummy.getRealBoundingBox(), plyDiv);
+
+		// Draw the move and motion
+		Menu::renderText(__Rounds__choices[state.roundsChoice[state.roundsChoicePage]].move, "Anton-Regular", sf::Color::White, moveDiv, -1);
+		Menu::renderText(__Rounds__choices[state.roundsChoice[state.roundsChoicePage]].motion, "fight", sf::Color::White, inputDiv, 0);
+
+		// Draw the page number
+		string page = "";
+
+		if(state.roundsChoicePage == 0)
+			page = "XOOO";
+		else if(state.roundsChoicePage == 1)
+			page = "OXOO";
+		else if(state.roundsChoicePage == 2)
+			page = "OOXO";
+		else if(state.roundsChoicePage == 3)
+			page = "OOOX";
+
+		Menu::renderText(page, "fight", sf::Color::White, iconDiv, -1);
 	}
 
 	if(state.flow == Flow::KO || state.flow == Flow::DoubleKO || state.flow == Flow::TimeUp) {

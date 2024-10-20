@@ -51,24 +51,26 @@ struct Game {
 	struct State {
 
 		// General state control
-		int flow			= Flow::Done;
-		int timer 			= 0;
+		int flow				= Flow::Done;
+		int timer 				= 0;
 
 		// Music Control
-		bool songNormal		= false;
-		bool songClimax		= false;
+		bool songNormal			= false;
+		bool songClimax			= false;
 
 		// Match Control
-		int slomo			= 0;
-		int round			= 0;
-		int lWins			= 0;
-		int rWins			= 0;
-		int rematch			[MAX_PLAYERS];
+		int slomo				= 0;
+		int round				= 0;
+		int lWins				= 0;
+		int rWins				= 0;
+		int winner				= -1;
+		int rematch				[MAX_PLAYERS];
 
 		// Mode::Rounds specific state variables
-		int roundsConf		[MAX_PLAYERS][__Rounds__confSize];
-		int roundsChoice	[4];
-		int roundsChooser	= 0;
+		int roundsConf			[MAX_PLAYERS][__Rounds__confSize];
+		int roundsChooser		= -1;
+		int roundsChoice		[4];
+		int roundsChoicePage	= 0;
 	}state;
 
 	struct SaveState {

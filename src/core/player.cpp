@@ -912,29 +912,36 @@ vector<string> Player::getInputBuffer() {
         string motion = "";
         Vector2 socd;
 
-        bool change = state.button[i].Up != state.button[i+1].Up ||
+        bool motionChange = state.button[i].Up != state.button[i+1].Up ||
             state.button[i].Down != state.button[i+1].Down ||
             state.button[i].Left != state.button[i+1].Left ||
             state.button[i].Right != state.button[i+1].Right ||
             state.button[i].A && !state.button[i+1].A ||
             state.button[i].B && !state.button[i+1].B ||
             state.button[i].C && !state.button[i+1].C ||
-            state.button[i].D && !state.button[i+1].D;
+            state.button[i].D && !state.button[i+1].D ||
+            state.button[i].Taunt && !state.button[i+1].Taunt;
 
-        if(change && state.button[i].Up)          socd.y += 1;
-        if(change && state.button[i].Down)        socd.y -= 1;
-        if(change && state.button[i].Right)       socd.x += 1 * state.side;
-        if(change && state.button[i].Left)        socd.x -= 1 * state.side;
+        if(motionChange && state.button[i].Up)          socd.y += 1;
+        if(motionChange && state.button[i].Down)        socd.y -= 1;
+        if(motionChange && state.button[i].Right)       socd.x += 1 * state.side;
+        if(motionChange && state.button[i].Left)        socd.x -= 1 * state.side;
 
         motion = ('5' + (int)socd.x + (int)socd.y * 3);
 
         // Button presses
+        bool buttonChange = state.button[i].A && !state.button[i+1].A ||
+            state.button[i].B && !state.button[i+1].B ||
+            state.button[i].C && !state.button[i+1].C ||
+            state.button[i].D && !state.button[i+1].D ||
+            state.button[i].Taunt && !state.button[i+1].Taunt;
+
         string button = "";
-        if(state.button[i].A && !state.button[i+1].A)         button += (button.size() == 0) ? "A" : "+A";
-        if(state.button[i].B && !state.button[i+1].B)         button += (button.size() == 0) ? "B" : "+B";
-        if(state.button[i].C && !state.button[i+1].C)         button += (button.size() == 0) ? "C" : "+C";
-        if(state.button[i].D && !state.button[i+1].D)         button += (button.size() == 0) ? "D" : "+D";
-        if(state.button[i].Taunt && !state.button[i+1].Taunt) button += (button.size() == 0) ? "P" : "+P";
+        if(buttonChange && state.button[i].A)       button += (button.size() == 0) ? "A" : "+A";
+        if(buttonChange && state.button[i].B)       button += (button.size() == 0) ? "B" : "+B";
+        if(buttonChange && state.button[i].C)       button += (button.size() == 0) ? "C" : "+C";
+        if(buttonChange && state.button[i].D)       button += (button.size() == 0) ? "D" : "+D";
+        if(buttonChange && state.button[i].Taunt)   button += (button.size() == 0) ? "P" : "+P";
 
         buffer.push_back(motion + button);
     }

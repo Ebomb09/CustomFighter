@@ -297,10 +297,8 @@ int main() {
 
                     for(int i = 0; i < MoveCategory::Total; i ++) {
 
-                        if(ImGui::Selectable(MoveCategory::String[i].c_str())) {
+                        if(ImGui::Selectable(MoveCategory::String[i].c_str(), i == editor.anim.category))
                             editor.anim.category = i;
-                            break;
-                        }
                     }
 
                     ImGui::EndCombo();

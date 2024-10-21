@@ -14,6 +14,7 @@ namespace Lobby {
 	struct Room {
 		int code = -1;
 		std::string password = "";
+		int game_mode = GameMode::Versus;
 		int player_max = 2;
 		int player_count = 0;
 		PlayerData player_data[MAX_PLAYERS];

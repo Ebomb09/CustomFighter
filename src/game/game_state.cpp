@@ -45,7 +45,7 @@ void Game::init(int _playerCount, int _roundMax, int _timerMax, int _gameMode) {
 	// Get a stage
 	stage = g::save.getStage(g::save.getRandomStage());
 
-	if(gameMode == Mode::Rounds)
+	if(gameMode == GameMode::Rounds)
 		__Rounds__loadChoices();
 
     resetGame();
@@ -84,7 +84,7 @@ void Game::resetGame() {
     	state.rematch[i] = 0;
 
 	// Set the configs to the default punch / kicks
-	if(gameMode == Mode::Rounds) 
+	if(gameMode == GameMode::Rounds) 
 		__Rounds__resetPlayerConfigs();
 	
 	nextRound();
@@ -123,7 +123,7 @@ void Game::resetRound() {
 	// Game mode specific configuration
 	switch(gameMode) {
 
-		case Mode::Rounds:
+		case GameMode::Rounds:
 
 			for(int i = 0; i < playerCount; i ++) {
 				players[i].state.health = state.round * 10;
@@ -179,11 +179,11 @@ void Game::nextRound() {
 		state.flow = Flow::RematchScreen;
 
 	// Get back into the next fight
-	}else if(gameMode == Mode::Versus){
+	}else if(gameMode == GameMode::Versus){
 		resetRound();
 
 	// Prepare to select new moves
-	}else if(gameMode == Mode::Rounds){
+	}else if(gameMode == GameMode::Rounds){
 
 		if(state.round > 0) {
 			state.flow = Flow::RoundsScreen;
@@ -377,7 +377,7 @@ void Game::readInput() {
 void Game::advanceFrame() {
 
 	// Update the configs continuously to account for rollback frames during move selection
-	if(gameMode == Mode::Rounds) 
+	if(gameMode == GameMode::Rounds) 
 		__Rounds__fixPlayerConfigs();
 
 	if(state.timer > 0)

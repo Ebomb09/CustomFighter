@@ -4,12 +4,22 @@
 #include "core/stage.h"
 #include "core/player.h"
 
-struct Game {
+namespace GameMode {
 
-	enum Mode {
+	enum {
 		Versus,
-		Rounds
+		Rounds,
+		Total
 	};
+
+	const std::string String[] {
+		"Versus",
+		"Rounds",
+		"Total"
+	};
+};
+
+struct Game {
 
 	enum Flow {
 		Done,
@@ -78,7 +88,7 @@ struct Game {
 		Player::State players[MAX_PLAYERS];
 	};
 
-	void init(int _playerCount, int _roundMax = 3, int _timerMax = 99, int _gameMode = Mode::Versus);
+	void init(int _playerCount, int _roundMax = 3, int _timerMax = 99, int _gameMode = GameMode::Versus);
 	bool done();
 
 	void resetGame();

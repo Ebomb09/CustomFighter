@@ -75,14 +75,14 @@ int main(int argc, char* argv[]) {
                 vector<Player::Config> configs = CharacterSelect::run(2);
 
                 if(configs.size() == 2) {
-                    LocalGame::run(configs, Game::Mode::Rounds);
+                    LocalGame::run(configs, GameMode::Rounds);
                 }
                 
             }else if(menuOptions[hover].id == RoundsFight4P) {
                 vector<Player::Config> configs = CharacterSelect::run(4);
 
                 if(configs.size() == 4) {
-                    LocalGame::run(configs, Game::Mode::Rounds);
+                    LocalGame::run(configs, GameMode::Rounds);
                 }
                 
             }else if(menuOptions[hover].id == NetPlay) {

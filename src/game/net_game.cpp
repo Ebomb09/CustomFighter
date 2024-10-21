@@ -182,6 +182,9 @@ bool start(Lobby::Room room) {
         }
     }
 
+    // Configure game
+    game.gameMode = room.game_mode;
+
     // GGPO done, initialize the game
     game.init(room.player_count);
 

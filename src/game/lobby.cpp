@@ -17,6 +17,9 @@ Lobby::Room getRoomFromJSON(nlohmann::json json) {
     if(json["code"].is_number_integer())
         room.code = json["code"];   
 
+    if(json["game_mode"].is_number_integer()) 
+        room.game_mode = json["game_mode"];
+
     if(json["player_max"].is_number_integer()) 
         room.player_max = json["player_max"];
 
@@ -53,9 +56,10 @@ vector<Lobby::Room> fetchRooms(){
     return rooms;
 }
 
-int createRoom(int player_max, string password=""){
+int createRoom(int game_mode, int player_max, string password=""){
     nlohmann::json postFields;
     postFields["reason"] = "create-room";
+    postFields["game_mode"] = game_mode;
     postFields["player_max"] = player_max;
     postFields["password"] = password;
     
@@ -140,14 +144,16 @@ Lobby::Room Lobby::run(Player::Config config) {
         if(join.code == -1) {
 
             // List all rooms
-            if(ImGui::BeginTable("Lobbies", 4)){
+            if(ImGui::BeginTable("Lobbies", 5)) {
 
                 ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0);            
+                ImGui::TableSetColumnIndex(0);
                 ImGui::TableHeader("Code");
-                ImGui::TableSetColumnIndex(1);               
+                ImGui::TableSetColumnIndex(1);
+                ImGui::TableHeader("GameMode");
+                ImGui::TableSetColumnIndex(2);
                 ImGui::TableHeader("Players");
-                ImGui::TableSetColumnIndex(2);               
+                ImGui::TableSetColumnIndex(3);
                 ImGui::TableHeader("Password");
 
                 for(auto& room : roomList) {
@@ -155,17 +161,19 @@ Lobby::Room Lobby::run(Player::Config config) {
 
                     ImGui::TableSetColumnIndex(0);
                     ImGui::Text("%d", room.code);
-                    
 
                     ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("%s", GameMode::String[room.game_mode].c_str());
+
+                    ImGui::TableSetColumnIndex(2);
                     ImGui::Text("%d/%d", room.player_count, room.player_max);
                     
                     // Password
-                    ImGui::TableSetColumnIndex(2);
+                    ImGui::TableSetColumnIndex(3);
                     ImGui::InputText(("##Password" + std::to_string(room.code)).c_str(), &room.password);
 
                     // Attempt room
-                    ImGui::TableSetColumnIndex(3);
+                    ImGui::TableSetColumnIndex(4);
                     if(ImGui::Button(("Join##" + std::to_string(room.code)).c_str()) ) {
 
                         if(joinRoom(room.code, room.password, config)) {
@@ -186,7 +194,7 @@ Lobby::Room Lobby::run(Player::Config config) {
 
             // Create room
             if(ImGui::Button("Create")) {
-                int code = createRoom(join.player_max, join.password);
+                int code = createRoom(join.game_mode, join.player_max, join.password);
 
                 if(joinRoom(code, join.password, config)) {
                     join.code = code;
@@ -194,6 +202,17 @@ Lobby::Room Lobby::run(Player::Config config) {
                     if(!statusRoom(join))
                         join.code = -1;
                 }
+            }
+
+            // Drop down game mode
+            if(ImGui::BeginCombo("GameMode", GameMode::String[join.game_mode].c_str())) {
+
+                for(int i = 0; i < GameMode::Total; i ++) {
+
+                    if(ImGui::Selectable(GameMode::String[i].c_str(), i == join.game_mode))
+                        join.game_mode = i;
+                }
+                ImGui::EndCombo();
             }
 
             // Drop down player_max
@@ -206,6 +225,7 @@ Lobby::Room Lobby::run(Player::Config config) {
         // Room viewer
         }else {
             ImGui::Text("Room Code: %d", join.code);
+            ImGui::Text("GameMode: %s", GameMode::String[join.game_mode].c_str());
 
             if(ImGui::Button("Leave")) {
 

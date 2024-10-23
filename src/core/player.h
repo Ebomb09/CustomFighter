@@ -86,30 +86,13 @@ struct Player {
 		Effect			effects			[Effect::Max];
 	}state;
 
-	struct Cache {
-		bool enabled 					= false;
-
-		Frame			frame;
-		int 			frameCounter	= -1;
-
-		Vector2			socd;
-		int 			socdCounter		= -1;
-
-		int 			target;
-		int 			targetCounter	= -1;
-		
-		bool			tagged;
-		int 			taggedCounter	= -1;
-
-		std::vector<Animation*>	anims;
-		std::vector<Clothing>	clothes;
-	}cache;
-
 	Button::Flag readInput();
 	Button::Flag readInput(std::vector<Player>& others);
 
-	void advanceFrame();
+	void setState(const Player::State& _state);
 	void advanceFrame(std::vector<Player>& others);
+	void advanceEffects(std::vector<Player>& others);
+
 	void draw(Renderer* renderer = NULL);
 	void drawShadow(Renderer* renderer = NULL);
 	void drawEffects(Renderer* renderer = NULL);
@@ -131,7 +114,14 @@ struct Player {
 
 	bool inCorner();
 
-	bool getCollision(std::vector<Player>& others, HitBox* hitBox, int* index=NULL, Vector2* outLocation=NULL);
+	struct Collision {
+		bool collided 		= false;
+		bool block 			= false;
+		int index 			= -1;
+		Vector2 location;
+		HitBox hitBox;
+	};
+	const Collision& getCollision(std::vector<Player>& others);
 
 	Vector2 getCameraCenter(std::vector<Player>& others);
 
@@ -144,6 +134,28 @@ struct Player {
 	const std::vector<Animation*>& getAnimations();
 
 	Rectangle getRealBoundingBox();
+
+	struct Cache {
+		bool enabled 					= false;
+
+		Frame			frame;
+		int 			frameCounter	= -1;
+
+		Vector2			socd;
+		int 			socdCounter		= -1;
+
+		int 			target;
+		int 			targetCounter	= -1;
+		
+		bool			tagged;
+		int 			taggedCounter	= -1;
+
+		Collision		collision;
+		int				collisionCounter = -1;
+
+		std::vector<Animation*>	anims;
+		std::vector<Clothing>	clothes;
+	}cache;
 };
 
 #endif

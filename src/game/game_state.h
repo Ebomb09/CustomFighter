@@ -100,6 +100,7 @@ struct Game {
 
 	void readInput();
 	void advanceFrame();
+	std::vector<Player> advanceAllPlayerFrames();
 
 	void draw();
 };

@@ -486,7 +486,8 @@ struct Creator {
             // Capture player
             dummy.state.position.x = 0;            
             dummy.in = dummy.readInput();
-            dummy.advanceFrame();
+            vector<Player> others = {dummy};
+            dummy.advanceFrame(others);
 
             Menu::renderPlayer(dummy, dummy.getRealBoundingBox(), getDiv());
             drawMoveProperties(getSubMenuDiv());
@@ -527,7 +528,8 @@ struct Creator {
         }else if(mode == Mode::ModifyConfig) {
 
             Menu::renderPlayer(dummy, dummy.getRealBoundingBox(), getPlayerDiv());
-            dummy.advanceFrame();
+            vector<Player> others = {dummy};
+            dummy.advanceFrame(others);
             drawPlayerPoints(getSubMenuDiv());
         
             backup = dummy.config;
@@ -583,7 +585,8 @@ struct Creator {
         // List the worn clothing items
         }else if(mode == Mode::ListConfigItems) {
             Menu::renderPlayer(dummy, dummy.getRealBoundingBox(), getPlayerDiv());
-            dummy.advanceFrame();
+            vector<Player> others = {dummy};
+            dummy.advanceFrame(others);
 
             auto options = getConfigCostumeOptions();
             int res = Menu::Table(options, 3, true, &itemHover, dummy.seatIndex, getMenuDiv());
@@ -708,7 +711,8 @@ struct Creator {
             auto options = getClothingOptions();
             int res = Menu::List(options, &clothHover, dummy.seatIndex, menuDiv);
 
-            dummy.advanceFrame();
+            vector<Player> others = {dummy};
+            dummy.advanceFrame(others);
             
             // Highlight the clothing option hovered
             if(options[clothHover].id == ID::Index) {
@@ -761,7 +765,8 @@ struct Creator {
 
         }else if(mode == Mode::SetConfigItemColor) {
             Menu::renderPlayer(dummy, dummy.getRealBoundingBox(), getPlayerDiv());
-            dummy.advanceFrame();
+            vector<Player> others = {dummy};
+            dummy.advanceFrame(others);
 
             // Copy color in
             sf::Color color(dummy.config.clothes[itemSelected].r, dummy.config.clothes[itemSelected].g, dummy.config.clothes[itemSelected].b);
@@ -834,7 +839,8 @@ struct Creator {
 
             // Set to default animation
             dummy.setMove(Move::Stand, true);
-            dummy.advanceFrame();
+            vector<Player> others = {dummy};
+            dummy.advanceFrame(others);
 
             if(res == Menu::Accept) {
 

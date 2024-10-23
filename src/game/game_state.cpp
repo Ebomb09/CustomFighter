@@ -45,7 +45,7 @@ void Game::init(int _playerCount, int _roundMax, int _timerMax, int _gameMode) {
 	// Get a stage
 	stage = g::save.getStage(g::save.getRandomStage());
 
-	if(gameMode == GameMode::Rounds)
+	if(gameMode == GameMode::Rounds) 
 		__Rounds__loadChoices();
 
     resetGame();
@@ -71,7 +71,7 @@ void Game::loadState(SaveState save) {
 	state = save.game;
 
 	for(int i = 0; i < playerCount; i ++)
-		players[i].state = save.players[i];
+		players[i].setState(save.players[i]);
 }
 
 void Game::resetGame() {
@@ -126,7 +126,11 @@ void Game::resetRound() {
 		case GameMode::Rounds:
 
 			for(int i = 0; i < playerCount; i ++) {
-				players[i].state.health = state.round * 10;
+
+				if(players[i].team == 0)
+					players[i].state.health = (state.rWins + 1.) / (roundMax) * 100;
+				else
+					players[i].state.health = (state.lWins + 1.) / (roundMax) * 100;
 			}
 			break;
 	}
@@ -374,6 +378,30 @@ void Game::readInput() {
 		players[i].in = players[i].readInput(others);
 }
 
+static void advancePlayerFrame(Player& player, vector<Player> others) {
+	player.advanceFrame(others);
+}
+
+vector<Player> Game::advanceAllPlayerFrames() {
+	vector<Player> others;
+
+	for(int i = 0; i < playerCount; i ++) 
+		others.push_back(players[i]);
+		
+	vector<std::thread> tasks;
+
+	for(int i = 0; i < playerCount; i ++) 
+		tasks.push_back(std::thread(advancePlayerFrame, std::ref(players[i]), others));
+
+	for(auto& task : tasks)
+		task.join();
+
+	for(int i = 0; i < playerCount; i ++) 
+		players[i].advanceEffects(others);
+
+	return others;
+}
+
 void Game::advanceFrame() {
 
 	// Update the configs continuously to account for rollback frames during move selection
@@ -386,15 +414,11 @@ void Game::advanceFrame() {
 	switch(state.flow) {
 
 		case Flow::Countdown: {
-			vector<Player> others;
-
-			for(int i = 0; i < playerCount; i ++) {
-				players[i].in = Button::Flag();
-				others.push_back(players[i]);
-			}
 
 			for(int i = 0; i < playerCount; i ++) 
-				players[i].advanceFrame(others);
+				players[i].in = Button::Flag();
+			
+			advanceAllPlayerFrames();
 
 			if(state.timer <= 0) {
 				state.flow = Flow::PlayRound;
@@ -415,15 +439,10 @@ void Game::advanceFrame() {
 			if(state.slomo % 2 == 1)
 				break;
 
-			vector<Player> others;
-
-			for(int i = 0; i < playerCount; i ++) {
-				players[i].in = Button::Flag();
-				others.push_back(players[i]);
-			}
-
 			for(int i = 0; i < playerCount; i ++) 
-				players[i].advanceFrame(others);
+				players[i].in = Button::Flag();
+	
+			advanceAllPlayerFrames();
 
 			if(state.timer <= 0) {
 				nextRound();
@@ -439,13 +458,7 @@ void Game::advanceFrame() {
 			if(state.slomo % 2 == 1)
 				break;
 
-			vector<Player> others;
-
-			for(int i = 0; i < playerCount; i ++)
-				others.push_back(players[i]);
-
-			for(int i = 0; i < playerCount; i ++)
-				players[i].advanceFrame(others);
+			vector<Player> others = advanceAllPlayerFrames();
 
 			if(state.timer <= 0) {
 				state.flow = Flow::TimeUp;

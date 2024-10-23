@@ -9,6 +9,7 @@
 #include "core/net_tools.h"
 
 #include <iostream>
+#include <chrono>
 #include <cstdio>
 #include <ggponet.h>
 
@@ -182,11 +183,8 @@ bool start(Lobby::Room room) {
         }
     }
 
-    // Configure game
-    game.gameMode = room.game_mode;
-
     // GGPO done, initialize the game
-    game.init(room.player_count);
+    game.init(room.player_count, room.round_max, room.timer_max, room.game_mode);
 
     return true;
 }
@@ -194,6 +192,8 @@ bool start(Lobby::Room room) {
 bool loop() {
 
     while(g::video.isOpen()) {
+        auto timeStart = std::chrono::high_resolution_clock::now();
+
         g::input.pollEvents();
         
         // Get button flags for local players
@@ -208,8 +208,22 @@ bool loop() {
         }
 
         // Advance frame if local input was OK
-        if(result == GGPO_OK) 
-            advanceFrame(NULL);
+        if(result == GGPO_OK) {
+            Button::Flag in[MAX_PLAYERS];
+            int disconnect_flags;
+
+            result = ggpo_synchronize_input(ggpo, in, sizeof(Button::Flag) * MAX_PLAYERS, &disconnect_flags);
+
+            if(result == GGPO_OK) {
+
+                for(int i = 0; i < game.playerCount; i ++) 
+                    game.players[i].in = in[i];
+
+                game.advanceFrame();
+
+                ggpo_advance_frame(ggpo);
+            }
+        }
 
         g::video.clear();
         game.draw();
@@ -218,7 +232,11 @@ bool loop() {
         if(game.done())
             return true;
 
-        ggpo_idle(ggpo, 16);
+        auto timeEnd = std::chrono::high_resolution_clock::now();
+        int duration = std::chrono::duration_cast<std::chrono::milliseconds>(timeEnd - timeStart).count();
+        int idle = std::max(0, 16 - duration);
+
+        ggpo_idle(ggpo, idle);
     }
 	return true;
 }

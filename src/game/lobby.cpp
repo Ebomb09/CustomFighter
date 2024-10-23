@@ -17,11 +17,17 @@ Lobby::Room getRoomFromJSON(nlohmann::json json) {
     if(json["code"].is_number_integer())
         room.code = json["code"];   
 
-    if(json["game_mode"].is_number_integer()) 
-        room.game_mode = json["game_mode"];
-
     if(json["player_max"].is_number_integer()) 
         room.player_max = json["player_max"];
+
+    if(json["round_max"].is_number_integer()) 
+        room.round_max = json["round_max"];
+
+    if(json["timer_max"].is_number_integer()) 
+        room.timer_max = json["timer_max"];
+
+    if(json["game_mode"].is_number_integer()) 
+        room.game_mode = json["game_mode"];
 
     if(json["player_count"].is_number_integer())
         room.player_count = json["player_count"];
@@ -56,12 +62,15 @@ vector<Lobby::Room> fetchRooms(){
     return rooms;
 }
 
-int createRoom(int game_mode, int player_max, string password=""){
+int createRoom(int player_max, int round_max, int timer_max, int game_mode, string password=""){
     nlohmann::json postFields;
     postFields["reason"] = "create-room";
-    postFields["game_mode"] = game_mode;
-    postFields["player_max"] = player_max;
     postFields["password"] = password;
+
+    postFields["player_max"] = player_max;
+    postFields["round_max"] = round_max;
+    postFields["timer_max"] = timer_max;
+    postFields["game_mode"] = game_mode;
     
     nlohmann::json msg = runQuery(g::save.getServer(0), postFields);
 
@@ -170,7 +179,7 @@ Lobby::Room Lobby::run(Player::Config config) {
                     
                     // Password
                     ImGui::TableSetColumnIndex(3);
-                    ImGui::InputText(("##Password" + std::to_string(room.code)).c_str(), &room.password);
+                    ImGui::InputText(("##Password" + std::to_string(room.code)).c_str(), &room.password, ImGuiInputTextFlags_Password);
 
                     // Attempt room
                     ImGui::TableSetColumnIndex(4);
@@ -194,7 +203,7 @@ Lobby::Room Lobby::run(Player::Config config) {
 
             // Create room
             if(ImGui::Button("Create")) {
-                int code = createRoom(join.game_mode, join.player_max, join.password);
+                int code = createRoom(join.player_max, join.round_max, join.timer_max, join.game_mode, join.password);
 
                 if(joinRoom(code, join.password, config)) {
                     join.code = code;
@@ -203,6 +212,21 @@ Lobby::Room Lobby::run(Player::Config config) {
                         join.code = -1;
                 }
             }
+
+            // Drop down player_max
+            const char* formats[] = {"1v1", "2v2"};
+            if(ImGui::Combo("Format", &formatOption, formats, 2))
+                join.player_max = (formatOption + 1) * 2;
+
+            ImGui::InputText("Password", &join.password, ImGuiInputTextFlags_Password);
+
+            // Round Max
+            ImGui::InputInt("Rounds", &join.round_max);
+            join.round_max = std::clamp(join.round_max, 1, 30);
+
+            // Timer Max
+            ImGui::InputInt("Round Time", &join.timer_max);
+            join.timer_max = std::clamp(join.timer_max, 30, 99);
 
             // Drop down game mode
             if(ImGui::BeginCombo("GameMode", GameMode::String[join.game_mode].c_str())) {
@@ -215,17 +239,13 @@ Lobby::Room Lobby::run(Player::Config config) {
                 ImGui::EndCombo();
             }
 
-            // Drop down player_max
-            const char* formats[] = {"1v1", "2v2"};
-            if(ImGui::Combo("Format", &formatOption, formats, 2))
-                join.player_max = (formatOption + 1) * 2;
-
-            ImGui::InputText("Password", &join.password);
-
         // Room viewer
         }else {
             ImGui::Text("Room Code: %d", join.code);
             ImGui::Text("GameMode: %s", GameMode::String[join.game_mode].c_str());
+            ImGui::Text("Max Players: %d", join.player_max);
+            ImGui::Text("Rounds: %d", join.round_max);
+            ImGui::Text("Round Time: %d", join.timer_max);
 
             if(ImGui::Button("Leave")) {
 

@@ -228,9 +228,13 @@ Button::Flag Player::readInput(vector<Player>& others) {
     return readInput();
 }
 
-void Player::advanceFrame() {
-    vector<Player> self {*this};
-    advanceFrame(self);
+void Player::setState(const Player::State& _state) {
+    state = _state;
+
+    // Reset the cache values to prevent issues rolling back
+    bool enabled = cache.enabled;
+    cache = Player::Cache();
+    cache.enabled = enabled;
 }
 
 void Player::advanceFrame(vector<Player>& others) {
@@ -241,6 +245,13 @@ void Player::advanceFrame(vector<Player>& others) {
 
     if(state.hitStop < 0)
         state.hitStop ++;
+
+    // Update the last hit key frames
+    for(int i = 0; i < others.size(); i ++) {
+
+        if(others[i].getKeyFrame() != state.hitKeyFrame[i])
+            state.hitKeyFrame[i] = -1;
+    }
 
     // Check if any damage was dealt and set the HitStop
     int dmg = 0;
@@ -257,22 +268,59 @@ void Player::advanceFrame(vector<Player>& others) {
     }
     state.accDamage = 0;
 
-    // Step effect timers
-    for(int i = 0; i < Effect::Max; i ++) {
-
-        if(state.effects[i].id >= 0) {
-            state.effects[i].counter ++;
-
-            // Once complete reset to default
-            if(state.effects[i].counter > state.effects[i].lifeTime) 
-                state.effects[i] = Effect();          
-        }
-    }
-
     // Taunt cancel from anything
     if(getTaggedIn(others))
         if((in.Taunt || state.aiMove == Move::Taunt) && state.position.y <= 0 && getFrame().cancel)
             setMove(Move::Taunt);
+
+    // Add input to the button history
+    for(int i = Button::History - 1; i > 0; i --) 
+        state.button[i] = state.button[i - 1];
+
+    state.button[0] = in;
+
+    // Special Move Check
+    if(getFrame().cancel && getTaggedIn(others)) {
+        int move = searchBestMove(getInputBuffer());
+
+        if(move != -1) {
+            state.moveFrame = 0;
+            setMove(move);
+        }
+    }
+
+    // Exit early, if in HitStop
+    if(state.hitStop != 0) 
+        return;
+
+    // Increment frames
+    state.moveFrame ++;
+    state.counter ++;
+
+    if(state.stun > 0)
+        state.stun --;
+
+    // Stop pushback after first frame of hitstop ended
+    state.pushBack = {0, 0};
+
+    // Exit early, if in the air and opponents are tagging
+    if(inMove(Move::JumpCombo)) {
+        bool tagging = false;
+        int count = 0;
+
+        for(auto& ply : others) {
+
+            if(ply.gameIndex != gameIndex && ply.team != team & ply.state.health > 0) {
+                count ++;
+
+                if(ply.getTaggedIn(others) && ply.inMove(Move::Taunt))
+                    tagging = true;
+            }
+        }
+
+        if(count > 1 && tagging)
+            return;
+    }
 
     // Grabber state control
     if(getFrame().isGrab) {
@@ -304,34 +352,6 @@ void Player::advanceFrame(vector<Player>& others) {
     }else {
         state.grabeeIndex = -1;
     }
-
-    // Add input to the button history
-    for(int i = Button::History - 1; i > 0; i --) 
-        state.button[i] = state.button[i - 1];
-
-    state.button[0] = in;
-
-    // Special Move Check
-    if(getFrame().cancel && getTaggedIn(others)) {
-        int move = searchBestMove(getInputBuffer());
-
-        if(move != -1) {
-            state.moveFrame = 0;
-            setMove(move);
-        }
-    }
-
-    // Exit early if in HitStop
-    if(state.hitStop != 0) 
-        return;
-
-    // Play sound effect related to frame of animation
-    if(getFrame().sound != "")
-        g::audio.playSound(g::save.getSound(getFrame().sound), true);
-
-    // Increment frames
-    state.moveFrame ++;
-    state.counter ++;
 
     // Grabee state control
     if(state.grabIndex >= 0) {
@@ -404,80 +424,25 @@ void Player::advanceFrame(vector<Player>& others) {
         }
     }
 
-    if(state.stun > 0)
-        state.stun --;
-
     // Check for pushBack
-    state.pushBack = {0, 0};
-
     for(auto& ply : others) {
 
-        if(ply.gameIndex != gameIndex && ply.team != team && ply.getTaggedIn(others))
+        if(ply.team != team)
             state.velocity += ply.state.pushBack;
     }
 
-    // If in the air and opponents are tagging pause
-    if(inMove(Move::JumpCombo)) {
-        bool tagging = false;
-        int count = 0;
-
-        for(auto& ply : others) {
-
-            if(ply.gameIndex != gameIndex && ply.team != team & ply.state.health > 0) {
-                count ++;
-
-                if(ply.getTaggedIn(others) && ply.inMove(Move::Taunt))
-                    tagging = true;
-            }
-        }
-
-        if(count > 1 && tagging)
-            return;
-    }
-
     // Check Hit/Hurtbox Collisions
-    HitBox hit;
-    int hitIndex;
-    Vector2 hitLocation;
+    Collision col = getCollision(others);
 
-    if(getCollision(others, &hit, &hitIndex, &hitLocation)) {  
-        bool block = false;
+    if(col.collided) {
 
-        // Block: if input in the opposite direction of opponent   
-        if(inMove(Move::Stand) || inMove(Move::StandBlock) || inMove(Move::Crouch) || inMove(Move::CrouchBlock)) 
-            block = (state.side == 1 && getSOCD().x < 0) || (state.side == -1 && getSOCD().x > 0);
-        
-        // Block: if standing or crouching input for hitType
-        switch(hit.type) {
+        if(col.block) {
 
-            case HitType::High: 
-                block = (block && getSOCD().y == 0) || state.aiMove == Move::StandBlock;
-                break;
+            if(col.hitBox.type != HitType::Grab) {
+                state.velocity.x += col.hitBox.force.x;
 
-            case HitType::Mid:
-                block = (block) || state.aiMove == Move::CrouchBlock || state.aiMove == Move::StandBlock;
-                break;
-
-            case HitType::Low: 
-                block = (block && getSOCD().y < 0) || state.aiMove == Move::CrouchBlock;
-                break;
-
-            case HitType::Unblockable:
-                block = false;
-                break;
-
-            case HitType::Grab:
-                block = (state.position.y > 0 || state.stun != 0) && state.grabIndex < 0;
-                break;
-        }
-
-        if(block) {
-
-            if(hit.type != HitType::Grab) {
-                state.velocity.x += hit.force.x;
-
-                state.stun = hit.blockStun;
-                state.accDamage = hit.blockStun;
+                state.stun = col.hitBox.blockStun;
+                state.accDamage = col.hitBox.blockStun;
 
                 if(inMove(Move::Stand) || inMove(Move::StandBlock)){
                     setMove(Move::StandBlock);
@@ -485,30 +450,29 @@ void Player::advanceFrame(vector<Player>& others) {
                 }else{
                     setMove(Move::CrouchBlock);
                 }
-                g::audio.playSound(g::save.getSound("block"), true);
             }
 
         }else{
 
             // Prevent launcher looping in the corner
-            if(hit.force.y > 0 && state.position.y > 0 && inMove(Move::JumpCombo))
-                hit.knockdown = true;
+            if(col.hitBox.force.y > 0 && state.position.y > 0 && inMove(Move::JumpCombo))
+                col.hitBox.knockdown = true;
 
             // Float if a neutral hit, and already airborne
-            if(hit.force.y == 0 && state.position.y > 0)
-                hit.force.y = 2;
+            if(col.hitBox.force.y == 0 && state.position.y > 0)
+                col.hitBox.force.y = 2;
                 
-            state.velocity.x += hit.force.x;
-            state.velocity.y = hit.force.y;
+            state.velocity.x += col.hitBox.force.x;
+            state.velocity.y = col.hitBox.force.y;
 
-            dealDamage(hit.damage);
+            dealDamage(col.hitBox.damage);
 
             // Signal grab
-            if(hit.type == HitType::Grab) {
-                state.grabIndex = hitIndex;
+            if(col.hitBox.type == HitType::Grab) {
+                state.grabIndex = col.index;
 
             // Signal tumble to reset via knockdown
-            }else if(hit.knockdown) {
+            }else if(col.hitBox.knockdown) {
                 setMove(Move::EndCombo);
 
             // Set airborne state
@@ -518,19 +482,12 @@ void Player::advanceFrame(vector<Player>& others) {
             // Set crouching hit state
             }else if(inMove(Move::Crouch) || inMove(Move::CrouchBlock) || inMove(Move::CrouchCombo)){
                 setMove(Move::CrouchCombo, true);
-                state.stun = hit.hitStun;
+                state.stun = col.hitBox.hitStun;
 
             // Set standing hit state
             }else{
                 setMove(Move::StandCombo);
-                state.stun = hit.hitStun;
-            }
-
-            if(hit.damage <= 10) {
-                g::audio.playSound(g::save.getSound("hit_light"), true);      
-
-            }else {
-                g::audio.playSound(g::save.getSound("hit_hard"), true);      
+                state.stun = col.hitBox.hitStun;
             }
         }
 
@@ -538,26 +495,8 @@ void Player::advanceFrame(vector<Player>& others) {
         if(inCorner())
             state.pushBack.x = -state.velocity.x;
 
-        // Create hitspark effect
-        for(int i = 0; i < Effect::Max; i ++) {
-            Effect& eff = state.effects[i];
-
-            if(eff.id == -1) {
-
-                if(block) {
-                    eff.id = g::save.getEffect("blockspark").id;
-                    eff.lifeTime = std::max(24, hit.damage * 2);
-
-                }else {
-                    eff.id = g::save.getEffect("hitspark").id;
-                    eff.lifeTime = std::max(12, hit.damage);
-                }
-                eff.position = hitLocation;
-                eff.angle = (Vector2(hit.x + hit.w / 2, hit.y - hit.h / 2) - hitLocation).getAngle();
-                eff.size = {24, 24};
-                break;
-            }
-        }
+        // Set state to prevent being hit until the next keyframe
+        state.hitKeyFrame[col.index] = others[col.index].getKeyFrame();
     }
 
     // Movement
@@ -822,6 +761,69 @@ void Player::advanceFrame(vector<Player>& others) {
     // Reset input
     in = Button::Flag();
     state.aiMove = -1;
+}
+
+void Player::advanceEffects(std::vector<Player>& others) {
+
+    // Step effect timers
+    for(int i = 0; i < Effect::Max; i ++) {
+
+        if(state.effects[i].id >= 0) {
+            state.effects[i].counter ++;
+
+            // Once complete reset to default
+            if(state.effects[i].counter > state.effects[i].lifeTime) 
+                state.effects[i] = Effect();
+        }
+    }
+
+    // State frames progressed, continue showing effects
+    if(others[gameIndex].state.counter == state.counter)
+        return;
+
+    // Play sound effect related to frame of animation
+    if(getFrame().sound != "")
+        g::audio.playSound(g::save.getSound(getFrame().sound), true);
+
+    // Check collisions
+    Collision col = getCollision(others);
+
+    if(col.collided) {
+
+        if(col.block) {
+            g::audio.playSound(g::save.getSound("block"), true);
+
+        }else {
+
+            if(col.hitBox.damage <= 10) {
+                g::audio.playSound(g::save.getSound("hit_light"), true);      
+
+            }else {
+                g::audio.playSound(g::save.getSound("hit_hard"), true);      
+            }
+        }
+
+        // Create hitspark effect
+        for(int i = 0; i < Effect::Max; i ++) {
+            Effect& eff = state.effects[i];
+
+            if(eff.id == -1) {
+
+                if(col.block) {
+                    eff.id = g::save.getEffect("blockspark").id;
+                    eff.lifeTime = std::max(24, col.hitBox.damage * 2);
+
+                }else {
+                    eff.id = g::save.getEffect("hitspark").id;
+                    eff.lifeTime = std::max(12, col.hitBox.damage);
+                }
+                eff.position = col.location;
+                eff.angle = (Vector2(col.hitBox.x + col.hitBox.w / 2, col.hitBox.y - col.hitBox.h / 2) - col.location).getAngle();
+                eff.size = {24, 24};
+                break;
+            }
+        }
+    }
 }
 
 void Player::dealDamage(int dmg) {
@@ -1124,10 +1126,16 @@ const bool& Player::getTaggedIn(vector<Player>& others) {
     return cache.tagged;
 }
 
-bool Player::getCollision(vector<Player>& others, HitBox* hitBox, int* index, Vector2* outLocation) {
+const Player::Collision& Player::getCollision(vector<Player>& others) {
+
+    if(cache.enabled && cache.collisionCounter == state.counter)
+        return cache.collision;
 
     if(!getTaggedIn(others))
-        return false;
+        return cache.collision;
+
+    cache.collision = Collision();
+    cache.collisionCounter = state.counter;
 
     for(int i = 0; i < others.size(); i ++) {
 
@@ -1135,58 +1143,75 @@ bool Player::getCollision(vector<Player>& others, HitBox* hitBox, int* index, Ve
             continue;
 
         // Valid collision
-        if(state.hitKeyFrame[i] != others[i].getKeyFrame() || state.hitKeyFrame[i] == -1) {
-            state.hitKeyFrame[i] = -1;
+        if(state.hitKeyFrame[i] == -1) {
 
             // Check HurtBox <-> HitBox collisions, for only one match
             for(auto& hit : others[i].getHitBoxes()) {
 
                 if(hit.type == HitType::Grab && state.grabIndex >= 0) {
-
-                    // Output the enemy hitbox
-                    if(hitBox)
-                        *hitBox = hit;
-
-                    // Output the originating player index
-                    if(index)
-                        *index = i;
-
-                    // Output the location where hit occured
-                    if(outLocation) {
-                        outLocation->x = hit.x + hit.w/2;
-                        outLocation->y = hit.y - hit.h/2;
-                    }
-
-                    state.hitKeyFrame[i] = others[i].getKeyFrame();
-                    return true;
+                    cache.collision.collided = true;
+                    cache.collision.hitBox = hit;
+                    cache.collision.index = i;
+                    cache.collision.location = {
+                        hit.x + hit.w/2,
+                        hit.y - hit.h/2
+                    };
+                    break;
                 }
 
                 for(auto& hurt : getHurtBoxes()) {
 
                     if(Real::rectangleInRectangle(hurt, hit)) {
-
-                        // Output the enemy hitbox
-                        if(hitBox)
-                            *hitBox = hit;
-
-                        // Output the originating player index
-                        if(index)
-                            *index = i;
-
-                        // Output the location where hit occured
-                        if(outLocation) {
-                            outLocation->x = ((hit.x + hit.w/2) + (hurt.x + hurt.w/2))/2.f;
-                            outLocation->y = ((hit.y - hit.h/2) + (hurt.y - hurt.h/2))/2.f;
-                        }
-
-                        state.hitKeyFrame[i] = others[i].getKeyFrame();
-                        return true;
+                        cache.collision.collided = true;
+                        cache.collision.hitBox = hit;
+                        cache.collision.index = i;
+                        cache.collision.location = {
+                            ((hit.x + hit.w/2) + (hurt.x + hurt.w/2))/2.f,
+                            ((hit.y - hit.h/2) + (hurt.y - hurt.h/2))/2.f
+                        };
+                        break;
                     }
                 }
+
+                if(cache.collision.collided)
+                    break;
             }
         }
     }
-    return false;
+
+    // Check for block status
+    if(cache.collision.collided) {
+        bool block = false;
+
+        // Block: if input in the opposite direction of opponent   
+        if(inMove(Move::Stand) || inMove(Move::StandBlock) || inMove(Move::Crouch) || inMove(Move::CrouchBlock)) 
+            block = (state.side == 1 && getSOCD().x < 0) || (state.side == -1 && getSOCD().x > 0);
+        
+        // Block: if standing or crouching input for hitType
+        switch(cache.collision.hitBox.type) {
+
+            case HitType::High: 
+                cache.collision.block = (block && getSOCD().y == 0) || state.aiMove == Move::StandBlock;
+                break;
+
+            case HitType::Mid:
+                cache.collision.block = (block) || state.aiMove == Move::CrouchBlock || state.aiMove == Move::StandBlock;
+                break;
+
+            case HitType::Low: 
+                cache.collision.block = (block && getSOCD().y < 0) || state.aiMove == Move::CrouchBlock;
+                break;
+
+            case HitType::Unblockable:
+                cache.collision.block = false;
+                break;
+
+            case HitType::Grab:
+                cache.collision.block = (state.position.y > 0 || state.stun != 0) && state.grabIndex < 0;
+                break;
+        }
+    }
+    return cache.collision;
 }
 
 Vector2 Player::getCameraCenter(std::vector<Player>& others) {

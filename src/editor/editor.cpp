@@ -382,7 +382,9 @@ void Editor::update() {
     if(settings.playback && timer >= settings.playbackSpeed) {
         timer = 0;
 
-        player.advanceFrame();
+        vector<Player> others = {player};
+        player.advanceFrame(others);
+        player.advanceEffects(others);
 
         if(player.state.position.y == 0 && player.doneMove())
             resetPlayer();

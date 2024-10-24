@@ -125,7 +125,7 @@ Menu::Option::Option(const Option& copy) {
 	}
 }
 
-void cycleIndex(std::vector<Menu::Option> options, int* index, int quantity) {
+void cycleIndex(const std::vector<Menu::Option>& options, int* index, int quantity) {
 	int beg = *index;
 
 	do {

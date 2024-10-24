@@ -11,7 +11,6 @@
 #include <cmath>
 #include <json.hpp>
 #include <thread>
-#include <iostream>
 
 using std::vector, std::string;
 
@@ -355,9 +354,19 @@ void Player::advanceFrame(vector<Player>& others) {
 
     // Grabee state control
     if(state.grabIndex >= 0) {
-        bool inputBreak = false;
+
+        // Force set to the previous frame
+        for(auto& ply : others) {
+
+            if(ply.gameIndex == gameIndex) {
+                cache.frameCounter = state.counter;
+                cache.frame = ply.cache.frame;
+            }
+        }
 
         // Check if the inputs match the required grab break
+        bool inputBreak = false;
+
         switch(others[state.grabIndex].getFrame().grabBreak) {
 
             case GrabBreak::A:
@@ -377,9 +386,8 @@ void Player::advanceFrame(vector<Player>& others) {
         if(others[state.grabIndex].state.grabIndex == gameIndex)
             inputBreak = true;
 
-        // Force grab animation
+        // Get animation from the grabber
         if(others[state.grabIndex].getFrame().isGrab && !inputBreak) {
-            cache.frameCounter = state.counter;
             cache.frame = Frame();
             cache.frame.pose = others[state.grabIndex].getFrame().grabee;
             cache.frame.key = others[state.grabIndex].getFrame().key;
@@ -396,7 +404,7 @@ void Player::advanceFrame(vector<Player>& others) {
 
         // Broke out of the grab
         }else if(inputBreak){
-            state.grabIndex = -1;           
+            state.grabIndex = -1;
             state.position.y = 0;
             state.velocity.x = state.side * -3.f;
             state.stun = 20;

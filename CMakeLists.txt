@@ -98,6 +98,7 @@ add_executable(Game
 	src/game/options.cpp
 	src/game/button_config.cpp
 	src/game/video_config.cpp
+	src/game/practise_game.cpp
 
 	${Core}
 	${ImGui}

@@ -21,11 +21,10 @@ void ButtonConfig::run(Rectangle area) {
 	}
 
 	enum {
-		SelectMode = -1,
-		ControllerMode = -2,
-		InputMode = -3,
-		Back = -4,
-		Disregard = -5
+		SelectMode,
+		ControllerMode,
+		InputMode,
+		Back,
 	};
 
 	int step[MAX_PLAYERS];
@@ -48,16 +47,18 @@ void ButtonConfig::run(Rectangle area) {
 
 		// Draw the menu area
 		sh = area;
-		sh.setFillColor(sf::Color::Black);
+		sh.setFillColor(sf::Color(32, 32, 32));
+		sh.setOutlineThickness(4);
+		sh.setOutlineColor(sf::Color::White);
 		g::video.draw(sh);
 
 		for(int i = 0; i < MAX_PLAYERS; i ++) {
 
 			Rectangle subArea = {
-				area.x + area.w / 2 * (float)(i % 2), 
-				area.y + area.h / 2 * (float)(i / 2), 
-				area.w / 2, 
-				area.h / 2
+				area.x + area.w / 2 * (float)(i % 2) + 2, 
+				area.y + area.h / 2 * (float)(i / 2) + 2, 
+				area.w / 2 - 4, 
+				area.h / 2 - 4
 			};	
 
 			Button::Config b = g::save.getButtonConfig(i);
@@ -82,7 +83,7 @@ void ButtonConfig::run(Rectangle area) {
 				options.push_back({});
 
 				options.push_back({Back, "Back"});
-				options.push_back({});
+				options.push_back({Back, ""});
 
 				int res = Menu::Table(options, 2, true, &hover[i].top(), i, subArea);
 
@@ -108,7 +109,7 @@ void ButtonConfig::run(Rectangle area) {
 
 			}else if(step[i] == InputMode) {
 
-				if(Menu::WaitForInput(&hover[i].top(), i, area) == Menu::Accept) {
+				if(Menu::WaitForInput(&hover[i].top(), i, subArea) == Menu::Accept) {
 					int input = hover[i].top();
 					hover[i].pop();
 
@@ -123,7 +124,7 @@ void ButtonConfig::run(Rectangle area) {
 
 			}else if(step[i] == ControllerMode) {
 
-				if(Menu::WaitForController(&hover[i].top(), i, area) == Menu::Accept) {
+				if(Menu::WaitForController(&hover[i].top(), i, subArea) == Menu::Accept) {
 					int index = hover[i].top();
 					hover[i].pop();
 

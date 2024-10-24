@@ -79,7 +79,9 @@ bool PractiseGame::run(vector<Player::Config> configs) {
             };
 
             sf::RectangleShape sh = area;
-            sh.setFillColor(sf::Color::Black);
+            sh.setFillColor(sf::Color(32, 32, 32));
+            sh.setOutlineThickness(4);
+            sh.setOutlineColor(sf::Color::White);
             g::video.draw(sh);
 
             int res = Menu::List(options, &hover, 0, area);

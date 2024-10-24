@@ -42,7 +42,9 @@ void VideoConfig::run(Rectangle area) {
 
 		// Draw the menu area
 		sh = area;
-		sh.setFillColor(sf::Color::Black);
+		sh.setFillColor(sf::Color(32, 32, 32));
+		sh.setOutlineThickness(4);
+		sh.setOutlineColor(sf::Color::White);
 		g::video.draw(sh);
 
 		// Draw the options

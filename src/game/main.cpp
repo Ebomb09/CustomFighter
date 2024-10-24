@@ -1,6 +1,7 @@
 #include "lobby.h"
 #include "local_game.h"
 #include "net_game.h"
+#include "practise_game.h"
 #include "character_select.h"
 #include "options.h"
 
@@ -8,10 +9,6 @@
 #include "core/input_interpreter.h"
 #include "core/video.h"
 #include "core/save.h"
-
-#ifdef __WIN32__
-    #include <windows.h>
-#endif
 
 using std::vector, std::string;
 
@@ -21,6 +18,7 @@ enum {
     RoundsFight2P,
     RoundsFight4P,
     NetPlay,
+    Practise,
     OptionMenu,
     Exit
 };
@@ -31,17 +29,13 @@ vector<Menu::Option> menuOptions = {
     {VersusFight4P, "Versus Mode: 4P Fight"},
     {RoundsFight2P, "Rounds Mode: 2P Fight"},
     {RoundsFight4P, "Rounds Mode: 4P Fight"},
+    {Practise, "Practise Mode"},
     {OptionMenu, "Options"},
     {Exit, "Exit"}
 };
 int hover = 0;
 
 int main(int argc, char* argv[]) {
-
-    #ifdef __WIN32__
-        ShowWindow(GetConsoleWindow(), SW_HIDE);   
-    #endif
-
     g::video.setTitle("Custom Fighter");
     g::video.setSize(g::save.resolution);
     g::video.setDisplayMode(g::save.displayMode);
@@ -53,7 +47,14 @@ int main(int argc, char* argv[]) {
 
         g::video.clear();
 
-        int res = Menu::List(menuOptions, &hover, 0, {0, 0, (float)g::video.getSize().x, (float)g::video.getSize().y});
+        Rectangle area = {
+            64,
+            64,
+            g::video.getSize().x / 2 - 128,
+            g::video.getSize().y - 128
+        };
+
+        int res = Menu::List(menuOptions, &hover, 0, area);
 
         if(res == Menu::Accept) {
 
@@ -85,6 +86,13 @@ int main(int argc, char* argv[]) {
                     LocalGame::run(configs, GameMode::Rounds);
                 }
                 
+            }else if(menuOptions[hover].id == Practise) {
+                vector<Player::Config> configs = CharacterSelect::run(2);
+
+                if(configs.size() == 2) {
+                    PractiseGame::run(configs);
+                }
+                
             }else if(menuOptions[hover].id == NetPlay) {
                 vector<Player::Config> configs = CharacterSelect::run(1);
 
@@ -97,7 +105,7 @@ int main(int argc, char* argv[]) {
                 }
 
             }else if(menuOptions[hover].id == OptionMenu) {
-                Options::run();
+                Options::run({area.x + 128, area.y, area.w, area.h});
             
             }else if(menuOptions[hover].id == Exit) {
                 g::video.close();

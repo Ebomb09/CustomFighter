@@ -1,22 +1,27 @@
-#include "local_game.h"
+#include "practise_game.h"
 #include "game_state.h"
+#include "character_select.h"
 #include "options.h"
 
 #include "core/input_interpreter.h"
 #include "core/video.h"
 #include "core/menu.h"
 
+#include <iostream>
+
 using std::vector;
 
 namespace ID {
     enum {
         Resume,
+        QuickSelect,
         Options,
         Exit
     };
 };
 
-bool LocalGame::run(vector<Player::Config> configs, int gameMode) {
+
+bool PractiseGame::run(vector<Player::Config> configs) {
 	Game game;
 
     // Configure players
@@ -25,10 +30,7 @@ bool LocalGame::run(vector<Player::Config> configs, int gameMode) {
         game.players[i].config = configs[i];
     }
 
-    //game.players[1].seatIndex = -1;
-    //game.players[1].aiLevel = 5;
-
-    game.init(configs.size(), 3, 60, gameMode);
+    game.init(configs.size(), 3, 100);
 
     bool pause = false;
     int hover = 0;
@@ -43,12 +45,29 @@ bool LocalGame::run(vector<Player::Config> configs, int gameMode) {
         if(!pause) {
             game.readInput();
             game.advanceFrame();
+
+            // Ensure the players states
+            for(int i = 0; i < game.playerCount; i ++) {
+
+                if(game.players[i].state.position.y <= 0 && 
+                    game.players[i].state.stun == 0 && 
+                    game.players[i].state.hitStop == 0 &&
+                    game.players[i].state.grabIndex < 0 &&
+                    game.players[i].inMove(Move::Stand)) {
+
+                    game.players[i].state.health = 100;
+                }
+            }
+
+            if(game.state.flow == Game::Flow::PlayRound)
+                game.state.timer = (game.timerMax - 1) * 60;
         }
         game.draw();
 
         if(pause) {
             vector<Menu::Option> options;
             options.push_back({ID::Resume, "Resume"});
+            options.push_back({ID::QuickSelect, "Quick Select"});
             options.push_back({ID::Options, "Options"});
             options.push_back({ID::Exit, "Exit"});
 
@@ -69,6 +88,18 @@ bool LocalGame::run(vector<Player::Config> configs, int gameMode) {
 
                 if(options[hover].id == ID::Resume) {
                     pause = false;
+
+                }else if(options[hover].id == ID::QuickSelect) {
+                    vector<Player::Config> edit = CharacterSelect::run(configs.size());
+
+                    if(edit.size() == configs.size()) {
+
+                        // Reset player config and cache
+                        for(int i = 0; i < game.playerCount; i ++) {
+                            game.players[i].config = edit[i];
+                            game.players[i].setState(game.players[i].state);
+                        }
+                    }
 
                 }else if(options[hover].id == ID::Options) {
                     Options::run({area.x + 128, area.y, area.w, area.h});

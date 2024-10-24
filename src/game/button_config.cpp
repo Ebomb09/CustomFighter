@@ -12,7 +12,13 @@
 
 using std::vector, std::stack;
 
-void ButtonConfig::run() {
+void ButtonConfig::run(Rectangle area) {
+
+	// Save the previous draw frame
+	sf::Texture prev;
+	if(g::video.getRenderWindowPtr() && prev.create(g::video.getSize().x, g::video.getSize().y)) {
+		prev.update(*g::video.getRenderWindowPtr());
+	}
 
 	enum {
 		SelectMode = -1,
@@ -35,13 +41,23 @@ void ButtonConfig::run() {
 
         g::video.clear();
 
+		// Draw the previous frame
+		sf::RectangleShape sh = Rectangle{0, 0, g::video.getSize().x, g::video.getSize().y};
+		sh.setTexture(&prev);
+		g::video.draw(sh);
+
+		// Draw the menu area
+		sh = area;
+		sh.setFillColor(sf::Color::Black);
+		g::video.draw(sh);
+
 		for(int i = 0; i < MAX_PLAYERS; i ++) {
 
-			Rectangle area = {
-				(float)g::video.getSize().x / 2 * (float)(i % 2), 
-				(float)g::video.getSize().y / 2 * (float)(i / 2), 
-				(float)g::video.getSize().x / 2, 
-				(float)g::video.getSize().y / 2
+			Rectangle subArea = {
+				area.x + area.w / 2 * (float)(i % 2), 
+				area.y + area.h / 2 * (float)(i / 2), 
+				area.w / 2, 
+				area.h / 2
 			};	
 
 			Button::Config b = g::save.getButtonConfig(i);
@@ -68,7 +84,7 @@ void ButtonConfig::run() {
 				options.push_back({Back, "Back"});
 				options.push_back({});
 
-				int res = Menu::Table(options, 2, true, &hover[i].top(), i, area);
+				int res = Menu::Table(options, 2, true, &hover[i].top(), i, subArea);
 
 				if(res == Menu::Accept) {
 

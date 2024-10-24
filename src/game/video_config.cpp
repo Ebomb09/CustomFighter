@@ -10,7 +10,13 @@
 
 using std::string, std::vector;
 
-void VideoConfig::run() {
+void VideoConfig::run(Rectangle area) {
+
+	// Save the previous draw frame
+	sf::Texture prev;
+	if(g::video.getRenderWindowPtr() && prev.create(g::video.getSize().x, g::video.getSize().y)) {
+		prev.update(*g::video.getRenderWindowPtr());
+	}
 
 	enum {
 		Resolution,
@@ -29,11 +35,21 @@ void VideoConfig::run() {
 
 	    g::video.clear();
 
-		Rectangle area = {0, 0, (float)g::video.getSize().x, (float)g::video.getSize().y};
+		// Draw the previous frame
+		sf::RectangleShape sh = Rectangle{0, 0, g::video.getSize().x, g::video.getSize().y};
+		sh.setTexture(&prev);
+		g::video.draw(sh);
+
+		// Draw the menu area
+		sh = area;
+		sh.setFillColor(sf::Color::Black);
+		g::video.draw(sh);
+
+		// Draw the options
 		vector<Menu::Option> options;
 
 		options.push_back({Resolution, "Resolution"});
-		options.push_back({Resolution, std::to_string(g::save.resolution.x) + "x" + std::to_string(g::save.resolution.y)});
+		options.push_back({Resolution, std::to_string((int)g::save.resolution.x) + "x" + std::to_string((int)g::save.resolution.y)});
 
 		options.push_back({DisplayMode, "Display Mode"});
 		options.push_back({DisplayMode, DisplayMode::String[g::save.displayMode]});	

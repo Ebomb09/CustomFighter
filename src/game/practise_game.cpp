@@ -49,11 +49,16 @@ bool PractiseGame::run(vector<Player::Config> configs) {
             // Ensure the players states
             for(int i = 0; i < game.playerCount; i ++) {
 
-                if(game.players[i].state.position.y <= 0 && 
+                if(
+                    game.players[i].state.position.y <= 0 && 
                     game.players[i].state.stun == 0 && 
                     game.players[i].state.hitStop == 0 &&
                     game.players[i].state.grabIndex < 0 &&
-                    game.players[i].inMove(Move::Stand)) {
+                    (
+                        game.players[i].inMove(Move::Stand) ||
+                        game.players[i].inMove(Move::Crouch)
+                    )
+                ) {
 
                     game.players[i].state.health = 100;
                 }

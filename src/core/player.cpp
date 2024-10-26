@@ -285,6 +285,16 @@ void Player::advanceFrame(vector<Player>& others) {
         if(move != -1) {
             state.moveFrame = 0;
             setMove(move);
+
+            // If animation has a dedicated first frame impulse set it to that
+            Animation* anim = getAnimations()[state.moveIndex];
+
+            if(anim && anim->getKeyFrameCount() > 0) {
+                Vector2 impulse = anim->getKeyFrame(0).impulse * Vector2{(float)state.side, 1.f};
+                
+                if(impulse.x != 0.f || impulse.y != 0.f)
+                    state.velocity = impulse;
+            }
         }
     }
 
@@ -818,15 +828,17 @@ void Player::advanceEffects(std::vector<Player>& others) {
             if(eff.id == -1) {
 
                 if(col.block) {
-                    eff.id = g::save.getEffect("blockspark").id;
-                    eff.lifeTime = std::max(24, col.hitBox.damage * 2);
+                    AnimatedTexture anim = g::save.getEffect("blockspark");
+                    eff.id = anim.id;
+                    eff.lifeTime = std::max(anim.getFrameCount(), col.hitBox.blockStun);
 
                 }else {
-                    eff.id = g::save.getEffect("hitspark").id;
-                    eff.lifeTime = std::max(12, col.hitBox.damage);
+                    AnimatedTexture anim = g::save.getEffect("hitspark");
+                    eff.id = anim.id;
+                    eff.lifeTime = std::max(anim.getFrameCount(), col.hitBox.hitStun);
                 }
-                eff.position = col.location;
-                eff.angle = (Vector2(col.hitBox.x + col.hitBox.w / 2, col.hitBox.y - col.hitBox.h / 2) - col.location).getAngle();
+                eff.position = Vector2{col.hitBox.x + col.hitBox.w / 2.f, col.hitBox.y - col.hitBox.h / 2.f} + col.hitBox.force;
+                eff.angle = Vector2{col.hitBox.force.x, -col.hitBox.force.y}.getAngle();
                 eff.size = {24, 24};
                 break;
             }

@@ -6,6 +6,7 @@
 #include "core/input_interpreter.h"
 #include "core/video.h"
 #include "core/menu.h"
+#include "core/audio.h"
 
 #include <iostream>
 
@@ -39,8 +40,14 @@ bool PractiseGame::run(vector<Player::Config> configs) {
         g::input.pollEvents();
         g::video.clear();
 
-        if(g::input.pressed(KEYBOARD_INDEX, sf::Keyboard::Escape))
+        if(g::input.pressed(KEYBOARD_INDEX, sf::Keyboard::Escape)) {
             pause = !pause;
+
+            if(pause)
+                g::audio.setVolume(25);
+            else
+                g::audio.setVolume(100);
+        }
 
         if(!pause) {
             game.readInput();

@@ -5,6 +5,7 @@
 #include "core/input_interpreter.h"
 #include "core/video.h"
 #include "core/menu.h"
+#include "core/audio.h"
 
 using std::vector;
 
@@ -37,8 +38,14 @@ bool LocalGame::run(vector<Player::Config> configs, int gameMode) {
         g::input.pollEvents();
         g::video.clear();
 
-        if(g::input.pressed(KEYBOARD_INDEX, sf::Keyboard::Escape))
+        if(g::input.pressed(KEYBOARD_INDEX, sf::Keyboard::Escape)) {
             pause = !pause;
+        
+            if(pause)
+                g::audio.setVolume(25);
+            else
+                g::audio.setVolume(100);
+        }
 
         if(!pause) {
             game.readInput();
@@ -60,8 +67,11 @@ bool LocalGame::run(vector<Player::Config> configs, int gameMode) {
             };
 
             sf::RectangleShape sh = area;
-            sh.setFillColor(sf::Color::Black);
+            sh.setFillColor(sf::Color(32, 32, 32));
+            sh.setOutlineThickness(4);
+            sh.setOutlineColor(sf::Color::White);
             g::video.draw(sh);
+
 
             int res = Menu::List(options, &hover, 0, area);
 

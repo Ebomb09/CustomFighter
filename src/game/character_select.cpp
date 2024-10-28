@@ -30,6 +30,9 @@ struct Creator {
         Insert,
         ArmSize,
         LegSize,
+        ShoulderSize,
+        HipSize,
+        Height,
         Index
     };
 
@@ -186,12 +189,24 @@ struct Creator {
         out.push_back({});
 
         out.push_back({ID::ArmSize, "4", "fight", 1});
-        out.push_back({ID::ArmSize, "Arm Size: " + std::to_string((int)dummy.config.armSize)});
+        out.push_back({ID::ArmSize, "Arm Size: " + std::to_string((int)(dummy.config.armSize * 12.5))});
         out.push_back({ID::ArmSize, "6", "fight", -1});
 
         out.push_back({ID::LegSize, "4", "fight", 1});
-        out.push_back({ID::LegSize, "Leg Size: " + std::to_string((int)dummy.config.legSize)});
+        out.push_back({ID::LegSize, "Leg Size: " + std::to_string((int)(dummy.config.legSize * 11.76))});
         out.push_back({ID::LegSize, "6", "fight", -1});
+
+        out.push_back({ID::ShoulderSize, "4", "fight", 1});
+        out.push_back({ID::ShoulderSize, "Shoulder Size: " + std::to_string((int)(dummy.config.shoulderSize * 100))});
+        out.push_back({ID::ShoulderSize, "6", "fight", -1});
+
+        out.push_back({ID::HipSize, "4", "fight", 1});
+        out.push_back({ID::HipSize, "Hip Size: " + std::to_string((int)(dummy.config.hipSize * 100))});
+        out.push_back({ID::HipSize, "6", "fight", -1});
+
+        out.push_back({ID::Height, "4", "fight", 1});
+        out.push_back({ID::Height, "Height: " + std::to_string((int)(dummy.config.height * 100))});
+        out.push_back({ID::Height, "6", "fight", -1});
 
         out.push_back({});
         out.push_back({});
@@ -658,7 +673,40 @@ struct Creator {
                     else if(g::input.held(b.index, b.Right))
                         dummy.config.legSize += 0.1f;
 
-                    dummy.config.legSize = std::clamp(dummy.config.legSize, 3.f, 15.f);                 
+                    dummy.config.legSize = std::clamp(dummy.config.legSize, 3.f, 15.f);  
+
+                // Shift proportion of Shoulder size
+                }else if(options[itemHover].id == ID::ShoulderSize) {
+
+                    if(g::input.held(b.index, b.Left))
+                        dummy.config.shoulderSize -= 0.01f;
+
+                    else if(g::input.held(b.index, b.Right))
+                        dummy.config.shoulderSize += 0.01f;
+
+                    dummy.config.shoulderSize = std::clamp(dummy.config.shoulderSize, 0.5f, 1.5f);
+
+                // Shift proportion of Hip size
+                }else if(options[itemHover].id == ID::HipSize) {
+
+                    if(g::input.held(b.index, b.Left))
+                        dummy.config.hipSize -= 0.01f;
+
+                    else if(g::input.held(b.index, b.Right))
+                        dummy.config.hipSize += 0.01f;
+
+                    dummy.config.hipSize = std::clamp(dummy.config.hipSize, 0.5f, 1.5f);
+
+                // Shift proportion of Height
+                }else if(options[itemHover].id == ID::Height) {
+
+                    if(g::input.held(b.index, b.Left))
+                        dummy.config.height -= 0.01f;
+
+                    else if(g::input.held(b.index, b.Right))
+                        dummy.config.height += 0.01f;
+
+                    dummy.config.height = std::clamp(dummy.config.height, 0.8f, 1.2f);          
                 }
             }
 

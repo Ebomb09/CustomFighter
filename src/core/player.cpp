@@ -133,6 +133,36 @@ void Player::draw(Renderer* renderer) {
 
     Skeleton pose = getSkeleton();
 
+    // Shoulder Proportions
+    for(auto& joint : {&pose.shoulder[0], &pose.shoulder[1]}) {
+        *joint = pose.torso[0].translate(
+            (*joint - pose.torso[0]).getAngle(),
+            (*joint - pose.torso[0]).getDistance() * config.shoulderSize
+        );
+    }
+
+    // Hip Proportions
+    for(auto& joint : {&pose.hip[0], &pose.hip[1]}) {
+        *joint = pose.torso[1].translate(
+            (*joint - pose.torso[1]).getAngle(),
+            (*joint - pose.torso[1]).getDistance() * config.hipSize
+        );
+    }
+
+    // Height Proportions
+    float rot = PI/2.f - (pose.torso[0] - pose.torso[1]).getAngle();
+    Vector2 origin = pose.torso[1];
+    for(int j = 0; j < pose.jointCount; j ++) {
+        pose.joints[j].rotate(rot, origin);
+        pose.joints[j] -= origin;
+
+        pose.joints[j].y *= config.height;
+        pose.joints[j].y += origin.y * config.height - origin.y;
+
+        pose.joints[j] += origin;
+        pose.joints[j].rotate(-rot, origin);
+    }
+
     // HitStop shake
     if(state.hitStop < 0) {
 
@@ -1462,6 +1492,15 @@ void Player::Config::loadFromText(string str) {
     if(json["legSize"].is_number())
         armSize = json["legSize"];
 
+    if(json["shoulderSize"].is_number())
+        shoulderSize = json["shoulderSize"];
+
+    if(json["hipSize"].is_number())
+        hipSize = json["hipSize"];
+
+    if(json["height"].is_number())
+        height = json["height"];
+
     for(int i = 0; i < json["moves"].size(); i ++) 
         if(json["moves"][i].is_string())
             moves[i] = json["moves"][i];
@@ -1485,6 +1524,9 @@ string Player::Config::saveToText() {
 
     json["armSize"] = armSize;
     json["legSize"] = legSize;
+    json["shoulderSize"] = shoulderSize;
+    json["hipSize"] = hipSize;
+    json["height"] = height;
 
     json["moves"] = moves;   
     json["motions"] = motions;     

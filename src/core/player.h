@@ -31,6 +31,9 @@ struct Player {
 	struct Config {
 		float armSize = 8.f;
 		float legSize = 8.5f;
+		float shoulderSize = 1.0f;
+		float hipSize = 1.0f;
+		float height = 1.0f;
 
 		struct Cloth {
 			std::string name	= "";

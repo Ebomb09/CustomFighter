@@ -218,6 +218,7 @@ void Player::drawEffects(Renderer* renderer) {
 
                 sf::RectangleShape d = renderer->toScreen(rect);
                 d.setTexture(tex);
+                d.setFillColor(eff.blend);
                 d.setOrigin({d.getSize().x / 2, d.getSize().y / 2});
                 d.setRotation(eff.angle * 180 / PI);
                 renderer->draw(d);
@@ -815,13 +816,16 @@ void Player::advanceEffects(std::vector<Player>& others) {
 
     // Step effect timers
     for(int i = 0; i < Effect::Max; i ++) {
+        Effect& eff = state.effects[i];
 
-        if(state.effects[i].id >= 0) {
-            state.effects[i].counter ++;
+        if(eff.id >= 0) {
+            eff.counter ++;
+
+            eff.position += eff.velocity;
 
             // Once complete reset to default
-            if(state.effects[i].counter > state.effects[i].lifeTime) 
-                state.effects[i] = Effect();
+            if(eff.counter > eff.lifeTime) 
+                eff = Effect();
         }
     }
 
@@ -851,29 +855,84 @@ void Player::advanceEffects(std::vector<Player>& others) {
             }
         }
 
-        // Create hitspark effect
-        for(int i = 0; i < Effect::Max; i ++) {
-            Effect& eff = state.effects[i];
+        // Create blood / sweat effect
+        for(int i = 0; i < col.hitBox.damage; i += 2) {
+            Effect& eff = createEffect();
 
-            if(eff.id == -1) {
+            float angle = col.hitBox.force.getAngle() + (-45 + rand() % 91) * PI / 180.f;
 
-                if(col.block) {
-                    AnimatedTexture anim = g::save.getEffect("blockspark");
-                    eff.id = anim.id;
-                    eff.lifeTime = std::max(anim.getFrameCount(), col.hitBox.blockStun);
-
-                }else {
-                    AnimatedTexture anim = g::save.getEffect("hitspark");
-                    eff.id = anim.id;
-                    eff.lifeTime = std::max(anim.getFrameCount(), col.hitBox.hitStun);
-                }
-                eff.position = Vector2{col.hitBox.x + col.hitBox.w / 2.f, col.hitBox.y - col.hitBox.h / 2.f} + col.hitBox.force;
-                eff.angle = Vector2{col.hitBox.force.x, -col.hitBox.force.y}.getAngle();
-                eff.size = {24, 24};
-                break;
+            if(col.block) {
+                eff.id = g::save.getEffect("sweat").id;
+            }else {
+                eff.id = g::save.getEffect("blood").id;
             }
+
+            eff.size = {16.f, 16.f};
+            eff.blend = {255, 255, 255, 96};
+            eff.position = col.location;
+            eff.velocity = Vector2{0.f, 0.f}.translate(angle, col.hitBox.force.getDistance() / 4.f);
+
+            // Entropy
+            eff.lifeTime = 12 + rand() % 25;
+            eff.position += eff.velocity;
+        }
+
+        // Create hitspark effect
+        Effect& eff = createEffect();
+
+        if(col.block) {
+            AnimatedTexture anim = g::save.getEffect("blockspark");
+            eff.id = anim.id;
+            eff.lifeTime = std::max(anim.getFrameCount(), col.hitBox.blockStun);
+
+        }else {
+            AnimatedTexture anim = g::save.getEffect("hitspark");
+            eff.id = anim.id;
+            eff.lifeTime = std::max(anim.getFrameCount(), col.hitBox.hitStun);
+        }
+        eff.position = Vector2{col.hitBox.x + col.hitBox.w / 2.f, col.hitBox.y - col.hitBox.h / 2.f} + col.hitBox.force;
+        eff.angle = Vector2{col.hitBox.force.x, -col.hitBox.force.y}.getAngle();
+        eff.size = {24, 24};
+    }
+
+    // Dust Particles for landing on ground
+    if(others[gameIndex].state.position.y > 0 && state.position.y == 0) {
+        Rectangle bounds = getRealBoundingBox();
+        float size = std::abs(others[gameIndex].state.velocity.y) * 4.f;
+
+        for(float pos = bounds.x; pos <= bounds.x + bounds.w; pos += size / 2.f) {
+            Effect& eff = createEffect();
+
+            eff.id = g::save.getEffect("dust").id;
+            eff.size.x = eff.size.y = size;
+            eff.blend = {64, 64, 64, 96};
+            eff.position.x = pos;
+            eff.position.y = state.position.y;
+            eff.velocity = others[gameIndex].state.velocity * Vector2{1, -1} / 16.f;
+
+            // Entropy
+            eff.lifeTime = 12 + rand() % 25;
+            eff.velocity.y *= 1.f + (1 + rand() % 200) / 100.f;
+            eff.position += eff.velocity;
         }
     }
+}
+
+Player::Effect& Player::createEffect() {
+    int index = -1;
+
+    for(int i = 0; i < Effect::Max; i ++) {
+
+        if(state.effects[i].id == -1) {
+            state.effects[i] = Effect();
+            return state.effects[i];
+        }
+
+        if(index == -1 || state.effects[index].counter < state.effects[i].counter)
+            index = i;
+    }
+    state.effects[index] = Effect();
+    return state.effects[index];
 }
 
 void Player::dealDamage(int dmg) {

@@ -60,7 +60,9 @@ struct Player {
 		int id = -1;
 		int counter = 0;
 		int lifeTime = 0;
+		sf::Color blend = sf::Color::White;
 		Vector2 position = {0, 0};
+		Vector2 velocity = {0, 0};
 		Vector2 size = {0, 0};
 		float angle = 0;
 	};
@@ -99,6 +101,8 @@ struct Player {
 	void draw(Renderer* renderer = NULL);
 	void drawShadow(Renderer* renderer = NULL);
 	void drawEffects(Renderer* renderer = NULL);
+
+	Effect& createEffect();
 
 	void dealDamage(int dmg);
 

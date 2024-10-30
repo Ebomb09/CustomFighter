@@ -262,7 +262,7 @@ void Skeleton::drawTorso(Renderer* renderer, std::vector<Clothing> list) {
         };
 
         // Want vs Have Angle
-        float rotate = PI/2 - (pt[0][1] - pt[2][1]).getAngle();
+        float rotate = PI/2.f - (pt[0][1] - pt[2][1]).getAngle();
 
         for(int u = 0; u < indices.size(); u += 4) {
 
@@ -300,19 +300,24 @@ void Skeleton::drawHead(Renderer* renderer, std::vector<Clothing> list, float he
         psuedoHeadTop = head.translate(headAngle - PI / 2.f, height / 5.5f);
 
     Bone psuedoBone {head, psuedoHeadTop};
-
     drawBone(renderer, list, ClothingSpace::Head, psuedoBone, height / 2.f, !(headAngle >= -PI / 2.f && headAngle < PI / 2.f));  
 }
 
 void Skeleton::drawUpperArm(Renderer* renderer, std::vector<Clothing> list, int side, float width) {
-    Vector2 psuedoShoulder = shoulder[side].translate((hip[side] - shoulder[side]).getAngle(), width / 2);
+    Vector2 normShoulder = shoulder[side].translate((hip[side] - shoulder[side]).getAngle(), std::sqrt(width / 2.f));
 
-    Bone psuedoBone {psuedoShoulder, elbow[side]};
+    Vector2 psuedoShoulder = normShoulder.translate((elbow[side] - normShoulder).getAngle(), std::sqrt(width / 2.f) / 2.f);
+    Vector2 psuedoElbow = elbow[side].translate((normShoulder - elbow[side]).getAngle(), std::sqrt(width / 2.f) / 2.f);
 
+    Bone psuedoBone {psuedoShoulder, psuedoElbow};
     drawBone(renderer, list, ClothingSpace::UpperArm, psuedoBone, width, torsoTopFlipped());
 }
 
 void Skeleton::drawForeArm(Renderer* renderer, std::vector<Clothing> list, int side, float width) {
+    Vector2 psuedoElbow = elbow[side].translate((wrist[side] - elbow[side]).getAngle(), std::sqrt(width / 2.f) / 2.f);
+    Vector2 psuedoWrist = wrist[side].translate((elbow[side] - wrist[side]).getAngle(), std::sqrt(width / 2.f) / 2.f);
+
+    Bone psuedoBone {psuedoElbow, psuedoWrist};
     drawBone(renderer, list, ClothingSpace::ForeArm, forearm[side], width, torsoTopFlipped());   
 }
 
@@ -330,15 +335,18 @@ void Skeleton::drawHand(Renderer* renderer, std::vector<Clothing> list, int side
 }
 
 void Skeleton::drawThigh(Renderer* renderer, std::vector<Clothing> list, int side, float width) {
-    Vector2 psuedoHip = torso[1] + (hip[side] - torso[1]) / 2.f;
+    Vector2 normHip = torso[1] + (hip[side] - torso[1]) / 2.f;
 
-    Bone psuedoBone {psuedoHip, knee[side]};
+    Vector2 psuedoHip = normHip.translate((knee[side] - normHip).getAngle(), std::sqrt(width / 2.f) / 2.f);
+    Vector2 psuedoKnee = knee[side].translate((normHip - knee[side]).getAngle(), std::sqrt(width / 2.f) / 2.f);
+
+    Bone psuedoBone {psuedoHip, psuedoKnee};
     drawBone(renderer, list, ClothingSpace::Thigh, psuedoBone, width, torsoBottomFlipped()); 
 }
 
 void Skeleton::drawCalf(Renderer* renderer, std::vector<Clothing> list, int side, float width) {
-    Vector2 psuedoKnee = knee[side].translate((heel[side] - knee[side]).getAngle(), std::sqrt(width / 2.f));
-    Vector2 psuedoHeel = heel[side].translate((knee[side] - heel[side]).getAngle(), std::sqrt(width / 2.f));
+    Vector2 psuedoKnee = knee[side].translate((heel[side] - knee[side]).getAngle(), std::sqrt(width / 2.f) / 2.f);
+    Vector2 psuedoHeel = heel[side].translate((knee[side] - heel[side]).getAngle(), std::sqrt(width / 2.f) / 2.f);
 
     Bone psuedoBone {psuedoKnee, psuedoHeel};
     drawBone(renderer, list, ClothingSpace::Calf, psuedoBone, width, torsoBottomFlipped());   

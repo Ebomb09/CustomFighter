@@ -2,6 +2,8 @@
 #include "save.h"
 #include "video.h"
 
+#include <cmath>
+
 using std::vector;
 
 Skeleton::Skeleton() :
@@ -288,18 +290,18 @@ void Skeleton::drawNeck(Renderer* renderer, std::vector<Clothing> list) {
 }
 
 void Skeleton::drawHead(Renderer* renderer, std::vector<Clothing> list, float headAngle) {
-    float height = (torso[0] - torso[1]).getDistance();   
+    float height = (torso[0] - torso[1]).getDistance();
 
     Vector2 psuedoHeadTop;
 
-    if(headAngle >= -PI / 2 && headAngle < PI / 2.f)
-        psuedoHeadTop = head.translate(headAngle + PI / 2, height / 4);
+    if(headAngle >= -PI / 2.f && headAngle < PI / 2.f)
+        psuedoHeadTop = head.translate(headAngle + PI / 2.f, height / 5.5f);
     else
-        psuedoHeadTop = head.translate(headAngle - PI / 2, height / 4);
+        psuedoHeadTop = head.translate(headAngle - PI / 2.f, height / 5.5f);
 
     Bone psuedoBone {head, psuedoHeadTop};
 
-    drawBone(renderer, list, ClothingSpace::Head, psuedoBone, height / 2.f, !(headAngle >= -PI / 2 && headAngle < PI / 2.f));  
+    drawBone(renderer, list, ClothingSpace::Head, psuedoBone, height / 2.f, !(headAngle >= -PI / 2.f && headAngle < PI / 2.f));  
 }
 
 void Skeleton::drawUpperArm(Renderer* renderer, std::vector<Clothing> list, int side, float width) {
@@ -335,7 +337,11 @@ void Skeleton::drawThigh(Renderer* renderer, std::vector<Clothing> list, int sid
 }
 
 void Skeleton::drawCalf(Renderer* renderer, std::vector<Clothing> list, int side, float width) {
-    drawBone(renderer, list, ClothingSpace::Calf, calf[side], width, torsoBottomFlipped());   
+    Vector2 psuedoKnee = knee[side].translate((heel[side] - knee[side]).getAngle(), std::sqrt(width / 2.f));
+    Vector2 psuedoHeel = heel[side].translate((knee[side] - heel[side]).getAngle(), std::sqrt(width / 2.f));
+
+    Bone psuedoBone {psuedoKnee, psuedoHeel};
+    drawBone(renderer, list, ClothingSpace::Calf, psuedoBone, width, torsoBottomFlipped());   
 }
 
 void Skeleton::drawFoot(Renderer* renderer, std::vector<Clothing> list, int side, float width) {

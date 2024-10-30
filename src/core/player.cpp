@@ -1081,9 +1081,6 @@ vector<string> Player::getMotionBuffer(const string& motion) {
 }
 
 bool Player::matchLeftConform(const std::string& a, const std::string& b) {
-    int u = 0;
-    int v = 0;
-
     bool hasButton[2] {false, false};
 
     for(auto& ch : a) {
@@ -1105,6 +1102,9 @@ bool Player::matchLeftConform(const std::string& a, const std::string& b) {
     // a and b should both either contain a button or not contain a button
     if(hasButton[0] != hasButton[1])
         return false;
+
+    int u = 0;
+    int v = 0;
 
     while(u < a.size() && v < b.size()) {
 
@@ -1167,14 +1167,45 @@ int Player::searchBestMove(const vector<string>& inputBuffer) {
                         break;
                     }
 
-                    if(matchLeftConform(inputBuffer[u], motionBuffer[v])) {
-                        u ++;
-                        v ++;
-                        consume = 0;
+                    // Special case for the first input to match the held buttons
+                    if(motionBuffer.size() >= 3 && v + 1 >= motionBuffer.size()) {
+                        Vector2 socd;
+                        if(state.button[u].Up)          socd.y += 1;
+                        if(state.button[u].Down)        socd.y -= 1;
+                        if(state.button[u].Right)       socd.x += 1 * state.side;
+                        if(state.button[u].Left)        socd.x -= 1 * state.side;
 
-                    }else {
+                        string motion = "";
+                        motion += ('5' + (int)socd.x + (int)socd.y * 3);
+
+                        string button = "";
+
+                        if(state.button[u].A)       button += (button.size() == 0) ? "A" : "+A";
+                        if(state.button[u].B)       button += (button.size() == 0) ? "B" : "+B";
+                        if(state.button[u].C)       button += (button.size() == 0) ? "C" : "+C";
+                        if(state.button[u].D)       button += (button.size() == 0) ? "D" : "+D";
+                        if(state.button[u].Taunt)   button += (button.size() == 0) ? "P" : "+P";
+
+                        if(motion + button == motionBuffer[v]) {
+                            v ++;
+                            consume = 0;
+                            
+                        }else {
+                            consume ++;
+                        }
                         u ++;
-                        consume ++;
+
+                    // Match conform the input buffer to the motion
+                    }else {
+
+                        if(matchLeftConform(inputBuffer[u], motionBuffer[v])) {
+                            v ++;
+                            consume = 0;
+
+                        }else {
+                            consume ++;
+                        }
+                        u ++;
                     }
 
                     // Reached input threshold before invalid

@@ -174,16 +174,38 @@ int main() {
                     }
                 }
 
-                if(ImGui::MenuItem("Import")) {
+                if(ImGui::MenuItem("Import Move")) {
+                    nfdchar_t* outPath;
+                    nfdfilteritem_t filters = {"editor.animation", "move"};
+
+                    nfdresult_t result = NFD_OpenDialog(&outPath, &filters, 1, NULL);
+
+                    if(result == NFD_OKAY) {
+                        Animation import;
+
+                        if(import.loadFromFile(outPath)) {
+
+                            for(int i = 0; i < import.keyFrames.size(); i ++) 
+                                editor.anim.keyFrames.push_back(import.keyFrames[i]);
+                        }
+                        NFD_FreePath(outPath);
+                    }
+                }
+
+                if(ImGui::MenuItem("Import FreeMoCap")) {
                     nfdchar_t* outPath;
                     nfdfilteritem_t filters = {"freemocap.json", "json"};
 
                     nfdresult_t result = NFD_OpenDialog(&outPath, &filters, 1, NULL);
 
                     if(result == NFD_OKAY) {
-                        editor.fileName = "";
-                        editor.anim.importFromFreeMoCap(outPath);
-                        editor.setKeyFrame((editor.anim.getKeyFrameCount() == 0) ? -1 : 0);
+                        Animation import;
+
+                        if(import.importFromFreeMoCap(outPath)) {
+
+                            for(int i = 0; i < import.keyFrames.size(); i ++) 
+                                editor.anim.keyFrames.push_back(import.keyFrames[i]);
+                        }
                         NFD_FreePath(outPath);
                     }
                 }
@@ -250,9 +272,12 @@ int main() {
 
             if(ImGui::BeginMenu("Playback")) {
 
-                if(ImGui::Checkbox("Play", &editor.settings.playback)) {
+                if(ImGui::Checkbox("Play", &editor.settings.playback)) 
                     editor.resetPlayer();
-                }
+                
+                if(ImGui::Checkbox("Playback Test", &editor.settings.playbackTest)) 
+                    editor.resetPlayer();   
+
                 ImGui::SliderInt("Playback Speed", &editor.settings.playbackSpeed, 1, 10, "Every %d frame(s)");
                 ImGui::EndMenu();
             }
@@ -350,6 +375,8 @@ int main() {
             }
 
             if(ImGui::CollapsingHeader("Key Frame")) {
+
+                ImGui::SeparatorText("Frame Effects");
                 ImGui::InputFloat("Impulse X", &keyFrame.impulse.x);
                 ImGui::InputFloat("Impulse Y", &keyFrame.impulse.y);
                 ImGui::Checkbox("Cancel", &keyFrame.cancel);
@@ -370,7 +397,8 @@ int main() {
                     ImGui::EndCombo();
                 }
 
-                ImGui::Checkbox("Grab", &keyFrame.isGrab);
+                ImGui::SeparatorText("Grab Options");
+                ImGui::Checkbox("is Grab", &keyFrame.isGrab);
 
                 if(keyFrame.isGrab) {
 
@@ -384,7 +412,11 @@ int main() {
 
                         ImGui::EndCombo();
                     }
-                }           
+                } 
+
+                ImGui::SeparatorText("Conditionals");
+                ImGui::Checkbox("Stop", &keyFrame.stop);
+                ImGui::InputInt("Jump", &keyFrame.jump);          
             }
 
             if(ImGui::CollapsingHeader("Selection")) { 

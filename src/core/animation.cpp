@@ -50,12 +50,20 @@ Frame Animation::getFrame(int t) {
             if(t != f_pos)
                 frame.sound = "";
             
+            // Only stop / jump on the last effective frame
+            if(t + 1 < f_pos + keyFrames[i].duration) {
+                frame.stop = false;
+                frame.jump = -1;
+            }else {
+                frame.jump = getFrameFromKeyFrame(frame.jump);
+            }
+
             // Prevent cancelling first active hit frame
             if(t == f_pos && keyFrames[i].duration > 1 && keyFrames[i].hitBoxes.size() > 0)
                 frame.cancel = false;
 
             // If there's a next frame interpolate
-            if(i + 1 < getKeyFrameCount()) {
+            if(i + 1 < getKeyFrameCount() && !keyFrames[i].stop) {
                 Skeleton poseA = keyFrames[i].pose;                
                 Skeleton poseB = keyFrames[i + 1].pose;
 
@@ -95,6 +103,19 @@ int Animation::getFrameCount() {
     for(int i = 0; i < getKeyFrameCount(); i ++)
         total += keyFrames[i].duration;
     return total;
+}
+
+int Animation::getFrameFromKeyFrame(int index) {
+    int total = 0;
+
+    for(int i = 0; i < getKeyFrameCount(); i ++) {
+
+        if(i == index)
+            return total;
+
+        total += keyFrames[i].duration;
+    }
+    return -1;   
 }
 
 int Animation::getStartup() {
@@ -192,6 +213,8 @@ void Animation::saveToFile(std::filesystem::path path) {
         // Key Frame Properties
         newFrame["duration"] = keyFrames[i].duration;
         newFrame["cancel"]   = keyFrames[i].cancel;
+        newFrame["stop"]     = keyFrames[i].stop;
+        newFrame["jump"]     = keyFrames[i].jump;
         newFrame["sound"]    = keyFrames[i].sound;
         newFrame["isGrab"]   = keyFrames[i].isGrab;
 
@@ -318,6 +341,8 @@ bool Animation::loadFromFile(std::filesystem::path path) {
         // Key Frame Properties
         if(frame["duration"].is_number_integer())       newFrame.duration = frame["duration"];
         if(frame["cancel"].is_boolean())                newFrame.cancel = frame["cancel"];
+        if(frame["stop"].is_boolean())                  newFrame.stop = frame["stop"];
+        if(frame["jump"].is_number_integer())           newFrame.jump = frame["jump"];
         if(frame["sound"].is_string())                  newFrame.sound = frame["sound"];
         if(frame["isGrab"].is_boolean())                newFrame.isGrab = frame["isGrab"];
 

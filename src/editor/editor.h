@@ -33,6 +33,7 @@ struct Editor {
 		int mode = Mode::Joints;
 
 		bool playback = false;
+		bool playbackTest = false;
 		int playbackSpeed = 1;
 	} settings;
 

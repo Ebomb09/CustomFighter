@@ -167,7 +167,7 @@ void Editor::drawHurtBox() {
         rect.setOutlineThickness(1);
         rect.setOutlineColor({252, 218, 45});
         g::video.draw(rect);
-    }                
+    }
 } 
 
 void Editor::resetPlayer() {
@@ -177,20 +177,21 @@ void Editor::resetPlayer() {
     player.state.moveFrame = 0;
 
     // Set player to test and copy in the save
-    player.config.moves[Move::Stand] = "";
-    player.config.moves[Move::Custom00] = "";
-
     string test = g::save.getAnimationsList()[0];
     *g::save.getAnimation(test) = anim;
 
-    if(anim.category < Move::Custom00) {
-        player.config.moves[Move::Stand] = test;
-        player.state.moveIndex = Move::Stand;
-        
-    }else {
-        player.config.moves[Move::Custom00] = test;
-        player.state.moveIndex = Move::Custom00;     
-    }
+    // Copy the default player stance movelist
+    Player::Config conf = g::save.getPlayerConfig(0);
+
+    for(int i = 0; i < Move::Custom00; i ++) 
+        player.config.moves[i] = conf.moves[i];
+
+    // Set the only custom move to a simple input
+    player.config.moves[Move::Custom00] = test;
+    player.config.motions[Move::Custom00] = "A";
+
+    if(!settings.playbackTest)
+        player.state.moveIndex = Move::Custom00;      
 }
 
 Frame* Editor::getKeyFrame(int key) {
@@ -379,14 +380,23 @@ void Editor::update() {
     // Player simulation
     timer ++;
 
-    if(settings.playback && timer >= settings.playbackSpeed) {
+    if(settings.playback && timer >= settings.playbackSpeed && anim.keyFrames.size() > 0) {
         timer = 0;
 
         vector<Player> others = {player};
+
+        if(settings.playbackTest) {
+            player.seatIndex = 0;
+            player.in = player.readInput(others);
+        }
         player.advanceFrame(others);
         player.advanceEffects(others);
 
-        if(player.state.position.y == 0 && player.doneMove())
+        // Autoplay the jumps
+        if(!settings.playbackTest && player.getFrame().jump >= 0)
+            player.state.moveFrame = player.getFrame().jump;
+
+        if(!settings.playbackTest && player.state.position.y == 0 && player.state.moveIndex != Move::Custom00)
             resetPlayer();
     }
 }

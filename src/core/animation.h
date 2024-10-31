@@ -16,11 +16,14 @@ struct Frame {
     Skeleton pose       = Skeleton();
     Vector2 impulse     = Vector2(0, 0);
     bool cancel         = false;
+    bool stop           = false;
+    int jump            = -1;
     std::string sound   = "";
 
     bool isGrab         = false;
     Skeleton grabee     = Skeleton();
     int grabBreak       = GrabBreak::Unbreakable;
+
 
     std::vector<HitBox> hitBoxes;
     std::vector<HurtBox> hurtBoxes;
@@ -53,6 +56,7 @@ struct Animation {
 
     Frame getFrame(int frame);
     int getFrameCount();
+    int getFrameFromKeyFrame(int index);
 
     int getStartup();
     int getDamage();

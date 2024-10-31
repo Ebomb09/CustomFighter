@@ -329,12 +329,27 @@ void Player::advanceFrame(vector<Player>& others) {
         }
     }
 
+    // JumpTo check the animation
+    if(getFrame().jump >= 0 && getTaggedIn(others)) {
+        vector<string> inputBuffer = getInputBuffer();
+        vector<string> motionBuffer = getMotionBuffer(config.motions[state.moveIndex]);
+
+        for(int i = 0; i < 10; i ++) {
+
+            if(matchLeftConform(inputBuffer[i], motionBuffer[0])) {
+                state.moveFrame = getFrame().jump;
+                break;
+            }
+        }
+    }
+
     // Exit early, if in HitStop
     if(state.hitStop != 0) 
         return;
 
     // Increment frames
-    state.moveFrame ++;
+    if(!doneMove())
+        state.moveFrame ++;
     state.counter ++;
 
     if(state.stun > 0)
@@ -993,7 +1008,7 @@ bool Player::doneMove() {
     if(!anim)
         return true;
 
-    return (state.moveFrame >= anim->getFrameCount());
+    return (state.moveFrame >= anim->getFrameCount() || getFrame().stop);
 }
 
 void Player::setMove(int move, bool loop) {

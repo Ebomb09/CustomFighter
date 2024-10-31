@@ -8,7 +8,7 @@
 #include "core/menu.h"
 #include "core/audio.h"
 
-#include <iostream>
+#include <vector>
 
 using std::vector;
 
@@ -23,6 +23,10 @@ namespace ID {
 
 
 bool PractiseGame::run(vector<Player::Config> configs) {
+
+    if(configs.size() != 2)
+        return false;
+
 	Game game;
 
     // Configure players
@@ -35,6 +39,8 @@ bool PractiseGame::run(vector<Player::Config> configs) {
 
     bool pause = false;
     int hover = 0;
+
+    vector<int> combo;
 
     while(g::video.isOpen()) {
         g::input.pollEvents();
@@ -50,31 +56,54 @@ bool PractiseGame::run(vector<Player::Config> configs) {
         }
 
         if(!pause) {
+            vector<Player> others;
+            for(int i = 0; i < game.playerCount; i ++)
+                others.push_back(game.players[i]);
+
             game.readInput();
             game.advanceFrame();
 
             // Ensure the players states
             for(int i = 0; i < game.playerCount; i ++) {
+                Player& ply = game.players[i];
 
+                // Reset the player health and combos
                 if(
-                    game.players[i].state.position.y <= 0 && 
-                    game.players[i].state.stun == 0 && 
-                    game.players[i].state.hitStop == 0 &&
-                    game.players[i].state.grabIndex < 0 &&
-                    (
-                        game.players[i].inMove(Move::Stand) ||
-                        game.players[i].inMove(Move::Crouch)
-                    )
+                    ply.state.position.y <= 0 && 
+                    ply.state.stun == 0 &&
+                    ply.state.hitStop == 0 &&
+                    ply.state.grabIndex < 0 &&
+                    ply.state.moveIndex < Move::Custom00
                 ) {
-
-                    game.players[i].state.health = 100;
+                    ply.state.health = 100;
                 }
             }
 
             if(game.state.flow == Game::Flow::PlayRound)
                 game.state.timer = (game.timerMax - 1) * 60;
+
+            // Add the move to the combo list
+            if(game.players[1].state.health < others[1].state.health) {
+
+                if(others[1].state.health == 100)
+                    combo.clear();
+
+                combo.push_back(game.players[0].state.moveIndex);
+            }
         }
+
         game.draw();
+
+        // Draw the combo list
+        vector<Menu::Option> options;
+
+        for(int i = 0; i < combo.size(); i ++) {
+            options.push_back({0, game.players[0].config.motions[combo[i]], "fight", -1});
+            options.push_back({0, game.players[0].config.moves[combo[i]], "Anton-Regular", -1});
+        }
+
+        Rectangle comboArea = {32, 128, g::video.getSize().x / 4 - 32, g::video.getSize().y - 128};
+        Menu::Table(options, 2, false, NULL, 0, comboArea);
 
         if(pause) {
             vector<Menu::Option> options;

@@ -125,7 +125,11 @@ Menu::Option::Option(const Option& copy) {
 	}
 }
 
-void cycleIndex(const std::vector<Menu::Option>& options, int* index, int quantity) {
+static void cycleIndex(const std::vector<Menu::Option>& options, int* index, int quantity) {
+
+	if(!index)
+		return;
+
 	int beg = *index;
 
 	do {
@@ -157,40 +161,43 @@ static int items[MAX_PLAYERS] {0, 0, 0, 0};
 
 int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int* hover, int user, Rectangle area, float rowHeight) {
 	int status = Wait;
-	int initial = *hover;
+	int initial = 0;
 
-	Button::Config b = g::save.getButtonConfig(user);
+	if(hover) {
+		Button::Config b = g::save.getButtonConfig(user);
+		initial = *hover;
 
-	// Move cursor
-	if(g::input.pressed(b.index, b.Up))
-		cycleIndex(options, hover, -columns);
+		// Move cursor
+		if(g::input.pressed(b.index, b.Up))
+			cycleIndex(options, hover, -columns);
 
-	if(g::input.pressed(b.index, b.Down)) 
-		cycleIndex(options, hover, columns);
+		if(g::input.pressed(b.index, b.Down)) 
+			cycleIndex(options, hover, columns);
 
-	if(selectByRow) {
+		if(selectByRow) {
 
-		// Ensure only first column is selected
-		if(*hover % columns != 0) 
-			*hover -= *hover % columns;
+			// Ensure only first column is selected
+			if(*hover % columns != 0) 
+				*hover -= *hover % columns;
 
-	}else {
+		}else {
 
-		if(g::input.pressed(b.index, b.Left) && !selectByRow) 
-			cycleIndex(options, hover, -1);
+			if(g::input.pressed(b.index, b.Left) && !selectByRow) 
+				cycleIndex(options, hover, -1);
 
-		if(g::input.pressed(b.index, b.Right) && !selectByRow) 
-			cycleIndex(options, hover, 1);
-	}
+			if(g::input.pressed(b.index, b.Right) && !selectByRow) 
+				cycleIndex(options, hover, 1);
+		}
 
-	// Safe check index, can be bad on the first table call
-	cycleIndex(options, hover, 0);
+		// Safe check index, can be bad on the first table call
+		cycleIndex(options, hover, 0);
 
-	if(g::input.pressed(b.index, b.B)){
-		status = Accept;
+		if(g::input.pressed(b.index, b.B)){
+			status = Accept;
 
-	}else if(g::input.pressed(b.index, b.D)) {
-		status = Decline;
+		}else if(g::input.pressed(b.index, b.D)) {
+			status = Decline;
+		}
 	}
 
 	// Draw Properties
@@ -209,25 +216,28 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 	float desiredScroll = 0;
 
 	// If last row extends past the maximum area then activate scroll
-	if(bottomRow > area.h) {
-		float selectedRow = 1.f * (*hover) / columns;
+	if(hover) {
+		if(bottomRow > area.h) {
+			float selectedRow = 1.f * (*hover) / columns;
 
-		// Override if mouse on screen
-		if(Screen::pointInRectangle(g::input.mousePosition, area)) 
-			selectedRow = (g::input.mousePosition.y - area.y) / area.h * rows;
+			// Override if mouse on screen
+			if(Screen::pointInRectangle(g::input.mousePosition, area)) 
+				selectedRow = (g::input.mousePosition.y - area.y) / area.h * rows;
 
-		// Calculate the distance scrolled down table
-		float distanceScrolled = rowHeight * (selectedRow + 1);
+			// Calculate the distance scrolled down table
+			float distanceScrolled = rowHeight * (selectedRow + 1);
 
-		// Clamp to bottom
-	    if(distanceScrolled > bottomRow - area.h / 2) {
-	        desiredScroll = bottomRow - area.h;
+			// Clamp to bottom
+			if(distanceScrolled > bottomRow - area.h / 2) {
+				desiredScroll = bottomRow - area.h;
 
-	    // Clamp to scroll middle
-	    }else if(distanceScrolled > area.h / 2) {
-	        desiredScroll = distanceScrolled - area.h / 2;
-	    }		
+			// Clamp to scroll middle
+			}else if(distanceScrolled > area.h / 2) {
+				desiredScroll = distanceScrolled - area.h / 2;
+			}		
+		}
 	}
+
 
 	// Scroll effect
 	if(scroll[user] < desiredScroll)
@@ -254,15 +264,17 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 		for(int j = 0; j < columns && i + j < options.size(); j ++) {
 			sf::Color color = sf::Color::White;
 
-			if(selectByRow) {
+			if(hover) {
+				if(selectByRow) {
 
-				if(*hover == i)
-					color = sf::Color::Yellow;
+					if(*hover == i)
+						color = sf::Color::Yellow;
 
-			}else {
+				}else {
 
-				if(*hover == i + j)
-					color = sf::Color::Yellow;
+					if(*hover == i + j)
+						color = sf::Color::Yellow;
+				}				
 			}
 
 			Rectangle renderBox = {pos.x + j * (area.w / columns), pos.y, area.w / columns, rowHeight};
@@ -282,19 +294,21 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 			}
 
 	        // Mouse controls
-			if(Screen::pointInRectangle(g::input.mousePosition, area)) {
-				if(Screen::pointInRectangle(g::input.mousePosition + Vector2{0, scroll[user]}, renderBox)) {
+			if(hover) {
+				if(Screen::pointInRectangle(g::input.mousePosition, area)) {
+					if(Screen::pointInRectangle(g::input.mousePosition + Vector2{0, scroll[user]}, renderBox)) {
 
-					if(options[i+j].type != Option::Type::Empty) {
+						if(options[i+j].type != Option::Type::Empty) {
 
-						if(selectByRow)
-							*hover = i;
-						else
-							*hover = i+j;
+							if(selectByRow)
+								*hover = i;
+							else
+								*hover = i+j;
 
-						if(g::input.pressed(MOUSE_INDEX, sf::Mouse::Left))
-							status = Menu::Accept;    		
-					}        	
+							if(g::input.pressed(MOUSE_INDEX, sf::Mouse::Left))
+								status = Menu::Accept;    		
+						}        	
+					}
 				}
 			}
 		}
@@ -302,35 +316,37 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 	}
 
 	// Draw outlines
-	pos = Vector2(area.x, area.y);
+	if(hover) {
+		pos = Vector2(area.x, area.y);
 
-	for(int i = 0; i < options.size(); i += columns) {
+		for(int i = 0; i < options.size(); i += columns) {
 
-		for(int j = 0; j < columns && i + j < options.size(); j ++) {
-			Rectangle renderBox = {pos.x + j * (area.w / columns), pos.y, area.w / columns, rowHeight};
+			for(int j = 0; j < columns && i + j < options.size(); j ++) {
+				Rectangle renderBox = {pos.x + j * (area.w / columns), pos.y, area.w / columns, rowHeight};
 
-			if(!selectByRow && *hover == i + j) {
-				sf::RectangleShape rect = renderBox;
+				if(!selectByRow && *hover == i + j) {
+					sf::RectangleShape rect = renderBox;
+					rect.setFillColor(sf::Color::Transparent);
+					rect.setOutlineColor(sf::Color::Yellow);
+					rect.setOutlineThickness(2);
+					g::video.draw(rect);
+				}
+			}
+
+			if(selectByRow && *hover == i) {
+				sf::RectangleShape rect = Rectangle{pos.x, pos.y, area.w, rowHeight};
 				rect.setFillColor(sf::Color::Transparent);
 				rect.setOutlineColor(sf::Color::Yellow);
 				rect.setOutlineThickness(2);
 				g::video.draw(rect);
 			}
+			pos.y += rowHeight;
 		}
-
-		if(selectByRow && *hover == i) {
-			sf::RectangleShape rect = Rectangle{pos.x, pos.y, area.w, rowHeight};
-			rect.setFillColor(sf::Color::Transparent);
-			rect.setOutlineColor(sf::Color::Yellow);
-			rect.setOutlineThickness(2);
-			g::video.draw(rect);
-		}
-		pos.y += rowHeight;
-	}	
+	}
 	g::video.setView(g::video.getDefaultView());
 
 	// Play sound when changes
-	if(initial != *hover)
+	if(hover && initial != *hover)
 		g::audio.playSound(g::save.getSound("cycle"));
 
 	if(status == Accept)

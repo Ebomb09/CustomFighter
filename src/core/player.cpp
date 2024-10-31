@@ -314,18 +314,8 @@ void Player::advanceFrame(vector<Player>& others) {
         int move = searchBestMove(getInputBuffer());
 
         if(move != -1) {
-            state.moveFrame = 0;
-            setMove(move);
-
-            // If animation has a dedicated first frame impulse set it to that
-            Animation* anim = getAnimations()[state.moveIndex];
-
-            if(anim && anim->getKeyFrameCount() > 0) {
-                Vector2 impulse = anim->getKeyFrame(0).impulse * Vector2{(float)state.side, 1.f};
-                
-                if(impulse.x != 0.f || impulse.y != 0.f)
-                    state.velocity = impulse;
-            }
+            state.nextIndex = move;
+            state.nextFrame = 0;
         }
     }
 
@@ -337,7 +327,8 @@ void Player::advanceFrame(vector<Player>& others) {
         for(int i = 0; i < 10; i ++) {
 
             if(matchLeftConform(inputBuffer[i], motionBuffer[0])) {
-                state.moveFrame = getFrame().jump;
+                state.nextIndex = -1;
+                state.nextFrame = getFrame().jump;
                 break;
             }
         }
@@ -351,6 +342,28 @@ void Player::advanceFrame(vector<Player>& others) {
     if(!doneMove())
         state.moveFrame ++;
     state.counter ++;
+
+    // Set the next moveFrame
+    if(state.nextFrame >= 0) {
+        state.moveFrame = state.nextFrame;
+        state.nextFrame = -1;
+    }
+
+    // Set the next moveIndex
+    if(state.nextIndex >= 0) {
+        state.moveIndex = state.nextIndex;
+        state.nextIndex = -1;
+
+        // If animation has a dedicated first frame impulse set it to that
+        Animation* anim = getAnimations()[state.moveIndex];
+
+        if(anim && anim->getKeyFrameCount() > 0) {
+            Vector2 impulse = anim->getKeyFrame(0).impulse * Vector2{(float)state.side, 1.f};
+            
+            if(impulse.x != 0.f || impulse.y != 0.f)
+                state.velocity = impulse;
+        }
+    }
 
     if(state.stun > 0)
         state.stun --;

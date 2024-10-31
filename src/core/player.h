@@ -82,6 +82,8 @@ struct Player {
 		int 			aiMove			= -1;
 		int				moveIndex		= Move::Stand;
 		int				moveFrame		= 0;
+		int				nextIndex		= -1;
+		int 			nextFrame		= -1;
 		int 			fromMoveIndex	= -1;
 		int				fromMoveFrame	= -1;
 		float 			look			= 0;

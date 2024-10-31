@@ -202,7 +202,7 @@ void drawHealthBars(vector<Player> players) {
 }
 
 void drawRoundTokens(int lWin, int rWin, int winMax) {
-	Vector2 center = {g::video.getSize().x / 2.f, 64};
+	Vector2 center = {g::video.getSize().x / 2.f, g::video.getSize().y / 13.f};
 
 	string lString = "";
 	string rString = "";
@@ -226,14 +226,14 @@ void drawRoundTokens(int lWin, int rWin, int winMax) {
 	text.setString(lString);
 	text.setFont(*g::save.getFont("fight"));
 	text.setCharacterSize(32);
-	text.setPosition(center + Vector2(-32 - text.getLocalBounds().width, 0));
+	text.setPosition(center + Vector2(-g::video.getSize().x / 40.f - text.getLocalBounds().width, 0.f));
 	text.setFillColor(sf::Color::White);
 	g::video.draw(text);
 
 	text.setString(rString);
 	text.setFont(*g::save.getFont("fight"));
 	text.setCharacterSize(32);
-	text.setPosition(center + Vector2(32, 0));
+	text.setPosition(center + Vector2(g::video.getSize().x / 40.f, 0.f));
 	text.setFillColor(sf::Color::White);
 	g::video.draw(text);	
 }

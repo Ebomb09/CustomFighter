@@ -677,9 +677,20 @@ void Menu::renderText(string str, string font, sf::Color color, Rectangle area, 
 	text.setFillColor(color);	
 	text.setString(str);
 
+	// Test text to determine universal height
+	sf::Text test;
+	test.setFont(*g::save.getFont(font));
+	test.setCharacterSize(Menu::fontHeight);
+	test.setOutlineColor(sf::Color::Black);
+	test.setOutlineThickness(1);
+	test.setFillColor(color);
+	test.setString("123456789ABCD+");
+
     // Ensure the text isn't overlapping into the next column
-    while(text.getGlobalBounds().width > area.w || text.getGlobalBounds().height > area.h) 
+    while(text.getGlobalBounds().width > area.w || test.getGlobalBounds().height > area.h) {
     	text.setCharacterSize(text.getCharacterSize() - 1);
+    	test.setCharacterSize(test.getCharacterSize() - 1);
+	}
 
     // Calculate free space within cell
     Vector2 freeSpace{

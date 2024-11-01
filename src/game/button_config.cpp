@@ -75,8 +75,8 @@ void ButtonConfig::run(Rectangle area) {
 
 				// Show all inputs
 				for(int i = 0; i < Button::Total; i ++) {
-					options.push_back({i, Button::Notation[i], "fight"});
-					options.push_back({i, g::input.buttonName(b.index, b.button[i])});			
+					options.push_back({InputMode, i, Button::Notation[i], "fight"});
+					options.push_back({InputMode, i, g::input.buttonName(b.index, b.button[i])});			
 				}
 
 				options.push_back({});
@@ -96,11 +96,11 @@ void ButtonConfig::run(Rectangle area) {
 						step[i] = ControllerMode;
 						hover[i].push(0);
 
-					}else {
+					}else if(options[hover[i].top()].id == InputMode) {
 						step[i] = InputMode;
 
-						hover[i].push(options[hover[i].top()].id);	// Button
-						hover[i].push(0);							// Input
+						hover[i].push(options[hover[i].top()].data);	// Button
+						hover[i].push(0);								// Input
 					}
 
 				}else if(res == Menu::Decline) {

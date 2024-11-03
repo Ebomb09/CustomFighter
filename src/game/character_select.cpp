@@ -47,10 +47,11 @@ struct Creator {
         SetConfigItemColor
     };
 
+    Rectangle reference;
     Player dummy        = Player();
+    int seatIndex       = -1;
     bool test           = false;
     bool done           = false;
-    bool exit           = false;
     int total           = 0;
     int configHover     = 0;
     int modifyHover     = 0;
@@ -66,28 +67,6 @@ struct Creator {
     int itemSelected    = 0;
     Player::Config      backup;
     int mode            = Mode::ChooseConfig;
-
-    vector<Menu::Option> getPlayerConfigOptions() {
-        vector<Menu::Option> out;
-
-        for(int i = 0; i < g::save.maxPlayerConfigs; i ++) {
-
-            Player test;
-            test.config = g::save.getPlayerConfig(i);
-
-            Skeleton pose = test.getSkeleton();
-
-            Rectangle capture {
-                pose.head.x - 0.5f,
-                pose.head.y - 0.5f,
-                1,
-                1
-            };
-
-            out.push_back({i, test, capture});
-        }
-        return out;
-    }
 
     vector<Menu::Option> getModificationOptions() {
         vector<Menu::Option> out;
@@ -281,10 +260,10 @@ struct Creator {
 
     Rectangle getDiv() {
         return {
-            16.f + (float)g::video.getSize().x / total * dummy.seatIndex,
-            16.f,
-            -32.f + (float)g::video.getSize().x / total,
-            -32.f + (float)g::video.getSize().y
+            reference.x + 16.f + reference.w / total * seatIndex,
+            reference.y + 16.f,
+            -32.f + reference.w / total,
+            -32.f + reference.h
         };
     }
 
@@ -494,7 +473,12 @@ struct Creator {
             Menu::renderText("!TOO MANY MOVES!", "Anton-Regular", sf::Color(0,0,0), area, 0);
     }
 
-    void update() {
+    void update(Rectangle _reference, bool input) {
+        reference = _reference;
+        seatIndex = dummy.seatIndex;
+
+        if(!input)
+            dummy.seatIndex = -1;
 
         if(test) {
 
@@ -510,34 +494,6 @@ struct Creator {
             if(dummy.state.button[0].Taunt) {
                 test = false;
                 done = false;
-            }
-
-        }else if(mode == Mode::ChooseConfig) {
-
-            auto options = getPlayerConfigOptions();
-            int res = Menu::Table(options, 5, false, &configHover, dummy.seatIndex, getDiv(), 64);
-
-            dummy.config = g::save.getPlayerConfig(options[configHover].id);
-
-            // Ensure stance moves always have something equiped
-            for(int i = 0; i < Move::Custom00; i ++) {
-
-                if(dummy.config.moves[i] == "" && i < Move::Custom00) {
-                    auto moves = g::save.getAnimationsByFilter(Move::getValidCategories(i));
-
-                    if(moves.size() > 0)
-                        dummy.config.moves[i] = moves[0];
-                }
-            }
-
-            // Selected a config player
-            if(res == Menu::Accept) {
-                configSelected = options[configHover].id;
-                mode = Mode::ModifyConfig;
-
-            // Exiting the character select
-            }else if(res == Menu::Decline) {
-                exit = true;
             }
 
         }else if(mode == Mode::ModifyConfig) {
@@ -1046,45 +1002,250 @@ struct Creator {
                 mode = Mode::ListConfigMoves;
             }
         }
-    }
+
+        // Restore input if taken away
+        dummy.seatIndex = seatIndex;
+   }
+};
+
+enum Mode {
+    UniOpen,
+    UniToMain,
+    Uni,
+    UniToSingle,
+    SingleOpen,
+    SingleClose,
+    Single,
+    SingleToUni
 };
 
 vector<Player::Config> CharacterSelect::run(int count) {
 
+    // Invalid number of confs selected
+    if(count <= 0)
+        return {};
+
     sf::Sound* music = g::audio.playMusic(g::save.getMusic("Leaving Home"));
     music->setLoop(true);
 
+    int mode = UniOpen;
+    int cycle = 0;
+    const int transitionTime = 30;
     vector<Creator> creator;
 
     for(int i = 0; i < count; i ++) {
         Creator cr;
         cr.total = count;
         cr.dummy.seatIndex = i;
+        cr.configHover = i;
         creator.push_back(cr);
     }
 
     while (g::video.isOpen()) {
-        g::input.pollEvents();
+        cycle ++;
 
+        g::input.pollEvents();
         g::video.clear();
 
-        vector<Player::Config> confs;
+        // Transition area
+        Rectangle desiredDiv = {16.f, 16.f, g::video.getSize().x - 32.f, g::video.getSize().y - 32.f};
+        Rectangle div = {g::video.getSize().x / 2.f, desiredDiv.y, 0.f, desiredDiv.h};
 
-        for(int i = 0; i < creator.size(); i ++) {
-            creator[i].update();
+        // Grow towards the desired
+        if(mode == UniToMain || mode == UniToSingle || mode == SingleToUni || mode == SingleClose)
+            std::swap(desiredDiv, div);
 
-            // Exit the menu
-            if(creator[i].exit)
+        if(cycle < transitionTime) {
+            div.x += (desiredDiv.x - div.x) * cycle / transitionTime;
+            div.y += (desiredDiv.y - div.y) * cycle / transitionTime;
+            div.w += (desiredDiv.w - div.w) * cycle / transitionTime;
+            div.h += (desiredDiv.h - div.h) * cycle / transitionTime;
+
+        }else {
+            div = desiredDiv;
+
+            if(mode == UniToMain) {
                 return {};
 
-            if(creator[i].done) 
-                confs.push_back(creator[i].dummy.config);
+            }else if(mode == UniToSingle) {
+                cycle = 0;
+                mode = SingleOpen;
+
+            }else if(mode == UniOpen) {
+                mode = Uni;
+
+                // Ensure all players are choosing a config
+                for(int i = 0; i < creator.size(); i ++) 
+                    creator[i].mode = Creator::Mode::ChooseConfig;
+
+            }else if(mode == Uni) {
+
+                bool allDone = true;
+                for(int i = 0; i < creator.size(); i ++)
+                    if(creator[i].mode == Creator::Mode::ChooseConfig)
+                        allDone = false;
+
+                if(allDone) {
+                    cycle = 0;
+                    mode = UniToSingle;
+                }
+
+            }else if(mode == SingleOpen) {
+                mode = Single;
+
+            }else if(mode == SingleClose) {
+                vector<Player::Config> confs;
+
+                for(int i = 0; i < creator.size(); i ++)
+                    confs.push_back(creator[i].dummy.config);
+
+                return confs;
+
+            }else if(mode == SingleToUni) {
+                cycle = 0;
+                mode = UniOpen;
+
+            }else if(mode == Single) {
+
+                int done = 0;
+                for(int i = 0; i < creator.size(); i ++) {
+
+                    if(creator[i].done)
+                        done ++;
+
+                    // Someone has returned to pre-modification select
+                    if(creator[i].mode == Creator::Mode::ChooseConfig) {
+                        creator[i].mode = Creator::Mode::ModifyConfig;
+                        cycle = 0;
+                        mode = SingleToUni;
+                    }
+                }
+
+                // Every player has finished modifications
+                if(done == creator.size()) {
+                    cycle = 0;
+                    mode = SingleClose;
+                }
+            }
         }
 
-        // All confs filled in and done
-        if(confs.size() == creator.size())
-            return confs;
+        switch(mode) {
 
+            // Update individual creators huds
+            case SingleClose:
+            case SingleOpen:
+            case SingleToUni:
+            case Single: {
+
+                for(int i = 0; i < creator.size(); i ++) 
+                    creator[i].update(div, mode == Single);
+                break;
+            }
+
+            // Update the unified character selector
+            case UniToMain:
+            case UniOpen:
+            case UniToSingle:
+            case Uni: {
+                vector<Menu::Option> options;
+
+                for(int i = 0; i < g::save.maxPlayerConfigs; i ++) {
+                    Player test;
+                    test.config = g::save.getPlayerConfig(i);
+
+                    Skeleton pose = test.getSkeleton();
+
+                    Rectangle capture {
+                        pose.head.x - 0.5f,
+                        pose.head.y - 0.5f,
+                        1,
+                        1
+                    };
+
+                    options.push_back({i, test, capture});
+                }
+
+                Menu::Table(options, 5, false, NULL, 0, div, div.h / 6.f);
+
+                // Do the controls and state control
+                for(int i = 0; i < creator.size(); i ++) {
+
+                    // Cursor position
+                    int x = creator[i].configHover % 5;
+                    int y = creator[i].configHover / 5;
+
+                    // Determine player slot color
+                    sf::Color color;
+                    if(i == 0)
+                        color = sf::Color(235, 67, 52);
+                    else if(i == 1)
+                        color = sf::Color(29, 62, 245);
+                    else if(i == 2)
+                        color = sf::Color(245, 220, 29);
+                    else if(i == 3)
+                        color = sf::Color(167, 28, 232);
+
+                    // Expand the selection box
+                    float expand = 0.f;
+
+                    // In control
+                    if(mode == Uni) {
+
+                        if(creator[i].mode == Creator::Mode::ChooseConfig) {
+                            expand = 4.f + std::sin(cycle * PI / 180 * 5.f) * 4.f;
+
+                            int res = Menu::DoControls(options, 5, false, &creator[i].configHover, creator[i].dummy.seatIndex);
+
+                            // Selected a config player
+                            if(res == Menu::Accept) {
+                                creator[i].configSelected = options[creator[i].configHover].id;
+                                creator[i].dummy.config = g::save.getPlayerConfig(creator[i].configSelected);
+                                creator[i].mode = Creator::Mode::ModifyConfig;
+
+                            // Exiting the character select
+                            }else if(res == Menu::Decline) {
+                                cycle = 0;
+                                mode = UniToMain;
+                            }
+
+                        }else {
+                            Button::Config b = g::save.getButtonConfig(i);
+
+                            // Change decision
+                            if(g::input.pressed(b.index, b.D)) 
+                                creator[i].mode = Creator::Mode::ChooseConfig;
+                        }
+                    }
+
+                    // Draw selection box
+                    sf::RectangleShape sh;
+                    sh.setPosition({div.x + x * div.w / 5.f + expand, div.y + y * div.h / 6.f + expand});
+                    sh.setSize({div.w / 5.f - expand*2.f, div.h / 6.f - expand*2.f});
+                    sh.setFillColor(color - sf::Color(0, 0, 0, 240));
+                    sh.setOutlineColor(color);
+                    sh.setOutlineThickness(-4.f);
+                    g::video.draw(sh);
+
+                    // Draw player identifier
+                    sf::Text text;
+                    text.setString("P" + std::to_string(i+1));
+                    text.setFont(*g::save.getFont("Anton-Regular"));
+                    text.setFillColor(color);
+
+                    if(i == 0)
+                        text.setPosition({div.x + x * div.w / 5.f + 12.f, div.y + y * div.h / 6.f + 12.f});
+                    else if(i == 1)
+                        text.setPosition({div.x + (x+1) * div.w / 5.f - 12.f - text.getGlobalBounds().width, div.y + y * div.h / 6.f + 12.f});
+                    else if(i == 2)
+                        text.setPosition({div.x + x * div.w / 5.f + 12.f, div.y + (y+1) * div.h / 6.f - 12.f - text.getGlobalBounds().height});
+                    else if(i == 3)
+                        text.setPosition({div.x + (x+1) * div.w / 5.f - 12.f - text.getGlobalBounds().width, div.y + (y+1) * div.h / 6.f - 12.f - text.getGlobalBounds().height});
+
+                    g::video.draw(text);
+                }
+                break;
+            }
+        }
         g::video.display();
     }
 

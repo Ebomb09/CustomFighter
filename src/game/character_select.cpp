@@ -5,6 +5,7 @@
 #include "core/save.h"
 #include "core/audio.h"
 #include "core/menu.h"
+#include "core/scene_transition.h"
 
 #include <SFML/Audio.hpp>
 #include <chrono>
@@ -37,7 +38,6 @@ struct Creator {
     };
 
     enum Mode {
-        ChooseConfig,
         ModifyConfig,
         ListConfigMoves,
         ListAnimations,
@@ -51,6 +51,7 @@ struct Creator {
     Player dummy        = Player();
     int seatIndex       = -1;
     bool test           = false;
+    bool choosen        = false;
     bool done           = false;
     int total           = 0;
     int configHover     = 0;
@@ -66,7 +67,7 @@ struct Creator {
     int moveSelected    = 0;
     int itemSelected    = 0;
     Player::Config      backup;
-    int mode            = Mode::ChooseConfig;
+    int mode            = Mode::ModifyConfig;
 
     vector<Menu::Option> getModificationOptions() {
         vector<Menu::Option> out;
@@ -464,6 +465,7 @@ struct Creator {
             rect.setFillColor(color);
             rect.setOutlineColor(sf::Color::Black);
             rect.setOutlineThickness(2);
+            rect.setTexture(g::save.getTexture("data/hud/bar.png"));
             rect.setPosition({area.x + ((float)i / MAX_POINTS) * area.w, area.y});
             rect.setSize({area.w / MAX_POINTS, area.h});
             g::video.draw(rect);
@@ -541,7 +543,7 @@ struct Creator {
 
                 // Return to previous config selection
                 }else if(options[modifyHover].id == ID::Cancel) {
-                    mode = Mode::ChooseConfig;
+                    choosen = false;
 
                 // List worn items
                 }else if(options[modifyHover].id == ID::Costume) {
@@ -550,7 +552,7 @@ struct Creator {
 
             // Return to previous config selection
             }else if(res == Menu::Decline) {
-                mode = Mode::ChooseConfig;
+                choosen = false;
             }
 
         // List the worn clothing items
@@ -1008,15 +1010,13 @@ struct Creator {
    }
 };
 
-enum Mode {
-    UniOpen,
-    UniToMain,
-    Uni,
-    UniToSingle,
-    SingleOpen,
-    SingleClose,
-    Single,
-    SingleToUni
+namespace Screen {
+    enum {
+        Main,
+        CharacterSelect,
+        CharacterCustomize,
+        Game
+    };
 };
 
 vector<Player::Config> CharacterSelect::run(int count) {
@@ -1028,9 +1028,9 @@ vector<Player::Config> CharacterSelect::run(int count) {
     sf::Sound* music = g::audio.playMusic(g::save.getMusic("Leaving Home"));
     music->setLoop(true);
 
-    int mode = UniOpen;
-    int cycle = 0;
-    const int transitionTime = 30;
+    SceneTransition st;
+    st.nextScene(SceneTransition::Open, Screen::CharacterSelect);
+
     vector<Creator> creator;
 
     for(int i = 0; i < count; i ++) {
@@ -1042,111 +1042,67 @@ vector<Player::Config> CharacterSelect::run(int count) {
     }
 
     while (g::video.isOpen()) {
-        cycle ++;
-
         g::input.pollEvents();
         g::video.clear();
 
-        // Transition area
-        Rectangle desiredDiv = {16.f, 16.f, g::video.getSize().x - 32.f, g::video.getSize().y - 32.f};
-        Rectangle div = {g::video.getSize().x / 2.f, desiredDiv.y, 0.f, desiredDiv.h};
+        st.advanceFrame();
 
-        // Grow towards the desired
-        if(mode == UniToMain || mode == UniToSingle || mode == SingleToUni || mode == SingleClose)
-            std::swap(desiredDiv, div);
+        // Scene div
+        Rectangle div = st.getGrowthEffect(
+            {16.f, 16.f, g::video.getSize().x - 32.f, g::video.getSize().y - 32.f},
+            {g::video.getSize().x / 2.f, 16.f, 0.f, g::video.getSize().y - 32.f}
+        );
 
-        if(cycle < transitionTime) {
-            div.x += (desiredDiv.x - div.x) * cycle / transitionTime;
-            div.y += (desiredDiv.y - div.y) * cycle / transitionTime;
-            div.w += (desiredDiv.w - div.w) * cycle / transitionTime;
-            div.h += (desiredDiv.h - div.h) * cycle / transitionTime;
+        switch(st.scene()) {
 
-        }else {
-            div = desiredDiv;
-
-            if(mode == UniToMain) {
+            // Return to the main menu
+            case Screen::Main: {
                 return {};
+            }
 
-            }else if(mode == UniToSingle) {
-                cycle = 0;
-                mode = SingleOpen;
-
-            }else if(mode == UniOpen) {
-                mode = Uni;
-
-                // Ensure all players are choosing a config
-                for(int i = 0; i < creator.size(); i ++) 
-                    creator[i].mode = Creator::Mode::ChooseConfig;
-
-            }else if(mode == Uni) {
-
-                bool allDone = true;
-                for(int i = 0; i < creator.size(); i ++)
-                    if(creator[i].mode == Creator::Mode::ChooseConfig)
-                        allDone = false;
-
-                if(allDone) {
-                    cycle = 0;
-                    mode = UniToSingle;
-                }
-
-            }else if(mode == SingleOpen) {
-                mode = Single;
-
-            }else if(mode == SingleClose) {
+            // All done
+            case Screen::Game: {
                 vector<Player::Config> confs;
 
                 for(int i = 0; i < creator.size(); i ++)
                     confs.push_back(creator[i].dummy.config);
 
                 return confs;
+            }
 
-            }else if(mode == SingleToUni) {
-                cycle = 0;
-                mode = UniOpen;
-
-            }else if(mode == Single) {
-
+            // Update individual creators huds
+            case Screen::CharacterCustomize: {
                 int done = 0;
+
                 for(int i = 0; i < creator.size(); i ++) {
+                    creator[i].update(div, st.ready());
+                
+                    // Creator specified to return to character select
+                    if(st.ready()) {
 
-                    if(creator[i].done)
-                        done ++;
+                        if(creator[i].done)
+                            done ++;
 
-                    // Someone has returned to pre-modification select
-                    if(creator[i].mode == Creator::Mode::ChooseConfig) {
-                        creator[i].mode = Creator::Mode::ModifyConfig;
-                        cycle = 0;
-                        mode = SingleToUni;
+                        if(!creator[i].choosen) {
+                            st.nextScene(SceneTransition::CloseThenOpen, Screen::CharacterSelect);
+
+                            // Still show this screen until transition back
+                            for(int j = 0; j < creator.size(); j ++)
+                                creator[j].choosen = false;
+                        }
                     }
                 }
 
-                // Every player has finished modifications
-                if(done == creator.size()) {
-                    cycle = 0;
-                    mode = SingleClose;
-                }
-            }
-        }
+                if(st.ready() && done == creator.size())
+                    st.nextScene(SceneTransition::Close, Screen::Game);
 
-        switch(mode) {
-
-            // Update individual creators huds
-            case SingleClose:
-            case SingleOpen:
-            case SingleToUni:
-            case Single: {
-
-                for(int i = 0; i < creator.size(); i ++) 
-                    creator[i].update(div, mode == Single);
                 break;
             }
 
             // Update the unified character selector
-            case UniToMain:
-            case UniOpen:
-            case UniToSingle:
-            case Uni: {
+            case Screen::CharacterSelect: {
+
+                // Table options
                 vector<Menu::Option> options;
 
                 for(int i = 0; i < g::save.maxPlayerConfigs; i ++) {
@@ -1168,6 +1124,8 @@ vector<Player::Config> CharacterSelect::run(int count) {
                 Menu::Table(options, 5, false, NULL, 0, div, div.h / 6.f);
 
                 // Do the controls and state control
+                int selected = 0;
+
                 for(int i = 0; i < creator.size(); i ++) {
 
                     // Cursor position
@@ -1189,10 +1147,10 @@ vector<Player::Config> CharacterSelect::run(int count) {
                     float expand = 0.f;
 
                     // In control
-                    if(mode == Uni) {
+                    if(st.ready()) {
 
-                        if(creator[i].mode == Creator::Mode::ChooseConfig) {
-                            expand = 4.f + std::sin(cycle * PI / 180 * 5.f) * 4.f;
+                        if(!creator[i].choosen) {
+                            expand = 4.f + std::sin(st.counter() * PI / 180 * 5.f) * 4.f;
 
                             int res = Menu::DoControls(options, 5, false, &creator[i].configHover, creator[i].dummy.seatIndex);
 
@@ -1200,20 +1158,20 @@ vector<Player::Config> CharacterSelect::run(int count) {
                             if(res == Menu::Accept) {
                                 creator[i].configSelected = options[creator[i].configHover].id;
                                 creator[i].dummy.config = g::save.getPlayerConfig(creator[i].configSelected);
-                                creator[i].mode = Creator::Mode::ModifyConfig;
+                                creator[i].choosen = true;
 
                             // Exiting the character select
                             }else if(res == Menu::Decline) {
-                                cycle = 0;
-                                mode = UniToMain;
+                                st.nextScene(SceneTransition::Close, Screen::Main);
                             }
 
-                        }else {
+                        }else{
+                            selected ++;
                             Button::Config b = g::save.getButtonConfig(i);
 
                             // Change decision
                             if(g::input.pressed(b.index, b.D)) 
-                                creator[i].mode = Creator::Mode::ChooseConfig;
+                                creator[i].choosen = false;
                         }
                     }
 
@@ -1243,6 +1201,18 @@ vector<Player::Config> CharacterSelect::run(int count) {
 
                     g::video.draw(text);
                 }
+
+                if(st.ready() && selected == creator.size()) {
+                    st.nextScene(SceneTransition::CloseThenOpen, Screen::CharacterCustomize);
+                
+                    // Get to start screen
+                    for(int i = 0; i < creator.size(); i ++) {
+                        creator[i].mode = Creator::ModifyConfig;
+                        creator[i].test = false;
+                        creator[i].done = false;
+                    }
+                }
+
                 break;
             }
         }

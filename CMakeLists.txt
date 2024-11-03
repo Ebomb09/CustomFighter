@@ -22,7 +22,8 @@ set(Core
 	src/core/button.cpp
 	src/core/clothing.cpp
 	src/core/animated_texture.cpp
-	src/core/stage.cpp	
+	src/core/stage.cpp
+	src/core/scene_transition.cpp
 	)
 
 set(ImGui

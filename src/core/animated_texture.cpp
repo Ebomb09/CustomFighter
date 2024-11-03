@@ -30,7 +30,7 @@ sf::Texture* AnimatedTexture::getFrame(int current, int length) {
         return NULL;
 
     float prog = (textures.size()-1) * (float)current / (float)length;
-    int i = std::clamp((int)std::floor(prog), 0, (int)textures.size()-1);
+    int i = std::clamp((int)std::round(prog), 0, (int)textures.size()-1);
     return textures[i];
 }
 

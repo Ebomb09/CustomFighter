@@ -51,8 +51,9 @@ namespace Menu {
 		Wait
 	};
 
-	int Table(std::vector<Option> options, int columns, bool selectByRow, int* hover, int user, Rectangle area, float rowHeight = fontHeight);
-	int List(std::vector<Option> options, int* hover, int user, Rectangle area, float rowHeight = fontHeight);
+	int DoControls(const std::vector<Option>& options, int columns, bool selectByRow, int* hover, int user);
+	int Table(const std::vector<Option>& options, int columns, bool selectByRow, int* hover, int user, Rectangle area, float rowHeight = fontHeight);
+	int List(const std::vector<Option> options, int* hover, int user, Rectangle area, float rowHeight = fontHeight);
 	int Text(std::string* str, int user, Rectangle area);
 	int Motion(std::string* str, int user, Rectangle area);
 	int WaitForController(int* input, int user, Rectangle area);

@@ -159,20 +159,20 @@ static void cycleIndex(const std::vector<Menu::Option>& options, int* index, int
 static float scroll[MAX_PLAYERS] {0, 0, 0, 0};
 static int items[MAX_PLAYERS] {0, 0, 0, 0};
 
-int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int* hover, int user, Rectangle area, float rowHeight) {
-	int status = Wait;
-	int initial = 0;
+int Menu::DoControls(const vector<Option>& options, int columns, bool selectByRow, int* hover, int user) {
 
 	if(hover) {
 		Button::Config b = g::save.getButtonConfig(user);
-		initial = *hover;
 
 		// Move cursor
-		if(g::input.pressed(b.index, b.Up))
+		if(g::input.pressed(b.index, b.Up)) {
+			g::audio.playSound(g::save.getSound("cycle"));
 			cycleIndex(options, hover, -columns);
-
-		if(g::input.pressed(b.index, b.Down)) 
+			
+		}else if(g::input.pressed(b.index, b.Down)) {
+			g::audio.playSound(g::save.getSound("cycle"));
 			cycleIndex(options, hover, columns);
+		}
 
 		if(selectByRow) {
 
@@ -182,23 +182,36 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 
 		}else {
 
-			if(g::input.pressed(b.index, b.Left) && !selectByRow) 
+			if(g::input.pressed(b.index, b.Left) && !selectByRow) {
+				g::audio.playSound(g::save.getSound("cycle"));
 				cycleIndex(options, hover, -1);
 
-			if(g::input.pressed(b.index, b.Right) && !selectByRow) 
+			}else if(g::input.pressed(b.index, b.Right) && !selectByRow) {
+				g::audio.playSound(g::save.getSound("cycle"));
 				cycleIndex(options, hover, 1);
+			}
 		}
 
 		// Safe check index, can be bad on the first table call
 		cycleIndex(options, hover, 0);
 
 		if(g::input.pressed(b.index, b.B)){
-			status = Accept;
+			g::audio.playSound(g::save.getSound("select"));
+			return Accept;
 
 		}else if(g::input.pressed(b.index, b.D)) {
-			status = Decline;
+			return Decline;
 		}
 	}
+	return Wait;
+}
+
+int Menu::Table(const vector<Option>& options, int columns, bool selectByRow, int* hover, int user, Rectangle area, float rowHeight) {
+	int status = DoControls(options, columns, selectByRow, hover, user);
+
+	// Reality check the area of the table
+	if(area.w <= 4.f || area.h <= 4.f)
+		return status;
 
 	// Draw Properties
 	Vector2 pos = Vector2(area.x, area.y);
@@ -344,18 +357,10 @@ int Menu::Table(std::vector<Option> options, int columns, bool selectByRow, int*
 		}
 	}
 	g::video.setView(g::video.getDefaultView());
-
-	// Play sound when changes
-	if(hover && initial != *hover)
-		g::audio.playSound(g::save.getSound("cycle"));
-
-	if(status == Accept)
-		g::audio.playSound(g::save.getSound("select"));
-
 	return status;
 }
 
-int Menu::List(std::vector<Option> options, int* hover, int user, Rectangle area, float rowHeight) {
+int Menu::List(const vector<Option> options, int* hover, int user, Rectangle area, float rowHeight) {
 	return Table(options, 1, true, hover, user, area, rowHeight);
 }
 
@@ -690,6 +695,10 @@ void Menu::renderText(string str, string font, sf::Color color, Rectangle area, 
     while(text.getGlobalBounds().width > area.w || test.getGlobalBounds().height > area.h) {
     	text.setCharacterSize(text.getCharacterSize() - 1);
     	test.setCharacterSize(test.getCharacterSize() - 1);
+
+		// Limit how small the text can actually be
+		if(text.getCharacterSize() <= 4)
+			return;
 	}
 
     // Calculate free space within cell

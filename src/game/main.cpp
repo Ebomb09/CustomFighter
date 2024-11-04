@@ -10,6 +10,8 @@
 #include "core/video.h"
 #include "core/save.h"
 
+#include <iostream>
+
 using std::vector, std::string;
 
 enum {
@@ -21,6 +23,17 @@ enum {
     Practise,
     OptionMenu,
     Exit
+};
+
+Vector2 pointsOfInterests[] {
+    {275.f, -307.f},
+    {817.f, -314.f},
+    {817.f, -314.f},
+    {817.f, -314.f},
+    {817.f, -314.f},
+    {588.f, -355.f},
+    {1050.f, -615.f},
+    {588.f, -355.f}
 };
 
 vector<Menu::Option> menuOptions = {
@@ -42,10 +55,73 @@ int main(int argc, char* argv[]) {
     g::video.setVSync(g::save.vsync);
     g::video.reload();
 
+    // Title screen
+    sf::Texture* mainBG = g::save.getTexture("data/hud/main.png");
+    int waitForInterest = -1;
+
     while (g::video.isOpen()) {
         g::input.pollEvents();
-
         g::video.clear();
+
+        // Draw the main bg
+        if(mainBG) {
+
+            Vector2 maxSize;
+
+            if(g::video.getSize().x / g::video.getSize().y < (float)mainBG->getSize().x / (float)mainBG->getSize().y) {
+                maxSize = {
+                    (float)mainBG->getSize().y * g::video.getSize().x / g::video.getSize().y,
+                    (float)mainBG->getSize().y
+                };
+
+            }else {
+                maxSize = {
+                    (float)mainBG->getSize().x,                    
+                    (float)mainBG->getSize().x * g::video.getSize().y / g::video.getSize().x,
+                };
+            }
+
+            if(waitForInterest != hover) 
+                waitForInterest = -1;
+
+            Vector2 desiredSize;
+            Vector2 desiredPoint; 
+            
+            if(waitForInterest == -1) {
+                desiredSize = {maxSize.x, maxSize.y};
+                desiredPoint = {mainBG->getSize().x / 2.f, mainBG->getSize().y / -2.f};
+
+            }else {
+                desiredSize = {maxSize.x / 2.f, maxSize.y / 2.f};
+                desiredPoint = pointsOfInterests[hover];
+            }
+
+            // Can pick a new interest
+            if(waitForInterest == -1 && g::video.camera.w / desiredSize.x > 0.75f) 
+                waitForInterest = hover;
+
+            // Get center of camera
+            Vector2 center = {g::video.camera.x + g::video.camera.w / 2.f, g::video.camera.y - g::video.camera.h / 2.f};
+
+            // Adjust camera to the desired
+            center.x += (desiredPoint.x - center.x) * 0.05f;
+            center.y += (desiredPoint.y - center.y) * 0.05f;
+            g::video.camera.w += (desiredSize.x - g::video.camera.w) * 0.05f;
+            g::video.camera.h += (desiredSize.y - g::video.camera.h) * 0.05f;
+
+            // Readjust camera to center
+            g::video.camera.x = center.x - g::video.camera.w / 2.f;
+            g::video.camera.y = center.y + g::video.camera.h / 2.f;
+
+            g::video.camera.x = std::clamp(g::video.camera.x, 0.f, mainBG->getSize().x - g::video.camera.w);
+            g::video.camera.y = std::clamp(g::video.camera.y, mainBG->getSize().y * -1.0f + g::video.camera.h, 0.f);
+            g::video.camera.w = std::clamp(g::video.camera.w, 0.f, maxSize.x);
+            g::video.camera.h = std::clamp(g::video.camera.h, 0.f, maxSize.y);
+
+            sf::RectangleShape rect = g::video.toScreen({0.f, 0.f, (float)mainBG->getSize().x, (float)mainBG->getSize().y});
+            rect.setTexture(mainBG);
+            g::video.draw(rect);
+        }
 
         Rectangle area = {
             64,

@@ -261,19 +261,61 @@ void Skeleton::drawTorso(Renderer* renderer, std::vector<Clothing> list) {
             {1, 1}, {1, 2}, {2, 2}, {2, 1}                
         };
 
-        // Want vs Have Angle
-        float rotate = PI/2.f - (pt[0][1] - pt[2][1]).getAngle();
+        Vector2 angleX[3][3];
+        Vector2 angleY[3][3];
+        int type[3][3];
+
+        enum {
+            ScaleNone = 0,
+            ScaleX = 1,
+            ScaleY = 2
+        };
+
+        // Row 0
+        angleX[0][0] = (pt[0][0] - pt[0][1]);
+        angleY[0][0] = (pt[0][0] - pt[1][0]);
+
+        angleY[0][1] = (pt[0][1] - pt[1][1]);
+
+        angleX[0][2] = (pt[0][2] - pt[0][1]);
+        angleY[0][2] = (pt[0][2] - pt[1][2]);
+
+        // Row 1
+        angleX[1][0] = (pt[1][0] - pt[1][1]);
+
+        angleX[1][2] = (pt[1][2] - pt[1][1]);
+
+        // Row 2
+        angleX[2][0] = (pt[2][0] - pt[2][1]);
+        angleY[2][0] = (pt[2][0] - pt[1][0]);
+
+        angleY[2][1] = (pt[2][1] - pt[1][1]);
+
+        angleX[2][2] = (pt[2][2] - pt[2][1]);
+        angleY[2][2] = (pt[2][2] - pt[1][2]);
+
+        type[0][0] = ScaleX | ScaleY;
+        type[0][1] = ScaleY;
+        type[0][2] = ScaleX | ScaleY;
+        type[1][0] = ScaleX;
+        type[1][1] = ScaleNone;
+        type[1][2] = ScaleX;
+        type[2][0] = ScaleX | ScaleY;
+        type[2][1] = ScaleY;
+        type[2][2] = ScaleX | ScaleY;
 
         for(int u = 0; u < indices.size(); u += 4) {
-
             for(int v = 0; v < 4; v ++) {
                 int x = indices[u+v].x;
                 int y = indices[u+v].y;
 
-                // Rotate skeleton, and scale accordingly, then rerotate into proper position
-                Vector2 pos = pt[x][y].rotate(rotate, pt[1][1]);
-                pos = pt[1][1] + (pos - pt[1][1]) * scale;
-                pos = pos.rotate(-rotate, pt[1][1]);
+                Vector2 pos = pt[x][y];
+
+                if(type[x][y] & ScaleX)
+                    pos = pos.translate(angleX[x][y].getAngle(), angleX[x][y].getDistance() * (scale.x - 1.f));
+
+                if(type[x][y] & ScaleY)
+                    pos = pos.translate(angleY[x][y].getAngle(), angleY[x][y].getDistance() * (scale.y - 1.f));
 
                 vert[v].position = renderer->toScreen(pos);
                 vert[v].texCoords = texPt[x][y];   

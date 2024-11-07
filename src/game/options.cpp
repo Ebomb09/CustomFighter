@@ -45,25 +45,26 @@ void Options::run(Rectangle area) {
 		sh.setOutlineColor(sf::Color::White);
 		g::video.draw(sh);
 
-		// Draw the options
-		vector<Menu::Option> options;					
+		// Create the options menu
+		Menu::Config conf;					
+		conf.draw_Area = area;
 
-		options.push_back({VideoSettings, "Video Settings"});	
-		options.push_back({ControllerSettings, "Controller Settings"});	
-		options.push_back({});		
-		options.push_back({Back, "Back"});
+		conf.push_back({VideoSettings, "Video Settings"});	
+		conf.push_back({ControllerSettings, "Controller Settings"});	
+		conf.push_back({});		
+		conf.push_back({Back, "Back"});
 
-		int res = Menu::Table(options, 1, true, &hover, 0, area);
+		int res = Menu::Table(conf, 0, &hover, true);
 
 		if(res == Menu::Accept) {
 
-			if(options[hover].id == ControllerSettings) {
+			if(conf[hover].id == ControllerSettings) {
 				ButtonConfig::run({area.x + 128, area.y, area.w + 256, area.h});
 
-			}else if(options[hover].id == VideoSettings) {
+			}else if(conf[hover].id == VideoSettings) {
 				VideoConfig::run({area.x + 128, area.y, area.w, area.h});
 
-			}else if(options[hover].id == Back) {
+			}else if(conf[hover].id == Back) {
 				return;
 			}
 			

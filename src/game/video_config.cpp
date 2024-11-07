@@ -47,35 +47,39 @@ void VideoConfig::run(Rectangle area) {
 		sh.setOutlineColor(sf::Color::White);
 		g::video.draw(sh);
 
-		// Draw the options
-		vector<Menu::Option> options;
+		// Create the options menu
+		Menu::Config conf;
+		conf.draw_Area = area;
 
-		options.push_back({Resolution, "Resolution"});
-		options.push_back({Resolution, std::to_string((int)g::save.resolution.x) + "x" + std::to_string((int)g::save.resolution.y)});
+		conf.data_Columns = 2;
+		conf.data_GroupByRow = true;
 
-		options.push_back({DisplayMode, "Display Mode"});
-		options.push_back({DisplayMode, DisplayMode::String[g::save.displayMode]});	
+		conf.push_back({Resolution, "Resolution"});
+		conf.push_back({Resolution, std::to_string((int)g::save.resolution.x) + "x" + std::to_string((int)g::save.resolution.y)});
 
-		options.push_back({VSync, "V-Sync"});	
-		options.push_back({VSync, (g::save.vsync) ? " On" : "Off"});
+		conf.push_back({DisplayMode, "Display Mode"});
+		conf.push_back({DisplayMode, DisplayMode::String[g::save.displayMode]});	
 
-		options.push_back({Apply, "Apply"});
-		options.push_back({});
+		conf.push_back({VSync, "V-Sync"});	
+		conf.push_back({VSync, (g::save.vsync) ? " On" : "Off"});
 
-		options.push_back({});
-		options.push_back({});
+		conf.push_back({Apply, "Apply"});
+		conf.push_back({});
 
-		options.push_back({Back, "Back"});
-		options.push_back({});
+		conf.push_back({});
+		conf.push_back({});
 
-		int res = Menu::Table(options, 2, true, &hover, 0, area);
+		conf.push_back({Back, "Back"});
+		conf.push_back({});
+
+		int res = Menu::Table(conf, 0, &hover, true);
 
 		if(res == Menu::Accept) {
 
-			if(options[hover].id == Back) {
+			if(conf[hover].id == Back) {
 				return;
 
-			}else if(options[hover].id == Apply) {
+			}else if(conf[hover].id == Apply) {
 				g::save.saveVideoConfig();
 				g::video.setSize(g::save.resolution);
 				g::video.setDisplayMode(g::save.displayMode);
@@ -88,7 +92,7 @@ void VideoConfig::run(Rectangle area) {
 
 		}else {
 
-			if(options[hover].id == Resolution) {
+			if(conf[hover].id == Resolution) {
 				int index = 0;
 
 				for(int i = 0; i < sf::VideoMode::getFullscreenModes().size(); i ++) {
@@ -116,7 +120,7 @@ void VideoConfig::run(Rectangle area) {
 				g::save.resolution.x = sf::VideoMode::getFullscreenModes()[index].width;
 				g::save.resolution.y = sf::VideoMode::getFullscreenModes()[index].height;
 
-			}else if(options[hover].id == DisplayMode) {
+			}else if(conf[hover].id == DisplayMode) {
 				int index = g::save.displayMode;
 
 				if(g::input.pressed(b.index, b.Right)) 
@@ -133,7 +137,7 @@ void VideoConfig::run(Rectangle area) {
 
 				g::save.displayMode = index;
 
-			}else if(options[hover].id == VSync) {
+			}else if(conf[hover].id == VSync) {
 
 				if(g::input.pressed(b.index, b.Right) || g::input.pressed(b.index, b.Left)) 
 					g::save.vsync = !g::save.vsync;

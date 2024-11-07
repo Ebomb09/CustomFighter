@@ -7,6 +7,7 @@
 #include "audio.h"
 #include "save.h"
 
+#include <cmath>
 #include <utility>
 #include <string>
 #include <iostream>
@@ -137,10 +138,10 @@ static void cycleIndex(const std::vector<Menu::Option>& options, int* index, int
 
 		// Safe check index
 		if(*index < 0)
-			(*index) = options.size() - 1;
+			(*index) = options.size() + *index;
 		
 		else if(*index >= options.size()) 
-			(*index) = 0;		
+			(*index) = *index - options.size();		
 
 		// Cyclical check, if we loop back on starting point
 		if(*index == beg && quantity != 0)
@@ -159,69 +160,116 @@ static void cycleIndex(const std::vector<Menu::Option>& options, int* index, int
 static float scroll[MAX_PLAYERS] {0, 0, 0, 0};
 static int items[MAX_PLAYERS] {0, 0, 0, 0};
 
-int Menu::DoControls(const vector<Option>& options, int columns, bool selectByRow, int* hover, int user) {
+static void getCell(Menu::Config& conf, int index, int user, int* outRow = NULL, int* outColumn = NULL, Rectangle* outRectangle = NULL) {
+	int row = index / conf.data_Columns;
+	int column = index % conf.data_Columns;
 
-	if(hover) {
-		Button::Config b = g::save.getButtonConfig(user);
+	if(outRow)
+		*outRow = row;
 
-		// Move cursor
-		if(g::input.pressed(b.index, b.Up)) {
-			g::audio.playSound(g::save.getSound("cycle"));
-			cycleIndex(options, hover, -columns);
-			
-		}else if(g::input.pressed(b.index, b.Down)) {
-			g::audio.playSound(g::save.getSound("cycle"));
-			cycleIndex(options, hover, columns);
-		}
+	if(outColumn)
+		*outColumn = column;
 
-		if(selectByRow) {
+	Rectangle area = {
+		conf.draw_Area.x + column * (conf.draw_Area.w / conf.data_Columns), 
+		conf.draw_Area.y + row * conf.draw_RowHeight - scroll[user], 
+		conf.draw_Area.w / conf.data_Columns, 
+		conf.draw_RowHeight
+	};
 
-			// Ensure only first column is selected
-			if(*hover % columns != 0) 
-				*hover -= *hover % columns;
+	if(outRectangle)
+		*outRectangle = area;
+}  
 
-		}else {
+int Menu::DoControls(Config& conf, int user, int* hover, bool doControl) {
 
-			if(g::input.pressed(b.index, b.Left) && !selectByRow) {
-				g::audio.playSound(g::save.getSound("cycle"));
-				cycleIndex(options, hover, -1);
+	if(!doControl || user < 0 || !hover) 
+		return Wait;
 
-			}else if(g::input.pressed(b.index, b.Right) && !selectByRow) {
-				g::audio.playSound(g::save.getSound("cycle"));
-				cycleIndex(options, hover, 1);
+	Button::Config b = g::save.getButtonConfig(user);
+	int initial = *hover;
+
+	bool buttonAccept = g::input.pressed(b.index, b.B);
+	bool buttonDecline = g::input.pressed(b.index, b.D);
+
+	// Move cursor
+	if(g::input.pressed(b.index, b.Up)) {
+		cycleIndex(conf, hover, -conf.data_Columns);
+		
+	}else if(g::input.pressed(b.index, b.Down)) {
+		cycleIndex(conf, hover, conf.data_Columns);
+	}
+
+	// Mouse controls
+	if(Screen::pointInRectangle(g::input.mousePosition, conf.draw_Area)) {
+
+		for(int i = 0; i < conf.size(); i ++) {
+			int row, column;
+			Rectangle area;
+			getCell(conf, i, user, &row, &column, &area);
+
+			if(Screen::pointInRectangle(g::input.mousePosition, area)) {
+				*hover = i;
+
+				if(g::input.pressed(MOUSE_INDEX, sf::Mouse::Button::Left))
+					buttonAccept = true;
+					
+				break;
 			}
 		}
+	}
 
-		// Safe check index, can be bad on the first table call
-		cycleIndex(options, hover, 0);
+	// Ensure only first column is selected
+	if(conf.data_GroupByRow) {
 
-		if(g::input.pressed(b.index, b.B)){
-			g::audio.playSound(g::save.getSound("select"));
-			return Accept;
+		if(*hover % conf.data_Columns != 0) 
+			*hover -= *hover % conf.data_Columns;
 
-		}else if(g::input.pressed(b.index, b.D)) {
-			return Decline;
+	// Can move left or right within table
+	}else {
+
+		if(g::input.pressed(b.index, b.Left)) {
+			cycleIndex(conf, hover, -1);
+
+		}else if(g::input.pressed(b.index, b.Right)) {
+			cycleIndex(conf, hover, 1);
 		}
+	}
+
+	// Safe check index, can be bad on the first table call
+	cycleIndex(conf, hover, 0);
+
+	// Changed the hovered item
+	if(*hover != initial) {
+		g::audio.playSound(g::save.getSound("cycle"));
+	}
+
+	// South button - Accept
+	if(buttonAccept){
+		g::audio.playSound(g::save.getSound("select"));
+		return Accept;
+
+	// East button - Decline
+	}else if(buttonDecline) {
+		return Decline;
 	}
 	return Wait;
 }
 
-int Menu::Table(const vector<Option>& options, int columns, bool selectByRow, int* hover, int user, Rectangle area, float rowHeight) {
-	int status = DoControls(options, columns, selectByRow, hover, user);
+int Menu::Table(Config& conf, int user, int* hover, bool doControl) {
+	int status = DoControls(conf, user, hover, doControl);
 
 	// Reality check the area of the table
-	if(area.w <= 4.f || area.h <= 4.f)
+	if(conf.draw_Area.w <= 4.f || conf.draw_Area.h <= 4.f)
 		return status;
 
 	// Draw Properties
-	Vector2 pos = Vector2(area.x, area.y);
-
-	int 	rows 				= options.size() / columns;
-	float	bottomRow			= rows * rowHeight;
+	int 	rows 				= conf.size() / conf.data_Columns;
+	float	bottomRow			= rows * conf.draw_RowHeight;
 
 	// Check if item count has changed before performing scroll
-	if(items[user] != options.size()) {
-		items[user] = options.size();
+	if(items[user] != conf.size()) {
+		items[user] = conf.size();
 		scroll[user] = 0;
 	}
 
@@ -230,27 +278,26 @@ int Menu::Table(const vector<Option>& options, int columns, bool selectByRow, in
 
 	// If last row extends past the maximum area then activate scroll
 	if(hover) {
-		if(bottomRow > area.h) {
-			float selectedRow = 1.f * (*hover) / columns;
+		if(bottomRow > conf.draw_Area.h) {
+			float selectedRow = 1.f * (*hover) / conf.data_Columns;
 
 			// Override if mouse on screen
-			if(Screen::pointInRectangle(g::input.mousePosition, area)) 
-				selectedRow = (g::input.mousePosition.y - area.y) / area.h * rows;
+			if(doControl && Screen::pointInRectangle(g::input.mousePosition, conf.draw_Area)) 
+				selectedRow = (g::input.mousePosition.y - conf.draw_Area.y) / conf.draw_Area.h * rows;
 
 			// Calculate the distance scrolled down table
-			float distanceScrolled = rowHeight * (selectedRow + 1);
+			float distanceScrolled = conf.draw_RowHeight * (selectedRow + 1);
 
 			// Clamp to bottom
-			if(distanceScrolled > bottomRow - area.h / 2) {
-				desiredScroll = bottomRow - area.h;
+			if(distanceScrolled > bottomRow - conf.draw_Area.h / 2) {
+				desiredScroll = bottomRow - conf.draw_Area.h;
 
 			// Clamp to scroll middle
-			}else if(distanceScrolled > area.h / 2) {
-				desiredScroll = distanceScrolled - area.h / 2;
+			}else if(distanceScrolled > conf.draw_Area.h / 2) {
+				desiredScroll = distanceScrolled - conf.draw_Area.h / 2;
 			}		
 		}
 	}
-
 
 	// Scroll effect
 	if(scroll[user] < desiredScroll)
@@ -260,179 +307,149 @@ int Menu::Table(const vector<Option>& options, int columns, bool selectByRow, in
 		scroll[user] = std::max(desiredScroll, scroll[user] - (scroll[user] - desiredScroll) / 10);
 
 	sf::View view({
-		area.x, 
-		area.y + scroll[user], 
-		area.w, 
-		area.h
+		conf.draw_Area.x, 
+		conf.draw_Area.y, 
+		conf.draw_Area.w, 
+		conf.draw_Area.h
 	});
 
 	// View port is relative of screen coordinates
-	view.setViewport(area.getRatio(g::video.getSize().x, g::video.getSize().y));
+	view.setViewport(conf.draw_Area.getRatio(g::video.getSize().x, g::video.getSize().y));
 
 	g::video.setView(view);
 
 	// Draw on screen
-	for(int i = 0; i < options.size(); i += columns) {
+	for(int i = 0; i < conf.size(); i ++) {
+		int row, column;
+		Rectangle area;
+		getCell(conf, i, user, &row, &column, &area);
 
-		for(int j = 0; j < columns && i + j < options.size(); j ++) {
-			sf::Color color = sf::Color::White;
+		// Get the text colour
+		sf::Color color = sf::Color::White;
 
-			if(hover) {
-				if(selectByRow) {
+		if(conf.data_GroupByRow) {
 
-					if(*hover == i)
-						color = sf::Color::Yellow;
+			if(hover && *hover == row * conf.data_Columns)
+				color = sf::Color::Yellow;
 
-				}else {
+		}else {
 
-					if(*hover == i + j)
-						color = sf::Color::Yellow;
-				}				
-			}
-
-			Rectangle renderBox = {pos.x + j * (area.w / columns), pos.y, area.w / columns, rowHeight};
-
-			switch(options[i+j].type) {
-
-			case Option::Type::Text:
-	        	renderText(*options[i+j].text, *options[i+j].font, color, renderBox, options[i+j].align);
-	        	break;
-
-	        case Option::Type::Player: 
-	        	renderPlayer(*options[i+j].player, *options[i+j].capture, renderBox);
-	        	break;
-	        
-	        default:
-	        	break;
-			}
-
-	        // Mouse controls
-			if(hover) {
-				if(Screen::pointInRectangle(g::input.mousePosition, area)) {
-					if(Screen::pointInRectangle(g::input.mousePosition + Vector2{0, scroll[user]}, renderBox)) {
-
-						if(options[i+j].type != Option::Type::Empty) {
-
-							if(selectByRow)
-								*hover = i;
-							else
-								*hover = i+j;
-
-							if(g::input.pressed(MOUSE_INDEX, sf::Mouse::Left))
-								status = Menu::Accept;    		
-						}        	
-					}
-				}
-			}
+			if(hover && *hover == i)
+				color = sf::Color::Yellow;
 		}
-		pos.y += rowHeight;
-	}
 
-	// Draw outlines
-	if(hover) {
-		pos = Vector2(area.x, area.y);
+		// Render the cell type
+		switch(conf[i].type) {
 
-		for(int i = 0; i < options.size(); i += columns) {
+		case Option::Type::Text:
+			renderText(*conf[i].text, *conf[i].font, color, area, conf[i].align);
+			break;
 
-			for(int j = 0; j < columns && i + j < options.size(); j ++) {
-				Rectangle renderBox = {pos.x + j * (area.w / columns), pos.y, area.w / columns, rowHeight};
+		case Option::Type::Player: 
+			renderPlayer(*conf[i].player, *conf[i].capture, area);
+			break;
+		
+		default:
+			break;
+		}
 
-				if(!selectByRow && *hover == i + j) {
-					sf::RectangleShape rect = renderBox;
-					rect.setFillColor(sf::Color::Transparent);
-					rect.setOutlineColor(sf::Color::Yellow);
-					rect.setOutlineThickness(2);
-					g::video.draw(rect);
-				}
-			}
+		// Outline the cell
+		bool drawOutline = false;
 
-			if(selectByRow && *hover == i) {
-				sf::RectangleShape rect = Rectangle{pos.x, pos.y, area.w, rowHeight};
-				rect.setFillColor(sf::Color::Transparent);
-				rect.setOutlineColor(sf::Color::Yellow);
-				rect.setOutlineThickness(2);
-				g::video.draw(rect);
-			}
-			pos.y += rowHeight;
+		if(conf.data_GroupByRow) {
+			drawOutline = (hover && *hover == row * conf.data_Columns);
+
+		}else {
+			drawOutline = (hover && *hover == i);
+		}
+
+		if(drawOutline) {
+			sf::RectangleShape rect = Rectangle{area.x, area.y, area.w, 2.f};
+			rect.setFillColor(sf::Color::Yellow);
+			g::video.draw(rect);
+
+			rect = Rectangle{area.x, area.y + area.h - 2.f, area.w, 2.f};
+			rect.setFillColor(sf::Color::Yellow);
+			g::video.draw(rect);
 		}
 	}
+
 	g::video.setView(g::video.getDefaultView());
 	return status;
 }
 
-int Menu::List(const vector<Option> options, int* hover, int user, Rectangle area, float rowHeight) {
-	return Table(options, 1, true, hover, user, area, rowHeight);
-}
-
 static int keyboardData[MAX_PLAYERS];
 
-int Menu::Text(std::string* str, int user, Rectangle area) {
+int Menu::Text(Config& conf, int user, string* str, bool doControl) {
 
-	renderText(*str, "Anton-Regular", sf::Color::White, {area.x, area.y, area.w, fontHeight}, -1);
+	// Draw the input text
+	renderText(*str, "Anton-Regular", sf::Color::White, {conf.draw_Area.x, conf.draw_Area.y, conf.draw_Area.w, fontHeight}, -1);
 
 	// Adjust remaining area for the keyboard
-	area.y += fontHeight*2;
-	area.h -= fontHeight*2;
+	conf.draw_Area.y += fontHeight*2;
+	conf.draw_Area.h -= fontHeight*2;
 
 	enum {
 		Delete 	= -1,
 		Enter	= -2,
 		Cancel	= -3
 	};
+	
+	// Add alphabet
+	conf.data_Columns = 10;
 
-	vector<Option> options;
-	options.push_back(Option('Q', "Q"));
-	options.push_back(Option('W', "W"));
-	options.push_back(Option('E', "E"));
-	options.push_back(Option('R', "R"));
-	options.push_back(Option('T', "T"));
-	options.push_back(Option('Y', "Y"));
-	options.push_back(Option('U', "U"));
-	options.push_back(Option('I', "I"));
-	options.push_back(Option('O', "O"));
-	options.push_back(Option('P', "P"));
+	conf.push_back(Option('Q', "Q"));
+	conf.push_back(Option('W', "W"));
+	conf.push_back(Option('E', "E"));
+	conf.push_back(Option('R', "R"));
+	conf.push_back(Option('T', "T"));
+	conf.push_back(Option('Y', "Y"));
+	conf.push_back(Option('U', "U"));
+	conf.push_back(Option('I', "I"));
+	conf.push_back(Option('O', "O"));
+	conf.push_back(Option('P', "P"));
 
-	options.push_back(Option('A', "A"));
-	options.push_back(Option('S', "S"));
-	options.push_back(Option('D', "D"));
-	options.push_back(Option('F', "F"));
-	options.push_back(Option('G', "G"));
-	options.push_back(Option('H', "H"));
-	options.push_back(Option('J', "J"));
-	options.push_back(Option('K', "K"));
-	options.push_back(Option('L', "L"));
-	options.push_back(Option(Delete, "Delete"));
+	conf.push_back(Option('A', "A"));
+	conf.push_back(Option('S', "S"));
+	conf.push_back(Option('D', "D"));
+	conf.push_back(Option('F', "F"));
+	conf.push_back(Option('G', "G"));
+	conf.push_back(Option('H', "H"));
+	conf.push_back(Option('J', "J"));
+	conf.push_back(Option('K', "K"));
+	conf.push_back(Option('L', "L"));
+	conf.push_back(Option(Delete, "Delete"));
 
-	options.push_back(Option('Z', "Z"));
-	options.push_back(Option('X', "X"));
-	options.push_back(Option('C', "C"));
-	options.push_back(Option('V', "V"));
-	options.push_back(Option('B', "B"));
-	options.push_back(Option('N', "N"));
-	options.push_back(Option('M', "M"));
-	options.push_back(Option('K', "K"));
-	options.push_back(Option(' ', "Space"));
-	options.push_back(Option(Enter, "Enter"));
+	conf.push_back(Option('Z', "Z"));
+	conf.push_back(Option('X', "X"));
+	conf.push_back(Option('C', "C"));
+	conf.push_back(Option('V', "V"));
+	conf.push_back(Option('B', "B"));
+	conf.push_back(Option('N', "N"));
+	conf.push_back(Option('M', "M"));
+	conf.push_back(Option('K', "K"));
+	conf.push_back(Option(' ', "Space"));
+	conf.push_back(Option(Enter, "Enter"));
 
-	options.push_back(Option(Cancel, "Cancel"));
+	conf.push_back(Option(Cancel, "Cancel"));
 
-	int res = Table(options, 10, false, &keyboardData[user], user, area);
+	int res = Table(conf, user, &keyboardData[user], true);
 
 	if(res == Accept) {
 
-		if(options[keyboardData[user]].id == Enter) {
+		if(conf[keyboardData[user]].id == Enter) {
 			return Accept;
 
-		}else if(options[keyboardData[user]].id == Delete) {
+		}else if(conf[keyboardData[user]].id == Delete) {
 
 			if((*str).size() > 0) 
 				(*str).pop_back();			
 
-		}else if(options[keyboardData[user]].id == Cancel) {
+		}else if(conf[keyboardData[user]].id == Cancel) {
 			return Decline;
 
 		}else {
-			(*str) += (char)options[keyboardData[user]].id;
+			(*str) += (char)conf[keyboardData[user]].id;
 		}
 	}
 
@@ -441,71 +458,73 @@ int Menu::Text(std::string* str, int user, Rectangle area) {
 
 static int motionData[MAX_PLAYERS];
 
-int Menu::Motion(std::string* str, int user, Rectangle area) {
+int Menu::Motion(Config& conf, int user, string* str, bool doControl) {
 	Button::Config b = g::save.getButtonConfig(user);
 
 	// Draw the header
-	sf::RectangleShape rect({area.w, fontHeight});
-	rect.setPosition({area.x, area.y});
+	sf::RectangleShape rect({conf.draw_Area.w, fontHeight});
+	rect.setPosition({conf.draw_Area.x, conf.draw_Area.y});
 	rect.setFillColor(sf::Color(128, 128, 128));
 	g::video.draw(rect);
 
 	if(str->size() == 0) {
-		renderText("Input Motion...", "Anton-Regular", sf::Color::Black, {area.x, area.y, area.w, fontHeight}, 0);
+		renderText("Input Motion...", "Anton-Regular", sf::Color::Black, {conf.draw_Area.x, conf.draw_Area.y, conf.draw_Area.w, fontHeight}, 0);
 
 	}else {
-		renderText(*str, "fight", sf::Color::White, {area.x, area.y, area.w, fontHeight}, 0);
+		renderText(*str, "fight", sf::Color::White, {conf.draw_Area.x, conf.draw_Area.y, conf.draw_Area.w, fontHeight}, 0);
 	}
 
-	// Create a test player to get SOCD and motion inputs
-	Player test;
-	test.seatIndex = user;
-	test.state.button[0] = test.readInput();
+	if(doControl) {
+		// Create a test player to get SOCD and motion inputs
+		Player test;
+		test.seatIndex = user;
+		test.state.button[0] = test.readInput();
 
-	// Emulate player input buffer by check press / release
-	string motion = "";
+		// Emulate player input buffer by check press / release
+		string motion = "";
 
-	if((g::input.pressed(b.index, b.Up) 	|| g::input.released(b.index, b.Up) ||
-		g::input.pressed(b.index, b.Left) 	|| g::input.released(b.index, b.Left) ||
-		g::input.pressed(b.index, b.Down) 	|| g::input.released(b.index, b.Down) ||
-		g::input.pressed(b.index, b.Right) 	|| g::input.released(b.index, b.Right)) &&
-		(g::input.held(b.index, b.Up) ||
-		g::input.held(b.index, b.Left) ||
-		g::input.held(b.index, b.Down) ||
-		g::input.held(b.index, b.Right))) {
+		if((g::input.pressed(b.index, b.Up) 	|| g::input.released(b.index, b.Up) ||
+			g::input.pressed(b.index, b.Left) 	|| g::input.released(b.index, b.Left) ||
+			g::input.pressed(b.index, b.Down) 	|| g::input.released(b.index, b.Down) ||
+			g::input.pressed(b.index, b.Right) 	|| g::input.released(b.index, b.Right)) &&
+			(g::input.held(b.index, b.Up) ||
+			g::input.held(b.index, b.Left) ||
+			g::input.held(b.index, b.Down) ||
+			g::input.held(b.index, b.Right))) {
 
-	    Vector2 socd = test.getSOCD();
-	    motion += ('5' + (int)socd.x + (int)socd.y * 3);
+			Vector2 socd = test.getSOCD();
+			motion += ('5' + (int)socd.x + (int)socd.y * 3);
+		}
+
+		// Get button states
+		string button = "";
+
+		if(g::input.pressed(b.index, b.A)) button += (button.size() == 0) ? "A" : "+A";
+		if(g::input.pressed(b.index, b.B)) button += (button.size() == 0) ? "B" : "+B";
+		if(g::input.pressed(b.index, b.C)) button += (button.size() == 0) ? "C" : "+C";
+		if(g::input.pressed(b.index, b.D)) button += (button.size() == 0) ? "D" : "+D";
+
+		(*str) += motion + button;
+
+		// Return when no more buttons are being held
+		bool held = false;
+
+		for(int i = 0; i < Button::Total; i ++) {
+
+			if(g::input.pressed(b.index, b.button[i])) {
+				held = true;
+				break;
+			}
+		}
+
+		// Wait a couple frames before returning
+		if(held) {
+			motionData[user] = 20;
+
+		}else {
+			motionData[user] --;
+		}
 	}
-
-	// Get button states
-	string button = "";
-
-    if(g::input.pressed(b.index, b.A)) button += (button.size() == 0) ? "A" : "+A";
-    if(g::input.pressed(b.index, b.B)) button += (button.size() == 0) ? "B" : "+B";
-    if(g::input.pressed(b.index, b.C)) button += (button.size() == 0) ? "C" : "+C";
-    if(g::input.pressed(b.index, b.D)) button += (button.size() == 0) ? "D" : "+D";
-
-    (*str) += motion + button;
-
-    // Return when no more buttons are being held
-    bool held = false;
-
-    for(int i = 0; i < Button::Total; i ++) {
-
-    	if(g::input.pressed(b.index, b.button[i])) {
-    		held = true;
-    		break;
-    	}
-    }
-
-    // Wait a couple frames before returning
-    if(held) {
-    	motionData[user] = 20;
-
-    }else {
-    	motionData[user] --;
-    }
 
 	if(str->size() > 0 && motionData[user] <= 0)
 		return Accept;
@@ -513,40 +532,40 @@ int Menu::Motion(std::string* str, int user, Rectangle area) {
 	return Wait;
 }
 
-int Menu::WaitForController(int* input, int user, Rectangle area) {
+int Menu::WaitForController(Config& conf, int user, int* input, bool doControl) {
 	Button::Config b = g::save.getButtonConfig(user);
 
 	// Draw the header
-	sf::RectangleShape rect({area.w, fontHeight});
-	rect.setPosition({area.x, area.y});
+	sf::RectangleShape rect({conf.draw_Area.w, fontHeight});
+	rect.setPosition({conf.draw_Area.x, conf.draw_Area.y});
 	rect.setFillColor(sf::Color(128, 128, 128));
 	g::video.draw(rect);
 
-	renderText("Press any button...", "Anton-Regular", sf::Color::Black, {area.x, area.y, area.w, fontHeight}, 0);
+	renderText("Press any button...", "Anton-Regular", sf::Color::Black, {conf.draw_Area.x, conf.draw_Area.y, conf.draw_Area.w, fontHeight}, 0);
 
 	int index = g::input.lastController;
 
-	if(g::input.pressed(index, g::input.controller[index].lastInput)) {
+	if(doControl && g::input.pressed(index, g::input.controller[index].lastInput)) {
 		*input = index;
 		return Accept;
 	}
 	return Wait;
 }
 
-int Menu::WaitForInput(int* input, int user, Rectangle area) {
+int Menu::WaitForInput(Config& conf, int user, int* input, bool doControl) {
 	Button::Config b = g::save.getButtonConfig(user);
 
 	// Draw the header
-	sf::RectangleShape rect({area.w, fontHeight});
-	rect.setPosition({area.x, area.y});
+	sf::RectangleShape rect({conf.draw_Area.w, fontHeight});
+	rect.setPosition({conf.draw_Area.x, conf.draw_Area.y});
 	rect.setFillColor(sf::Color(128, 128, 128));
 	g::video.draw(rect);
 
-	renderText("Press any button...", "Anton-Regular", sf::Color::Black, {area.x, area.y, area.w, fontHeight}, 0);
+	renderText("Press any button...", "Anton-Regular", sf::Color::Black, {conf.draw_Area.x, conf.draw_Area.y, conf.draw_Area.w, fontHeight}, 0);
 
 	int last = g::input.controller[b.index].lastInput;
 
-	if(g::input.pressed(b.index, last)) {
+	if(doControl && g::input.pressed(b.index, last)) {
 		*input = last;
 		return Accept;
 	}
@@ -555,13 +574,13 @@ int Menu::WaitForInput(int* input, int user, Rectangle area) {
 
 static int colorSelect[MAX_PLAYERS];
 
-int Menu::ColorPicker(sf::Color* color, int user, Rectangle area) {
+int Menu::ColorPicker(Config& conf, int user, sf::Color* color, bool doControl) {
 	Button::Config b = g::save.getButtonConfig(user);
 
 	float scroll = 0;
 
 	for(int i = 0; i < 3; i ++) {
-		Rectangle box = {area.x, area.y + scroll, area.w, fontHeight};
+		Rectangle box = {conf.draw_Area.x, conf.draw_Area.y + scroll, conf.draw_Area.w, fontHeight};
 
 		sf::Vertex vert[4];
 		vert[0].position = {box.x, box.y};

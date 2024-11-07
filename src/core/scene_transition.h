@@ -2,6 +2,7 @@
 #define GAME_SCENE_TRANSITION_H
 
 #include "math.h"
+#include "SFML/Graphics.hpp"
 
 class SceneTransition {
 
@@ -21,6 +22,7 @@ public:
     int scene();
 
     Rectangle getGrowthEffect(const Rectangle& open, const Rectangle& close);
+    sf::CircleShape getCircleFadeEffect(const Rectangle& area);
 
 private:
 

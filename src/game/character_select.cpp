@@ -17,6 +17,8 @@
 using std::vector, std::string;
 using namespace std::chrono;
 
+const vector<string> ConfigMoveCategories = {"Stance", "Custom Moves"};
+
 struct Creator {
 
     enum ID {
@@ -49,7 +51,6 @@ struct Creator {
 
     Rectangle reference;
     Player dummy        = Player();
-    int seatIndex       = -1;
     bool test           = false;
     bool choosen        = false;
     bool done           = false;
@@ -69,54 +70,65 @@ struct Creator {
     Player::Config      backup;
     int mode            = Mode::ModifyConfig;
 
-    vector<Menu::Option> getModificationOptions() {
-        vector<Menu::Option> out;
+    Menu::Config getModificationMenu() {
+        Menu::Config conf;
+        conf.draw_Area = getMenuDiv();
 
-        out.push_back({ID::Confirm, "Confirm"});
+        conf.push_back({ID::Confirm, "Confirm"});
+        conf.push_back({});
+        conf.push_back({ID::Costume, "Costume"});
+        conf.push_back({ID::MoveList, "MoveList"});
+        conf.push_back({});
+        conf.push_back({ID::Test, "Test"});
+        conf.push_back({ID::Save, "Save"});
+        conf.push_back({ID::Cancel, "Cancel"});
 
-        out.push_back({});
-
-        out.push_back({ID::Costume, "Costume"});
-        out.push_back({ID::MoveList, "MoveList"});
-
-        out.push_back({});
-
-        out.push_back({ID::Test, "Test"});
-        out.push_back({ID::Save, "Save"});
-        out.push_back({ID::Cancel, "Cancel"});
-
-        return out;
+        return conf;
     }
 
-    vector<Menu::Option> getConfigMoves() {
-        vector<Menu::Option> out;
+    Menu::Config getConfigMenu() {
+        Menu::Config conf;
+        conf.draw_Area = getMenuDiv();
+
+        conf.data_Header = "< " + ConfigMoveCategories[moveCategorySelected] + " (" + std::to_string(moveCategorySelected+1) + "/" + std::to_string(ConfigMoveCategories.size()) + ") >";
+        conf.data_Columns = 3;
+        conf.data_GroupByRow = true;
 
         for(int i = 0; i < Move::Total; i ++) {
 
             if((moveCategorySelected == 0 && i < Move::Custom00) ||
                 (moveCategorySelected == 1 && i >= Move::Custom00)) {
-                out.push_back({ID::Index, i, Move::String[i]});
-                out.push_back({ID::Index, i, dummy.config.motions[i], "fight"});
-                out.push_back({ID::Index, i, dummy.config.moves[i]});   
+                conf.push_back({ID::Index, i, Move::String[i]});
+                conf.push_back({ID::Index, i, dummy.config.motions[i], "fight"});
+                conf.push_back({ID::Index, i, dummy.config.moves[i]});   
             }    
         }
           
         // Spacing
-        out.push_back({});
-        out.push_back({});
-        out.push_back({});
+        conf.push_back({});
+        conf.push_back({});
+        conf.push_back({});
 
-        out.push_back({ID::Cancel, "BACK"});
-        out.push_back({});
-        out.push_back({});
+        conf.push_back({ID::Cancel, "BACK"});
+        conf.push_back({});
+        conf.push_back({});
 
-        return out;
+        return conf;
     }
 
-    vector<Menu::Option> getAnimationOptions() {
+    Menu::Config getAnimationMenu() {
         auto time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 
-        vector<Menu::Option> out;
+        Menu::Config conf;
+        conf.draw_Area = getDivBelowBar();
+        conf.draw_RowHeight = 128.f;
+
+        vector<int> categories = Move::getValidCategories(moveSelected);
+        string category = MoveCategory::String[categories[animCategorySelected]];
+        
+        conf.data_Header = "< " + category + " (" + std::to_string(animCategorySelected+1) + "/" + std::to_string(categories.size()) + ") >";
+        conf.data_Columns = 2;
+        conf.data_GroupByRow = true;
 
         // Add each animation in the category which isn't already equiped
         for(auto anim : g::save.getAnimationsByFilter({Move::getValidCategories(moveSelected)[animCategorySelected]})) {
@@ -131,7 +143,7 @@ struct Creator {
             }
 
             if(!equiped) {
-                out.push_back({ID::Test, anim});
+                conf.push_back({ID::Test, anim});
 
                 Animation* ptr = g::save.getAnimation(anim);
 
@@ -142,90 +154,97 @@ struct Creator {
                 if(ptr && ptr->getFrameCount() > 0) 
                     test.state.moveFrame = (time / 17) % ptr->getFrameCount();
 
-                out.push_back({0, test});
+                conf.push_back({0, test});
             }
         }
 
-        out.push_back({});
-        out.push_back({});
+        conf.push_back({});
+        conf.push_back({});
 
         // Moves before custom's are required
         if(moveSelected >= Move::Custom00) {
-            out.push_back({ID::Delete, "[-] Remove"});
-            out.push_back({});            
+            conf.push_back({ID::Delete, "[-] Remove"});
+            conf.push_back({});            
         }
 
-        out.push_back({ID::Cancel, "Back"});
-        out.push_back({});
+        conf.push_back({ID::Cancel, "Back"});
+        conf.push_back({});
 
-        return out;
+        return conf;
     }
 
-    vector<Menu::Option> getConfigCostumeOptions() {
-        vector<Menu::Option> out;    
-        
-        out.push_back({ID::Disregard, "Proportions"});
-        out.push_back({});
-        out.push_back({});
+    Menu::Config getConfigCostumeMenu() {
+        Menu::Config conf;
+        conf.draw_Area = getMenuDiv();
 
-        out.push_back({ID::ArmSize, "4", "fight", 1});
-        out.push_back({ID::ArmSize, "Arm Size: " + std::to_string((int)(dummy.config.armSize * 12.5))});
-        out.push_back({ID::ArmSize, "6", "fight", -1});
+        conf.data_Columns = 3;
+        conf.data_GroupByRow = true;
 
-        out.push_back({ID::LegSize, "4", "fight", 1});
-        out.push_back({ID::LegSize, "Leg Size: " + std::to_string((int)(dummy.config.legSize * 11.76))});
-        out.push_back({ID::LegSize, "6", "fight", -1});
+        conf.push_back({ID::Disregard, "Proportions"});
+        conf.push_back({});
+        conf.push_back({});
 
-        out.push_back({ID::ShoulderSize, "4", "fight", 1});
-        out.push_back({ID::ShoulderSize, "Shoulder Size: " + std::to_string((int)(dummy.config.shoulderSize * 100))});
-        out.push_back({ID::ShoulderSize, "6", "fight", -1});
+        conf.push_back({ID::ArmSize, "4", "fight", 1});
+        conf.push_back({ID::ArmSize, "Arm Size: " + std::to_string((int)(dummy.config.armSize * 12.5))});
+        conf.push_back({ID::ArmSize, "6", "fight", -1});
 
-        out.push_back({ID::HipSize, "4", "fight", 1});
-        out.push_back({ID::HipSize, "Hip Size: " + std::to_string((int)(dummy.config.hipSize * 100))});
-        out.push_back({ID::HipSize, "6", "fight", -1});
+        conf.push_back({ID::LegSize, "4", "fight", 1});
+        conf.push_back({ID::LegSize, "Leg Size: " + std::to_string((int)(dummy.config.legSize * 11.76))});
+        conf.push_back({ID::LegSize, "6", "fight", -1});
 
-        out.push_back({ID::Height, "4", "fight", 1});
-        out.push_back({ID::Height, "Height: " + std::to_string((int)(dummy.config.height * 100))});
-        out.push_back({ID::Height, "6", "fight", -1});
+        conf.push_back({ID::ShoulderSize, "4", "fight", 1});
+        conf.push_back({ID::ShoulderSize, "Shoulder Size: " + std::to_string((int)(dummy.config.shoulderSize * 100))});
+        conf.push_back({ID::ShoulderSize, "6", "fight", -1});
 
-        out.push_back({});
-        out.push_back({});
-        out.push_back({});
+        conf.push_back({ID::HipSize, "4", "fight", 1});
+        conf.push_back({ID::HipSize, "Hip Size: " + std::to_string((int)(dummy.config.hipSize * 100))});
+        conf.push_back({ID::HipSize, "6", "fight", -1});
 
-        out.push_back({ID::Disregard, "Clothes"});
-        out.push_back({});
-        out.push_back({});
+        conf.push_back({ID::Height, "4", "fight", 1});
+        conf.push_back({ID::Height, "Height: " + std::to_string((int)(dummy.config.height * 100))});
+        conf.push_back({ID::Height, "6", "fight", -1});
+
+        conf.push_back({});
+        conf.push_back({});
+        conf.push_back({});
+
+        conf.push_back({ID::Disregard, "Clothes"});
+        conf.push_back({});
+        conf.push_back({});
 
         for(int i = 0; i < dummy.config.clothes.size(); i ++) {
-            out.push_back({ID::Index, i, std::to_string(i + 1) + ".", "Anton-Regular", 1});
-            out.push_back({ID::Index, i, dummy.config.clothes[i].name});
+            conf.push_back({ID::Index, i, std::to_string(i + 1) + ".", "Anton-Regular", 1});
+            conf.push_back({ID::Index, i, dummy.config.clothes[i].name});
 
             if(i == 0)
-                out.push_back({ID::Index, i, "2 *", "fight", -1});
+                conf.push_back({ID::Index, i, "2 *", "fight", -1});
             else if(i == dummy.config.clothes.size()-1)
-                out.push_back({ID::Index, i, "@ 8", "fight", -1});
+                conf.push_back({ID::Index, i, "@ 8", "fight", -1});
             else
-                out.push_back({ID::Index, i, "2 8", "fight", -1});
+                conf.push_back({ID::Index, i, "2 8", "fight", -1});
         }
 
-        out.push_back({ID::Insert, ""});
-        out.push_back({ID::Insert, "[+] Add"});
-        out.push_back({ID::Insert, ""});
+        conf.push_back({ID::Insert, ""});
+        conf.push_back({ID::Insert, "[+] Add"});
+        conf.push_back({ID::Insert, ""});
 
-        out.push_back({});
-        out.push_back({});
-        out.push_back({});
+        conf.push_back({});
+        conf.push_back({});
+        conf.push_back({});
 
-        out.push_back({ID::Cancel, "Back"});
-        out.push_back({ID::Cancel, ""});
-        out.push_back({ID::Cancel, ""});
+        conf.push_back({ID::Cancel, "Back"});
+        conf.push_back({ID::Cancel, ""});
+        conf.push_back({ID::Cancel, ""});
 
-        return out;
+        return conf;
     }
 
-    vector<Menu::Option> getClothingOptions() {
-        vector<Menu::Option> out;
+    Menu::Config getClothingMenu() {
+        Menu::Config conf;
         
+        conf.draw_Area = getMenuDiv();
+        conf.data_Header = "< " + ClothingSpace::String[clothCategorySelected] + "(" + std::to_string(clothCategorySelected+1) + "/" + std::to_string(ClothingSpace::Total) + ") >";
+
         for(auto& clothing : g::save.getClothingList()) {
             bool equiped = false;
 
@@ -249,19 +268,19 @@ struct Creator {
             }
 
             if(!equiped)
-                out.push_back({ID::Index, clothing});
+                conf.push_back({ID::Index, clothing});
         }
         
-        out.push_back({});
-        out.push_back({ID::Delete, "[-] Remove"});
-        out.push_back({ID::Cancel, "Back"});
+        conf.push_back({});
+        conf.push_back({ID::Delete, "[-] Remove"});
+        conf.push_back({ID::Cancel, "Back"});
 
-        return out;    
+        return conf;    
     }
 
     Rectangle getDiv() {
         return {
-            reference.x + 16.f + reference.w / total * seatIndex,
+            reference.x + 16.f + reference.w / total * dummy.seatIndex,
             reference.y + 16.f,
             -32.f + reference.w / total,
             -32.f + reference.h
@@ -299,6 +318,29 @@ struct Creator {
             div.w,
             div.h / 2
         };
+    }
+
+    Rectangle getHeaderBarDiv() {
+        Rectangle div = getDiv();
+
+        return {
+            div.x,
+            div.y,
+            div.w,
+            div.h * 1/16
+        };
+    }
+
+    Rectangle getDivBelowBar() {
+        Rectangle div = getDiv();
+        Rectangle headerBar = getHeaderBarDiv();
+
+        return {
+            div.x,
+            div.y + headerBar.h,
+            div.w,
+            div.h - headerBar.h
+        }; 
     }
 
     void drawMoveProperties(Rectangle area) {
@@ -477,15 +519,11 @@ struct Creator {
 
     void update(Rectangle _reference, bool input) {
         reference = _reference;
-        seatIndex = dummy.seatIndex;
-
-        if(!input)
-            dummy.seatIndex = -1;
 
         if(test) {
 
             // Capture player
-            dummy.state.position.x = 0;            
+            dummy.state.position.x = 0;
             dummy.in = dummy.readInput();
             vector<Player> others = {dummy};
             dummy.advanceFrame(others);
@@ -493,7 +531,8 @@ struct Creator {
             Menu::renderPlayer(dummy, dummy.getRealBoundingBox(), getDiv());
             drawMoveProperties(getSubMenuDiv());
 
-            if(dummy.state.button[0].Taunt) {
+            // Return to editting
+            if(input && dummy.state.button[0].Taunt) {
                 test = false;
                 done = false;
             }
@@ -507,17 +546,17 @@ struct Creator {
         
             backup = dummy.config;
 
-            auto options = getModificationOptions();
-            int res = Menu::List(options, &modifyHover, dummy.seatIndex, getMenuDiv());
+            auto conf = getModificationMenu();
+            int res = Menu::Table(conf, dummy.seatIndex, &modifyHover, input);
 
             if(res == Menu::Accept) {
 
                 // Let user test their creation
-                if(options[modifyHover].id == ID::Test) {
+                if(conf[modifyHover].id == ID::Test) {
                     test = true;
 
                 // Save modifications
-                }else if(options[modifyHover].id == ID::Save) {
+                }else if(conf[modifyHover].id == ID::Save) {
 
                     if(dummy.config.calculatePoints() <= MAX_POINTS) {
                         g::save.savePlayerConfig(configSelected, dummy.config);
@@ -527,7 +566,7 @@ struct Creator {
                     }
 
                 // Confirm character
-                }else if(options[modifyHover].id == ID::Confirm) {
+                }else if(conf[modifyHover].id == ID::Confirm) {
 
                     if(dummy.config.calculatePoints() <= MAX_POINTS) {
                         done = true;
@@ -538,15 +577,15 @@ struct Creator {
                     }
 
                 // List config moves
-                }else if(options[modifyHover].id == ID::MoveList) {
+                }else if(conf[modifyHover].id == ID::MoveList) {
                     mode = Mode::ListConfigMoves;
 
                 // Return to previous config selection
-                }else if(options[modifyHover].id == ID::Cancel) {
+                }else if(conf[modifyHover].id == ID::Cancel) {
                     choosen = false;
 
                 // List worn items
-                }else if(options[modifyHover].id == ID::Costume) {
+                }else if(conf[modifyHover].id == ID::Costume) {
                     mode = Mode::ListConfigItems;
                 }
 
@@ -561,27 +600,27 @@ struct Creator {
             vector<Player> others = {dummy};
             dummy.advanceFrame(others);
 
-            auto options = getConfigCostumeOptions();
-            int res = Menu::Table(options, 3, true, &itemHover, dummy.seatIndex, getMenuDiv());
+            auto conf = getConfigCostumeMenu();
+            int res = Menu::Table(conf, dummy.seatIndex, &itemHover);
 
             if(res == Menu::Accept) {
 
                 // Insert new clothing piece
-                if(options[itemHover].id == ID::Insert) {
+                if(conf[itemHover].id == ID::Insert) {
                     backup = dummy.config;   
 
                     itemSelected = dummy.config.clothes.size();  
                     dummy.config.clothes.push_back({});
                     mode = Mode::ListClothes;
 
-                }else if(options[itemHover].id == ID::Cancel) {
+                }else if(conf[itemHover].id == ID::Cancel) {
                     mode = Mode::ModifyConfig;
 
                 // Modify existing clothing piece
-                }else if(options[itemHover].id == ID::Index) {
+                }else if(conf[itemHover].id == ID::Index) {
                     backup = dummy.config;
 
-                    itemSelected = options[itemHover].data;
+                    itemSelected = conf[itemHover].data;
                     dummy.config.clothes[itemSelected].name = "";
                     mode = Mode::ListClothes;
                 }
@@ -593,8 +632,8 @@ struct Creator {
                 Button::Config b = g::save.getButtonConfig(dummy.seatIndex);
 
                 // Shift clothing order
-                if(options[itemHover].id == ID::Index) {
-                    int index = options[itemHover].data;
+                if(conf[itemHover].id == ID::Index) {
+                    int index = conf[itemHover].data;
 
                     if(g::input.pressed(b.index, b.Left)) {
                         
@@ -612,7 +651,7 @@ struct Creator {
                     }
 
                 // Shift proportion of arm size
-                }else if(options[itemHover].id == ID::ArmSize) {
+                }else if(conf[itemHover].id == ID::ArmSize) {
 
                     if(g::input.held(b.index, b.Left)) 
                         dummy.config.armSize -= 0.1f;
@@ -623,7 +662,7 @@ struct Creator {
                     dummy.config.armSize = std::clamp(dummy.config.armSize, 3.f, 15.f);
 
                 // Shift proportion of leg size
-                }else if(options[itemHover].id == ID::LegSize) {
+                }else if(conf[itemHover].id == ID::LegSize) {
 
                     if(g::input.held(b.index, b.Left))
                         dummy.config.legSize -= 0.1f;
@@ -634,7 +673,7 @@ struct Creator {
                     dummy.config.legSize = std::clamp(dummy.config.legSize, 3.f, 15.f);  
 
                 // Shift proportion of Shoulder size
-                }else if(options[itemHover].id == ID::ShoulderSize) {
+                }else if(conf[itemHover].id == ID::ShoulderSize) {
 
                     if(g::input.held(b.index, b.Left))
                         dummy.config.shoulderSize -= 0.01f;
@@ -645,7 +684,7 @@ struct Creator {
                     dummy.config.shoulderSize = std::clamp(dummy.config.shoulderSize, 0.5f, 1.5f);
 
                 // Shift proportion of Hip size
-                }else if(options[itemHover].id == ID::HipSize) {
+                }else if(conf[itemHover].id == ID::HipSize) {
 
                     if(g::input.held(b.index, b.Left))
                         dummy.config.hipSize -= 0.01f;
@@ -656,7 +695,7 @@ struct Creator {
                     dummy.config.hipSize = std::clamp(dummy.config.hipSize, 0.5f, 1.5f);
 
                 // Shift proportion of Height
-                }else if(options[itemHover].id == ID::Height) {
+                }else if(conf[itemHover].id == ID::Height) {
 
                     if(g::input.held(b.index, b.Left))
                         dummy.config.height -= 0.01f;
@@ -691,31 +730,8 @@ struct Creator {
                 clothCategorySelected = 0;
 
             // List the selected clothing Category and Options
-            Rectangle div = getMenuDiv();
-
-            Rectangle headerDiv {
-                div.x,
-                div.y,
-                div.w,
-                div.h * 1/16
-            };
-
-            Rectangle menuDiv {
-                div.x,
-                headerDiv.y + headerDiv.h * 2,
-                div.w,
-                div.h - headerDiv.h * 2
-            };
-
-            Menu::renderText(
-                "< " + ClothingSpace::String[clothCategorySelected] + "(" + std::to_string(clothCategorySelected+1) + "/" + std::to_string(ClothingSpace::Total) + ") >", 
-                "Anton-Regular", 
-                sf::Color::White,
-                headerDiv, 
-                0);
-
-            auto options = getClothingOptions();
-            int res = Menu::List(options, &clothHover, dummy.seatIndex, menuDiv);
+            auto options = getClothingMenu();
+            int res = Menu::Table(options, dummy.seatIndex, &clothHover);
 
             vector<Player> others = {dummy};
             dummy.advanceFrame(others);
@@ -766,7 +782,6 @@ struct Creator {
                 // Rollback changes
                 dummy.config = backup;
                 mode = Mode::ListConfigItems;
-
             }
 
         }else if(mode == Mode::SetConfigItemColor) {
@@ -777,7 +792,10 @@ struct Creator {
             // Copy color in
             sf::Color color(dummy.config.clothes[itemSelected].r, dummy.config.clothes[itemSelected].g, dummy.config.clothes[itemSelected].b);
 
-            int res = Menu::ColorPicker(&color, dummy.seatIndex, getMenuDiv());
+            Menu::Config conf;
+            conf.draw_Area = getMenuDiv();
+
+            int res = Menu::ColorPicker(conf, dummy.seatIndex, &color, input);
 
             // Copy color out
             dummy.config.clothes[itemSelected].r = color.r;
@@ -802,7 +820,6 @@ struct Creator {
 
             // Select to edit the player stance, or custom input moves
             Button::Config b = g::save.getButtonConfig(dummy.seatIndex);
-            vector<string> categories = {"Stance", "Custom Moves"};
 
             if(g::input.pressed(b.index, b.Left)) {
                 moveCategorySelected --;
@@ -815,33 +832,13 @@ struct Creator {
             }
 
             if(moveCategorySelected < 0)
-                moveCategorySelected = categories.size() - 1;
+                moveCategorySelected = ConfigMoveCategories.size() - 1;
 
-            else if(moveCategorySelected >= categories.size())
+            else if(moveCategorySelected >= ConfigMoveCategories.size())
                 moveCategorySelected = 0;
 
-            Rectangle div = getMenuDiv();
-
-            Rectangle headerDiv {
-                div.x,
-                div.y,
-                div.w,
-                div.h * 1/16
-            };
-
-            Rectangle menuDiv {
-                div.x,
-                headerDiv.y + headerDiv.h * 2,
-                div.w,
-                div.h - headerDiv.h * 2
-            };
-
-            // Draw which category we selected
-            string header = "< " + categories[moveCategorySelected] + " (" + std::to_string(moveCategorySelected+1) + "/" + std::to_string(categories.size()) + ") >";
-            Menu::renderText(header, "Anton-Regular", sf::Color::White, headerDiv, 0);
-
-            auto options = getConfigMoves();
-            int res = Menu::Table(options, 3, true, &moveHover, dummy.seatIndex, menuDiv);
+            auto conf = getConfigMenu();
+            int res = Menu::Table(conf, dummy.seatIndex, &moveHover);
 
             // Set to default animation
             dummy.setMove(Move::Stand, true);
@@ -850,13 +847,13 @@ struct Creator {
 
             if(res == Menu::Accept) {
 
-                if(options[moveHover].id == ID::Cancel) {
+                if(conf[moveHover].id == ID::Cancel) {
                     mode = Mode::ModifyConfig;
 
-                }else if(options[moveHover].id == ID::Index) {
+                }else if(conf[moveHover].id == ID::Index) {
                     backup = dummy.config;
 
-                    moveSelected = options[moveHover].data;
+                    moveSelected = conf[moveHover].data;
                     dummy.config.moves[moveSelected] = "";                    
                     dummy.config.motions[moveSelected] = "";
                     mode = Mode::ListAnimations;
@@ -868,12 +865,12 @@ struct Creator {
             }else {
 
                 // Set the dummys animation
-                if(options[moveHover].id == ID::Index) {
-                    Animation* anim = g::save.getAnimation(dummy.config.moves[options[moveHover].data]);
+                if(conf[moveHover].id == ID::Index) {
+                    Animation* anim = g::save.getAnimation(dummy.config.moves[conf[moveHover].data]);
 
                     if(anim) {
                         auto time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();  
-                        dummy.state.moveIndex = options[moveHover].data;                                         
+                        dummy.state.moveIndex = conf[moveHover].data;                                         
                         dummy.state.moveFrame = (time / 17) % anim->getFrameCount();
                     }
                 }               
@@ -902,45 +899,14 @@ struct Creator {
             else if(animCategorySelected >= categories.size())
                 animCategorySelected = 0;
 
-            // List the availabile animations
-            Rectangle div = getDiv();
-
-            Rectangle barDiv {
-                div.x,
-                div.y,
-                div.w,
-                div.h * 1/16
-            };   
-
-            Rectangle headerDiv {
-                div.x,
-                barDiv.y + barDiv.h,
-                div.w,
-                div.h * 1/32
-            };         
-
-            Rectangle menuDiv {
-                div.x,
-                headerDiv.y + headerDiv.h * 2,
-                div.w,
-                div.h - (barDiv.h + headerDiv.h * 2)
-            };
-
-            string category = MoveCategory::String[categories[animCategorySelected]];
-            Menu::renderText(
-                "< " + category + " (" + std::to_string(animCategorySelected+1) + "/" + std::to_string(categories.size()) + ") >", 
-                "Anton-Regular", 
-                sf::Color::White, headerDiv, 0
-                );
-
-            auto options = getAnimationOptions();
-            int res = Menu::Table(options, 2, true, &animHover, dummy.seatIndex, menuDiv, 128);
+            auto conf = getAnimationMenu();
+            int res = Menu::Table(conf, dummy.seatIndex, &animHover, input);
 
             // Show the points if selected
-            if(options[animHover].id == ID::Test)
-                dummy.config.moves[moveSelected] = *options[animHover].text;
+            if(conf[animHover].id == ID::Test)
+                dummy.config.moves[moveSelected] = *conf[animHover].text;
             
-            drawPlayerPoints(barDiv);
+            drawPlayerPoints(getHeaderBarDiv());
 
             // Revert to empty so the options continue working
             dummy.config.moves[moveSelected] = "";
@@ -948,19 +914,19 @@ struct Creator {
             if(res == Menu::Accept) {
 
                 // Delete animation and motions
-                if(options[animHover].id == ID::Delete) {
+                if(conf[animHover].id == ID::Delete) {
                     dummy.config.moves[moveSelected] = "";
                     dummy.config.motions[moveSelected] = "";
                     mode = Mode::ListConfigMoves;
 
                 // Restore original, return to moveList
-                }else if(options[animHover].id == ID::Cancel) {
+                }else if(conf[animHover].id == ID::Cancel) {
                     dummy.config = backup;
                     mode = Mode::ListConfigMoves;
 
                 // Go to next step and select a motion
-                }else if(options[animHover].id == ID::Test){
-                    dummy.config.moves[moveSelected] = *options[animHover].text;
+                }else if(conf[animHover].id == ID::Test){
+                    dummy.config.moves[moveSelected] = *conf[animHover].text;
                     dummy.config.motions[moveSelected] = "";
                     mode = Mode::SetConfigMotion;
                 }
@@ -974,27 +940,13 @@ struct Creator {
         // Draw the motion interpreter
         }else if(mode == Mode::SetConfigMotion) {
 
-            // List the availabile animations
-            Rectangle div = getDiv();
-
-            Rectangle barDiv {
-                div.x,
-                div.y,
-                div.w,
-                div.h * 1/16
-            };           
-
-            Rectangle menuDiv {
-                div.x,
-                div.y + div.h * 2/16,
-                div.w,
-                div.h - (div.h * 2/16)             
-            };
-
-            drawPlayerPoints(barDiv);
+            drawPlayerPoints(getHeaderBarDiv());
 
             if(moveSelected >= Move::Custom00) {
-                int res = Menu::Motion(&dummy.config.motions[moveSelected], dummy.seatIndex, menuDiv);
+                Menu::Config conf;
+                conf.draw_Area = getDivBelowBar();
+
+                int res = Menu::Motion(conf, dummy.seatIndex, &dummy.config.motions[moveSelected], input);
 
                 if(res == Menu::Accept) 
                     mode = Mode::ListConfigMoves;
@@ -1004,9 +956,6 @@ struct Creator {
                 mode = Mode::ListConfigMoves;
             }
         }
-
-        // Restore input if taken away
-        dummy.seatIndex = seatIndex;
    }
 };
 
@@ -1103,7 +1052,11 @@ vector<Player::Config> CharacterSelect::run(int count) {
             case Screen::CharacterSelect: {
 
                 // Table options
-                vector<Menu::Option> options;
+                Menu::Config conf;
+                conf.data_Columns = 5;
+
+                conf.draw_Area = div;
+                conf.draw_RowHeight = div.h / 6.f;
 
                 for(int i = 0; i < g::save.maxPlayerConfigs; i ++) {
                     Player test;
@@ -1118,10 +1071,10 @@ vector<Player::Config> CharacterSelect::run(int count) {
                         1
                     };
 
-                    options.push_back({i, test, capture});
+                    conf.push_back({i, test, capture});
                 }
 
-                Menu::Table(options, 5, false, NULL, 0, div, div.h / 6.f);
+                Menu::Table(conf, 0, NULL, false);
 
                 // Do the controls and state control
                 int selected = 0;
@@ -1152,11 +1105,11 @@ vector<Player::Config> CharacterSelect::run(int count) {
                         if(!creator[i].choosen) {
                             expand = 4.f + std::sin(st.counter() * PI / 180 * 5.f) * 4.f;
 
-                            int res = Menu::DoControls(options, 5, false, &creator[i].configHover, creator[i].dummy.seatIndex);
+                            int res = Menu::DoControls(conf, creator[i].dummy.seatIndex, &creator[i].configHover, true);
 
                             // Selected a config player
                             if(res == Menu::Accept) {
-                                creator[i].configSelected = options[creator[i].configHover].id;
+                                creator[i].configSelected = conf[creator[i].configHover].id;
                                 creator[i].dummy.config = g::save.getPlayerConfig(creator[i].configSelected);
                                 creator[i].choosen = true;
 
@@ -1202,6 +1155,7 @@ vector<Player::Config> CharacterSelect::run(int count) {
                     g::video.draw(text);
                 }
 
+                // Not returning to main menu and all have selected
                 if(st.ready() && selected == creator.size()) {
                     st.nextScene(SceneTransition::CloseThenOpen, Screen::CharacterCustomize);
                 

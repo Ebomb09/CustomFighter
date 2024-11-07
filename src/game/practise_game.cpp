@@ -95,44 +95,45 @@ bool PractiseGame::run(vector<Player::Config> configs) {
         game.draw();
 
         // Draw the combo list
-        vector<Menu::Option> options;
+        Menu::Config comboMenu;
+        comboMenu.draw_Area = {32, 128, g::video.getSize().x / 4 - 32, g::video.getSize().y - 128};
 
         for(int i = 0; i < combo.size(); i ++) {
-            options.push_back({0, game.players[0].config.motions[combo[i]], "fight", -1});
-            options.push_back({0, game.players[0].config.moves[combo[i]], "Anton-Regular", -1});
+            comboMenu.push_back({0, game.players[0].config.motions[combo[i]], "fight", -1});
+            comboMenu.push_back({0, game.players[0].config.moves[combo[i]], "Anton-Regular", -1});
         }
+        comboMenu.data_Columns = 2;
 
-        Rectangle comboArea = {32, 128, g::video.getSize().x / 4 - 32, g::video.getSize().y - 128};
-        Menu::Table(options, 2, false, NULL, 0, comboArea);
+        Menu::Table(comboMenu, 0, NULL, false);
 
         if(pause) {
-            vector<Menu::Option> options;
-            options.push_back({ID::Resume, "Resume"});
-            options.push_back({ID::QuickSelect, "Quick Select"});
-            options.push_back({ID::Options, "Options"});
-            options.push_back({ID::Exit, "Exit"});
+            Menu::Config conf;
+            conf.push_back({ID::Resume, "Resume"});
+            conf.push_back({ID::QuickSelect, "Quick Select"});
+            conf.push_back({ID::Options, "Options"});
+            conf.push_back({ID::Exit, "Exit"});
 
-            Rectangle area = {
+            conf.draw_Area = {
                 64,
                 64,
                 g::video.getSize().x / 2 - 128,
                 g::video.getSize().y - 128
             };
 
-            sf::RectangleShape sh = area;
+            sf::RectangleShape sh = conf.draw_Area;
             sh.setFillColor(sf::Color(32, 32, 32));
             sh.setOutlineThickness(4);
             sh.setOutlineColor(sf::Color::White);
             g::video.draw(sh);
 
-            int res = Menu::List(options, &hover, 0, area);
+            int res = Menu::Table(conf, 0, &hover, true);
 
             if(res == Menu::Accept) {
 
-                if(options[hover].id == ID::Resume) {
+                if(conf[hover].id == ID::Resume) {
                     pause = false;
 
-                }else if(options[hover].id == ID::QuickSelect) {
+                }else if(conf[hover].id == ID::QuickSelect) {
                     vector<Player::Config> edit = CharacterSelect::run(configs.size());
 
                     if(edit.size() == configs.size()) {
@@ -144,10 +145,10 @@ bool PractiseGame::run(vector<Player::Config> configs) {
                         }
                     }
 
-                }else if(options[hover].id == ID::Options) {
-                    Options::run({area.x + 128, area.y, area.w, area.h});
+                }else if(conf[hover].id == ID::Options) {
+                    Options::run({conf.draw_Area.x + 128, conf.draw_Area.y, conf.draw_Area.w, conf.draw_Area.h});
 
-                }else if(options[hover].id == ID::Exit) {
+                }else if(conf[hover].id == ID::Exit) {
                     return false;
                 }
 

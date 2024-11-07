@@ -51,14 +51,25 @@ namespace Menu {
 		Wait
 	};
 
-	int DoControls(const std::vector<Option>& options, int columns, bool selectByRow, int* hover, int user);
-	int Table(const std::vector<Option>& options, int columns, bool selectByRow, int* hover, int user, Rectangle area, float rowHeight = fontHeight);
-	int List(const std::vector<Option> options, int* hover, int user, Rectangle area, float rowHeight = fontHeight);
-	int Text(std::string* str, int user, Rectangle area);
-	int Motion(std::string* str, int user, Rectangle area);
-	int WaitForController(int* input, int user, Rectangle area);
-	int WaitForInput(int* input, int user, Rectangle area);
-	int ColorPicker(sf::Color* color, int user, Rectangle area);
+	struct Config : public std::vector<Option> {
+
+		/* Data */
+		int						data_Columns 		= 1;
+		std::string				data_Header			= "";
+		bool					data_GroupByRow		= false;
+
+		/* Draw */
+		Rectangle 				draw_Area;
+		float 					draw_RowHeight 		= fontHeight;
+	};
+
+	int DoControls(Config& conf, int user, int* hover, bool doControl = true);
+	int Table(Config& conf, int user, int* hover, bool doControl = true);
+	int Text(Config& conf, int user, std::string* str, bool doControl = true);
+	int Motion(Config& conf, int user, std::string* str, bool doControl = true);
+	int WaitForController(Config& conf, int user, int* input, bool doControl = true);
+	int WaitForInput(Config& conf, int user, int* input, bool doControl = true);
+	int ColorPicker(Config& conf, int user, sf::Color* color, bool doControl = true);
 
 	void renderText(std::string str, std::string font, sf::Color color, Rectangle area, int align);
 	void renderPlayer(Player player, Rectangle capture, Rectangle area);

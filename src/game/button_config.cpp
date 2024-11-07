@@ -64,42 +64,48 @@ void ButtonConfig::run(Rectangle area) {
 			Button::Config b = g::save.getButtonConfig(i);
 
 			if(step[i] == SelectMode) {
-				vector<Menu::Option> options;
+
+				// Create the menu
+				Menu::Config conf;
+				conf.draw_Area = subArea;
+				
+				conf.data_Columns = 2;
+				conf.data_GroupByRow = true;
 
 				// Show controller name
-				options.push_back({ControllerMode, "Controller"});
-				options.push_back({ControllerMode, g::input.controllerName(b.index)});
+				conf.push_back({ControllerMode, "Controller"});
+				conf.push_back({ControllerMode, g::input.controllerName(b.index)});
 
-				options.push_back({});
-				options.push_back({});
+				conf.push_back({});
+				conf.push_back({});
 
 				// Show all inputs
 				for(int i = 0; i < Button::Total; i ++) {
-					options.push_back({InputMode, i, Button::Notation[i], "fight"});
-					options.push_back({InputMode, i, g::input.buttonName(b.index, b.button[i])});			
+					conf.push_back({InputMode, i, Button::Notation[i], "fight"});
+					conf.push_back({InputMode, i, g::input.buttonName(b.index, b.button[i])});			
 				}
 
-				options.push_back({});
-				options.push_back({});
+				conf.push_back({});
+				conf.push_back({});
 
-				options.push_back({Back, "Back"});
-				options.push_back({Back, ""});
+				conf.push_back({Back, "Back"});
+				conf.push_back({Back, ""});
 
-				int res = Menu::Table(options, 2, true, &hover[i].top(), i, subArea);
+				int res = Menu::Table(conf, i, &hover[i].top(), true);
 
 				if(res == Menu::Accept) {
 
-					if(options[hover[i].top()].id == Back) {
+					if(conf[hover[i].top()].id == Back) {
 						return;
 
-					}else if(options[hover[i].top()].id == ControllerMode) {
+					}else if(conf[hover[i].top()].id == ControllerMode) {
 						step[i] = ControllerMode;
 						hover[i].push(0);
 
-					}else if(options[hover[i].top()].id == InputMode) {
+					}else if(conf[hover[i].top()].id == InputMode) {
 						step[i] = InputMode;
 
-						hover[i].push(options[hover[i].top()].data);	// Button
+						hover[i].push(conf[hover[i].top()].data);	// Button
 						hover[i].push(0);								// Input
 					}
 
@@ -108,8 +114,10 @@ void ButtonConfig::run(Rectangle area) {
 				}
 
 			}else if(step[i] == InputMode) {
+				Menu::Config conf;
+				conf.draw_Area = subArea;
 
-				if(Menu::WaitForInput(&hover[i].top(), i, subArea) == Menu::Accept) {
+				if(Menu::WaitForInput(conf, i, &hover[i].top(), true) == Menu::Accept) {
 					int input = hover[i].top();
 					hover[i].pop();
 
@@ -123,8 +131,10 @@ void ButtonConfig::run(Rectangle area) {
 				}
 
 			}else if(step[i] == ControllerMode) {
+				Menu::Config conf;
+				conf.draw_Area = subArea;
 
-				if(Menu::WaitForController(&hover[i].top(), i, subArea) == Menu::Accept) {
+				if(Menu::WaitForController(conf, i, &hover[i].top(), true) == Menu::Accept) {
 					int index = hover[i].top();
 					hover[i].pop();
 

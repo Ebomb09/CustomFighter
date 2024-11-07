@@ -9,59 +9,51 @@
 #include "core/input_interpreter.h"
 #include "core/video.h"
 #include "core/save.h"
-
-#include <iostream>
+#include "core/scene_transition.h"
 
 using std::vector, std::string;
 
-enum {
-    VersusFight2P,
-    VersusFight4P,
-    RoundsFight2P,
-    RoundsFight4P,
-    NetPlay,
-    Practise,
-    OptionMenu,
-    Exit
+namespace Screen {
+    enum {
+        Main,
+        NetPlay,
+        Versus,
+        Practise,
+        OptionMenu,
+        Exit
+    };
 };
 
 Vector2 pointsOfInterests[] {
     {275.f, -307.f},
-    {817.f, -314.f},
-    {817.f, -314.f},
-    {817.f, -314.f},
     {817.f, -314.f},
     {588.f, -355.f},
     {1050.f, -615.f},
     {588.f, -355.f}
 };
 
-vector<Menu::Option> menuOptions = {
-    {NetPlay, "NetPlay"},    
-    {VersusFight2P, "Versus Mode: 2P Fight"},
-    {VersusFight4P, "Versus Mode: 4P Fight"},
-    {RoundsFight2P, "Rounds Mode: 2P Fight"},
-    {RoundsFight4P, "Rounds Mode: 4P Fight"},
-    {Practise, "Practise Mode"},
-    {OptionMenu, "Options"},
-    {Exit, "Exit"}
-};
-int hover = 0;
-
 int main(int argc, char* argv[]) {
+
     g::video.setTitle("Custom Fighter");
     g::video.setSize(g::save.resolution);
     g::video.setDisplayMode(g::save.displayMode);
     g::video.setVSync(g::save.vsync);
     g::video.reload();
 
-    // Title screen
+    int hover = 0;
+
+    // Dynamic background
     sf::Texture* mainBG = g::save.getTexture("data/hud/main.png");
     int waitForInterest = -1;
+
+    SceneTransition st;
+    st.nextScene(SceneTransition::Open, Screen::Main);
 
     while (g::video.isOpen()) {
         g::input.pollEvents();
         g::video.clear();
+
+        st.advanceFrame();
 
         // Draw the main bg
         if(mainBG) {
@@ -123,72 +115,83 @@ int main(int argc, char* argv[]) {
             g::video.draw(rect);
         }
 
-        Rectangle area = {
+        // Create the menu
+        Menu::Config mainMenu;
+        
+        mainMenu.draw_Area = {
             64,
             64,
             g::video.getSize().x / 2 - 128,
             g::video.getSize().y - 128
         };
 
-        int res = Menu::List(menuOptions, &hover, 0, area);
+        mainMenu.push_back({Screen::NetPlay, "NetPlay"});
+        mainMenu.push_back({Screen::Versus, "Versus"});
+        mainMenu.push_back({Screen::Practise, "Practise Mode"});
+        mainMenu.push_back({Screen::OptionMenu, "Options"});
+        mainMenu.push_back({Screen::Exit, "Exit"});
 
-        if(res == Menu::Accept) {
+        int res = Menu::Table(mainMenu, 0, &hover, st.ready());
 
-            if(menuOptions[hover].id == VersusFight2P) {
+        // Draw fade in / out circle
+        g::video.draw(st.getCircleFadeEffect({0.f, 0.f, g::video.getSize().x, g::video.getSize().y}));
+
+        // Render before we run any other menus
+        g::video.display();
+
+        if(st.ready()) {
+
+            // Check the screen state
+            switch(st.scene()) {
+
+            case Screen::Versus: {
                 vector<Player::Config> configs = CharacterSelect::run(2);
 
-                if(configs.size() == 2) {
+                if(configs.size() == 2) 
                     LocalGame::run(configs);
-                }
-                
-            }else if(menuOptions[hover].id == VersusFight4P) {
-                vector<Player::Config> configs = CharacterSelect::run(4);
+    
+                st.nextScene(SceneTransition::Open, Screen::Main);
+                break;
+            }
 
-                if(configs.size() == 4) {
-                    LocalGame::run(configs);
-                }
-                
-            }else if(menuOptions[hover].id == RoundsFight2P) {
+            case Screen::Practise: {
                 vector<Player::Config> configs = CharacterSelect::run(2);
 
-                if(configs.size() == 2) {
-                    LocalGame::run(configs, GameMode::Rounds);
-                }
-                
-            }else if(menuOptions[hover].id == RoundsFight4P) {
-                vector<Player::Config> configs = CharacterSelect::run(4);
-
-                if(configs.size() == 4) {
-                    LocalGame::run(configs, GameMode::Rounds);
-                }
-                
-            }else if(menuOptions[hover].id == Practise) {
-                vector<Player::Config> configs = CharacterSelect::run(2);
-
-                if(configs.size() == 2) {
+                if(configs.size() == 2) 
                     PractiseGame::run(configs);
-                }
-                
-            }else if(menuOptions[hover].id == NetPlay) {
+
+                st.nextScene(SceneTransition::Open, Screen::Main);
+                break;
+            }
+                    
+            case Screen::NetPlay: {
                 vector<Player::Config> configs = CharacterSelect::run(1);
 
                 if(configs.size() == 1) {
                     Lobby::Room room = Lobby::run(configs[0]);
 
-                    if(room.good()) {
+                    if(room.good()) 
                         NetGame::run(room);
-                    }
                 }
-
-            }else if(menuOptions[hover].id == OptionMenu) {
-                Options::run({area.x + 128, area.y, area.w, area.h});
-            
-            }else if(menuOptions[hover].id == Exit) {
-                g::video.close();
+                st.nextScene(SceneTransition::Open, Screen::Main);
+                break;
             }
-        }
 
-        g::video.display();
+            case Screen::OptionMenu: {
+                Options::run({mainMenu.draw_Area.x + 128, mainMenu.draw_Area.y, mainMenu.draw_Area.w, mainMenu.draw_Area.h});
+                st.nextScene(SceneTransition::Open, Screen::Main);
+                break;
+            }
+
+            case Screen::Exit: {
+                g::video.close();
+                break;
+            }
+            }
+
+            if(res == Menu::Accept)
+                st.nextScene(SceneTransition::Close, mainMenu[hover].id);
+        }
     }
 
 	return 0;

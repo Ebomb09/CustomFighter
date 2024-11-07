@@ -1,11 +1,10 @@
 #ifndef LOCAL_GAME_H
 #define LOCAL_GAME_H
 
-#include "game_state.h"
-#include "core/player.h"
+#include "lobby.h"
 
 namespace LocalGame {
-	bool run(std::vector<Player::Config> configs, int gameMode = GameMode::Versus);
+	bool run(Lobby::Room room);
 };
 
 #endif

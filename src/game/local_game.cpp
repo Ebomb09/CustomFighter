@@ -17,19 +17,19 @@ namespace ID {
     };
 };
 
-bool LocalGame::run(vector<Player::Config> configs, int gameMode) {
+bool LocalGame::run(Lobby::Room room) {
 	Game game;
 
     // Configure players
-    for(int i = 0; i < configs.size(); i ++) {
+    for(int i = 0; i < room.player_count; i ++) {
         game.players[i].seatIndex = i;
-        game.players[i].config = configs[i];
+        game.players[i].config = room.player_data[i].config;
     }
 
     //game.players[1].seatIndex = -1;
     //game.players[1].aiLevel = 5;
 
-    game.init(configs.size(), 3, 60, gameMode);
+    game.init(room.player_count, room.round_max, room.timer_max, room.game_mode);
 
     bool pause = false;
     int hover = 0;
@@ -38,22 +38,21 @@ bool LocalGame::run(vector<Player::Config> configs, int gameMode) {
         g::input.pollEvents();
         g::video.clear();
 
-        if(g::input.pressed(KEYBOARD_INDEX, sf::Keyboard::Escape)) {
+        if(g::input.pressed(KEYBOARD_INDEX, sf::Keyboard::Escape))
             pause = !pause;
-        
-            if(pause)
-                g::audio.setVolume(25);
-            else
-                g::audio.setVolume(100);
-        }
 
         if(!pause) {
+            g::audio.setVolume(100);
+
             game.readInput();
             game.advanceFrame();
         }
         game.draw();
 
         if(pause) {
+            g::audio.setVolume(25);
+
+            // Create the pause menu
             Menu::Config conf;
             conf.push_back({ID::Resume, "Resume"});
             conf.push_back({ID::Options, "Options"});

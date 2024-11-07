@@ -2,6 +2,7 @@
 #include "local_game.h"
 #include "net_game.h"
 #include "practise_game.h"
+#include "game_creation.h"
 #include "character_select.h"
 #include "options.h"
 
@@ -145,11 +146,22 @@ int main(int argc, char* argv[]) {
             switch(st.scene()) {
 
             case Screen::Versus: {
-                vector<Player::Config> configs = CharacterSelect::run(2);
-
-                if(configs.size() == 2) 
-                    LocalGame::run(configs);
+                Lobby::Room room = GameCreation::run();
     
+                if(room.code >= 0) {
+
+                    // Next get the configs and insert them into the room
+                    vector<Player::Config> playerConfigs = CharacterSelect::run(room.player_max);
+
+                    for(int i = 0; i < playerConfigs.size(); i ++) {
+                        room.player_data[i].config = playerConfigs[i];
+                        room.player_count ++;
+                    }
+
+                    if(room.good())
+                        LocalGame::run(room);
+                } 
+
                 st.nextScene(SceneTransition::Open, Screen::Main);
                 break;
             }

@@ -46,16 +46,12 @@ bool PractiseGame::run(vector<Player::Config> configs) {
         g::input.pollEvents();
         g::video.clear();
 
-        if(g::input.pressed(KEYBOARD_INDEX, sf::Keyboard::Escape)) {
+        if(g::input.pressed(KEYBOARD_INDEX, sf::Keyboard::Escape)) 
             pause = !pause;
-
-            if(pause)
-                g::audio.setVolume(25);
-            else
-                g::audio.setVolume(100);
-        }
-
+        
         if(!pause) {
+            g::audio.setVolume(100);
+
             vector<Player> others;
             for(int i = 0; i < game.playerCount; i ++)
                 others.push_back(game.players[i]);
@@ -107,6 +103,9 @@ bool PractiseGame::run(vector<Player::Config> configs) {
         Menu::Table(comboMenu, 0, NULL, false);
 
         if(pause) {
+            g::audio.setVolume(25);
+
+            // Create the pause menu
             Menu::Config conf;
             conf.push_back({ID::Resume, "Resume"});
             conf.push_back({ID::QuickSelect, "Quick Select"});

@@ -160,7 +160,7 @@ static void cycleIndex(const std::vector<Menu::Option>& options, int* index, int
 static float scroll[MAX_PLAYERS] {0, 0, 0, 0};
 static int items[MAX_PLAYERS] {0, 0, 0, 0};
 
-static void getCell(Menu::Config& conf, int index, int user, int* outRow = NULL, int* outColumn = NULL, Rectangle* outRectangle = NULL) {
+void Menu::getCell(Menu::Config& conf, int index, int user, int* outRow, int* outColumn, Rectangle* outRectangle) {
 	int row = index / conf.data_Columns;
 	int column = index % conf.data_Columns;
 

@@ -63,6 +63,8 @@ namespace Menu {
 		float 					draw_RowHeight 		= fontHeight;
 	};
 
+	void getCell(Config& conf, int index, int user, int* outRow = NULL, int* outColumn = NULL, Rectangle* outRectangle = NULL);
+
 	int DoControls(Config& conf, int user, int* hover, bool doControl = true);
 	int Table(Config& conf, int user, int* hover, bool doControl = true);
 	int Text(Config& conf, int user, std::string* str, bool doControl = true);

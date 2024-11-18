@@ -27,6 +27,7 @@ struct Editor {
 		bool drawGrid = true;
 		bool drawSkeleton = true;
 		bool drawModel = true;
+		bool drawEffects = true;
 		bool drawHitBox = true;
 		bool drawHurtBox = true;
 
@@ -68,6 +69,7 @@ struct Editor {
 	void drawGrid();
 	void drawSkeleton();
     void drawModel();
+	void drawEffects();
     void drawHitBox();
     void drawHurtBox();
 

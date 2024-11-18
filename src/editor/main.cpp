@@ -64,7 +64,12 @@ int main() {
         ImGui::Begin("TimeLine");
 
         ImGui::BeginChild("KeyFrames", {0.0f, 96.f}, ImGuiChildFlags_FrameStyle, ImGuiWindowFlags_HorizontalScrollbar);
+        int nextJump = -1;
         for(int i = 0; i < editor.anim.getKeyFrameCount(); i ++) {
+
+            // Stop signalling that jump is active
+            if(nextJump == i)
+                nextJump = -1;
 
             if(i != 0)
                 ImGui::SameLine();
@@ -77,7 +82,27 @@ int main() {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImColor(0, 102, 0).Value);
             }
 
-            bool clicked = ImGui::Button(std::to_string(i).c_str(), ImVec2(16 * editor.anim.getKeyFrame(i).duration, 64));
+            // Show key frame index and show where if it is a stop frame
+            string butText = std::to_string(i);
+
+            if(editor.anim.keyFrames[i].stop)
+                butText = "> " + butText + " <";
+            
+            // Draw the possible skipped frames lower
+            if(nextJump != -1)
+                ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 32);
+
+            bool clicked = ImGui::Button(
+                butText.c_str(), 
+                ImVec2(
+                    16 * editor.anim.getKeyFrame(i).duration, 
+                    (nextJump == -1) ? 64 : 32
+                    )
+                );
+
+            // Reset the cursor pos
+            if(nextJump != -1)
+                ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 32);
 
             if(highlighted) 
                 ImGui::PopStyleColor(3);                  
@@ -91,6 +116,10 @@ int main() {
                     editor.setKeyFrame(i);
                 }
             }
+
+            // Signal that the next frames are jump conditional
+            if(editor.anim.keyFrames[i].jump > 0)
+                nextJump = editor.anim.keyFrames[i].jump;
         }
         ImGui::EndChild();
   
@@ -255,10 +284,11 @@ int main() {
 
             if(ImGui::BeginMenu("Draw")) {
                 ImGui::Checkbox("Grid", &editor.settings.drawGrid);
-                ImGui::Checkbox("Skeleton", &editor.settings.drawSkeleton);        
-                ImGui::Checkbox("Model", &editor.settings.drawModel);       
+                ImGui::Checkbox("Skeleton", &editor.settings.drawSkeleton);
+                ImGui::Checkbox("Model", &editor.settings.drawModel);
+                ImGui::Checkbox("Effects", &editor.settings.drawEffects);    
                 ImGui::Checkbox("HitBox", &editor.settings.drawHitBox);
-                ImGui::Checkbox("HurtBox", &editor.settings.drawHurtBox);   
+                ImGui::Checkbox("HurtBox", &editor.settings.drawHurtBox);
                 ImGui::EndMenu();
             }
 

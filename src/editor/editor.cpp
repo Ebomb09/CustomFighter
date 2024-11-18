@@ -75,6 +75,14 @@ void Editor::drawModel() {
         copy[i].draw(player.getClothes());
 }
 
+void Editor::drawEffects() {
+
+    if(!settings.drawEffects)
+        return;
+
+    player.drawEffects();
+}
+
 void Editor::drawSkeleton() {
 
     if(!settings.drawSkeleton)
@@ -170,6 +178,13 @@ void Editor::drawHurtBox() {
     }
 } 
 
+static int getMoveFromCategory(int category) {
+
+    if(category >= MoveCategory::Normal)
+        return Move::Custom00;
+    return Move::Stand;
+}
+
 void Editor::resetPlayer() {
     timer = 0;
     player.state.position = {0, 0};
@@ -187,11 +202,12 @@ void Editor::resetPlayer() {
         player.config.moves[i] = conf.moves[i];
 
     // Set the only custom move to a simple input
-    player.config.moves[Move::Custom00] = test;
-    player.config.motions[Move::Custom00] = "A";
+    int index = getMoveFromCategory(anim.category);
+    player.config.moves[index] = test;
+    player.config.motions[index] = "A";
 
     if(!settings.playbackTest)
-        player.state.moveIndex = Move::Custom00;      
+        player.state.moveIndex = index;
 }
 
 Frame* Editor::getKeyFrame(int key) {
@@ -357,6 +373,7 @@ HurtBox* Editor::getHurtBox(int index, int key) {
 void Editor::update() {
     drawGrid();
     drawModel();
+    drawEffects();
     drawSkeleton();
     drawHitBox();
     drawHurtBox();
@@ -383,21 +400,31 @@ void Editor::update() {
     if(settings.playback && timer >= settings.playbackSpeed && anim.keyFrames.size() > 0) {
         timer = 0;
 
+        bool canTest = (settings.playbackTest && getMoveFromCategory(anim.category) == Move::Custom00);
+        
         vector<Player> others = {player};
 
-        if(settings.playbackTest) {
+        // Control character on custom moves
+        if(canTest) {
             player.seatIndex = 0;
             player.in = player.readInput(others);
+
+        // Not in control just automatically do the jumps
+        }else {
+
+            if(player.getFrame().jump > 0)
+                player.state.moveFrame = player.getFrame().jump;
         }
         player.advanceFrame(others);
         player.advanceEffects(others);
 
-        // Autoplay the jumps
-        if(!settings.playbackTest && player.getFrame().jump >= 0)
-            player.state.moveFrame = player.getFrame().jump;
+        // Reset player once animation ends
+        if(!canTest) {
 
-        if(!settings.playbackTest && player.state.position.y == 0 && player.state.moveIndex != Move::Custom00)
-            resetPlayer();
+            if(player.state.position.y == 0 && others[0].state.moveFrame > player.state.moveFrame) {
+                resetPlayer();
+            }
+        }
     }
 }
 

@@ -52,12 +52,12 @@ The detailing of the layout of the games assets.
 Game assets are all found within the game folder, everything except executables are located here.
 
 ## `./data/clothing`
-The clothing, and base skin texture exist as base folders here. The only required clothing entry 
+The clothing, and base skin texture exist as listing entry folders here. The only required clothing entry 
 is `skin` other clothing entries are entirely optional and only used to customize characters in-game.
 
-*Note: file format is recommended to stay consistent all png, jpg, etc.
+*Note: File format is recommended to stay consistent all png, jpg, etc.
 
-*Note: Clothing is display scaled according the `skin` textures. Clothing entries will scale so that the 
+*Note: Clothing is display and scaled according the `skin` textures. Clothing entries will scale so that the 
 pixel location of the lower layers match up and centered properly. It is recommended to create textures
 with an overlay of the base skin texture to see how it lines up.
 
@@ -95,8 +95,8 @@ This contains a json formatted list containing the moves which can be unlocked.
 ```
 [
     {
-        "isDefault": true, "move":      // Is a default move added to character at start
-        "Stand Light Punch",            // Name of move
+        "isDefault": true,              // Is a default move added to character at start
+        "move": "Stand Light Punch",    // Name of move
         "motion": "A"                   // Input to be associated
     }
 ]
@@ -116,8 +116,8 @@ New sounds can be included and selected within the editor.
 Shaders used for the outline of characters in-game, should not be modified but can be adjusted to change outline thickness.
 
 ### `./data/stages/`
-Stages will be randomly selected when starting a new game. Stages are base folders that contain separate images
-for each layer. How the stage is rendered is within the `stage.json` file.
+Stages will be randomly selected when starting a new game. Stages are entry folders that contain separate images
+for each layer. How the stage is rendered is defined within the `stage.json` file.
 
 ```
 {

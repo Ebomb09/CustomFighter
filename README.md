@@ -38,8 +38,8 @@ Requirements are already provided if you download the repo.
 
 ### Build
 1. `mkdir build`
-2. `cmake -G "MinGW Makefiles"`
-3. `cd build`
+2. `cd build`
+3. `cmake ../ -G "MinGW Makefiles"`
 4. `make all`
 
 ### Install
